@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gorkh_backend_postgres
+    environment:
+      POSTGRES_DB: gorkh_backend
+      POSTGRES_USER: gorkh
+      POSTGRES_PASSWORD: gorkh_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - gorkh_backend_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gorkh -d gorkh_backend"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: gorkh_backend_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - gorkh_backend_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  gorkh_backend_postgres_data:
+  gorkh_backend_redis_data:

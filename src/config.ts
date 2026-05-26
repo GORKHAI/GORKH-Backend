@@ -1,0 +1,107 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const envSchema = z.object({
+  NODE_ENV: z.string().default("development"),
+  DATABASE_URL: z.string().min(1).optional(),
+  REDIS_URL: z.string().min(1).optional(),
+  UPSTASH_REDIS_REST_URL: emptyToUndefined(z.string().url().optional()),
+  UPSTASH_REDIS_REST_TOKEN: emptyToUndefined(z.string().min(1).optional()),
+  JWT_SECRET: z.string().min(16).optional(),
+  HOST: z.string().min(1).default("0.0.0.0"),
+  PORT: z.coerce.number().int().positive().default(8787),
+  ANTHROPIC_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-3-5-sonnet-latest"),
+  DEEPGRAM_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  VOYAGE_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  LLM_PROVIDER: z.enum(["none", "deepseek", "anthropic"]).default("deepseek"),
+  DEEPSEEK_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
+  DEEPSEEK_CHAT_MODEL: z.string().min(1).default("deepseek-v4-flash"),
+  DEEPSEEK_REASONING_MODEL: z.string().min(1).default("deepseek-v4-pro"),
+  DEEPSEEK_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  DEEPSEEK_MAX_RETRIES: z.coerce.number().int().nonnegative().default(1),
+  DEEPSEEK_THINKING: z.enum(["enabled", "disabled"]).default("disabled"),
+  SUGGEST_MODEL: z.string().min(1).default("claude-3-5-sonnet-latest"),
+  EXTRACT_MODEL: z.string().min(1).default("claude-3-5-haiku-latest"),
+  DEEPGRAM_MODEL: z.string().min(1).default("nova-2"),
+  VOYAGE_MODEL: z.string().min(1).default("voyage-3-lite"),
+  VOYAGE_EMBED_DIM: z.coerce.number().int().positive().default(1024),
+  CONTEXT_WINDOW_SEGMENTS: z.coerce.number().int().positive().default(24),
+  SUGGESTION_COOLDOWN_MS: z.coerce.number().int().nonnegative().default(12000),
+  FAST_CUE_COOLDOWN_MS: z.coerce.number().int().nonnegative().default(8000),
+  VOICE_MAX_SPOKEN_WORDS: z.coerce.number().int().positive().default(8),
+  VOICE_CUE_MIN_INTERVAL_MS: z.coerce.number().int().nonnegative().default(5000),
+  VOICE_AGENT_RESPONSE_MAX_CHARS: z.coerce.number().int().positive().default(1200),
+  VOICE_DEFAULT_OUTPUT: z.enum(["text", "tts", "both"]).default("text"),
+  VOICE_TTS_PROVIDER: z.enum(["none"]).default("none"),
+  BRAIN_ENABLED: z.coerce.boolean().default(true),
+  HUMAN_PROFILE_ENABLED: z.coerce.boolean().default(true),
+  HUMAN_PROFILE_REQUIRE_CONFIRMATION: z.coerce.boolean().default(true),
+  HUMAN_PROFILE_AUTO_SAVE_LOW_RISK: z.coerce.boolean().default(true),
+  HUMAN_PROFILE_AUTO_SAVE_SENSITIVE: z.coerce.boolean().default(false),
+  HUMAN_PROFILE_MAX_FACTS_PER_SESSION: z.coerce.number().int().positive().default(12),
+  ADAPTIVE_LEARNING_ENABLED: z.coerce.boolean().default(true),
+  ADAPTIVE_SKILL_LEARNING_ENABLED: z.coerce.boolean().default(true),
+  ADAPTIVE_SKILL_AUTO_ENABLE: z.coerce.boolean().default(false),
+  ADAPTIVE_SKILL_REQUIRE_APPROVAL: z.coerce.boolean().default(true),
+  STRESS_SUPPORT_ENABLED: z.coerce.boolean().default(true),
+  STRESS_SUPPORT_REQUIRE_OPT_IN: z.coerce.boolean().default(true),
+  STRESS_SUPPORT_CRISIS_RESOURCES_ENABLED: z.coerce.boolean().default(true),
+  STRESS_SUPPORT_DEFAULT_LOCALE: z.string().min(2).default("FR"),
+  STRESS_SUPPORT_FR_RESOURCE_NAME: z.string().min(1).default("3114"),
+  STRESS_SUPPORT_FR_RESOURCE_DESCRIPTION: z.string().min(1).default("France national suicide prevention number, available 24/7"),
+  STRESS_SUPPORT_US_RESOURCE_NAME: z.string().min(1).default("988"),
+  STRESS_SUPPORT_US_RESOURCE_DESCRIPTION: z.string().min(1).default("US Suicide & Crisis Lifeline"),
+  RESEARCH_PROVIDER: z.enum(["none", "brave", "tavily", "exa"]).default("none"),
+  BRAVE_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  TAVILY_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  EXA_API_KEY: emptyToUndefined(z.string().min(1).optional()),
+  RESEARCH_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  RESEARCH_MAX_RESULTS: z.coerce.number().int().positive().default(6),
+  RESEARCH_MAX_FETCH_BYTES: z.coerce.number().int().positive().default(500000),
+  RESEARCH_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  RESEARCH_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  RESEARCH_REQUIRE_CITATIONS: z.coerce.boolean().default(true),
+  BROWSER_PROVIDER: z.enum(["none"]).default("none"),
+  TOOL_EXECUTION_MODE: z.enum(["restricted", "disabled"]).default("restricted"),
+  SUBAGENTS_ENABLED: z.coerce.boolean().default(true),
+  SUBAGENT_RUNNER_MODE: z.enum(["in_process", "db_worker", "disabled"]).default("db_worker"),
+  SUBAGENT_WORKER_ID: z.string().min(1).optional(),
+  SUBAGENT_WORKER_POLL_MS: z.coerce.number().int().positive().default(1000),
+  SUBAGENT_WORKER_BATCH_SIZE: z.coerce.number().int().positive().default(3),
+  SUBAGENT_TASK_LEASE_MS: z.coerce.number().int().positive().default(30000),
+  SUBAGENT_TASK_HEARTBEAT_MS: z.coerce.number().int().positive().default(5000),
+  SUBAGENT_MAX_CONCURRENCY: z.coerce.number().int().positive().default(3),
+  SUBAGENT_DEFAULT_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  SUBAGENT_RESEARCH_TIMEOUT_MS: z.coerce.number().int().positive().default(20000),
+  SUBAGENT_DEFAULT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+  SUBAGENT_RETRY_BASE_MS: z.coerce.number().int().positive().default(2000),
+  SUBAGENT_RETRY_MAX_MS: z.coerce.number().int().positive().default(30000),
+  SUBAGENT_NOTIFICATION_RETENTION_HOURS: z.coerce.number().int().positive().default(24),
+  SUBAGENT_REPORT_MAX_CHARS: z.coerce.number().int().positive().default(2000),
+  SUBAGENT_LIVE_REPORT_SCREEN_ONLY: z.coerce.boolean().default(true),
+});
+
+function emptyToUndefined<T extends z.ZodTypeAny>(schema: T): z.ZodEffects<T, z.output<T>, unknown> {
+  return z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), schema);
+}
+
+export type AppConfig = z.infer<typeof envSchema>;
+
+export const config: AppConfig = envSchema.parse(process.env);
+
+export function requireKey(value: string | undefined, label: string): string {
+  if (!value || value.trim() === "") {
+    throw new Error(`${label} is not configured`);
+  }
+  return value;
+}
+
+export function validateBootConfig(): void {
+  requireKey(config.DATABASE_URL, "DATABASE_URL");
+  if (!config.REDIS_URL && !(config.UPSTASH_REDIS_REST_URL && config.UPSTASH_REDIS_REST_TOKEN)) {
+    throw new Error("REDIS_URL or UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN is not configured");
+  }
+  requireKey(config.JWT_SECRET, "JWT_SECRET");
+}

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GORKH Brain Console</title>
+    <link rel="stylesheet" href="/dev/brain/brain-console.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>GORKH Brain Console</h1>
+        <p>Local dev control surface for profile, skills, stress support, research, tools, audit, and privacy state.</p>
+      </div>
+      <div class="top-actions">
+        <a class="button secondary" href="/dev/live" target="_blank" rel="noreferrer">Open Live Console</a>
+        <button id="clearLogs" class="button secondary">Clear Logs</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel auth-panel">
+        <h2>Auth</h2>
+        <div class="grid two">
+          <label>Backend URL <input id="backendUrl" /></label>
+          <label>Gateway URL <input id="gatewayUrl" /></label>
+          <label>Email <input id="email" value="brain-console@example.com" /></label>
+          <label>Display name <input id="displayName" value="Brain Console" /></label>
+        </div>
+        <label>JWT <input id="jwt" placeholder="Create dev user or paste token" autocomplete="off" /></label>
+        <div class="actions">
+          <button id="createDevUser" class="button primary">Create Dev User</button>
+          <button id="refreshAll" class="button">Refresh All</button>
+        </div>
+        <div id="authStatus" class="status">No token loaded</div>
+      </section>
+
+      <section class="panel">
+        <h2>Brain Dashboard</h2>
+        <div class="actions"><button data-action="dashboard" class="button">Load Dashboard</button></div>
+        <pre id="dashboardOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Profile Review</h2>
+        <div class="actions"><button data-action="profileReview" class="button">Load Profile Review</button></div>
+        <div id="profileReviewOut" class="columns"></div>
+      </section>
+
+      <section class="panel wide">
+        <h2>Daily Life</h2>
+        <div class="grid two">
+          <label>Commitment text <textarea id="commitmentText">I need to send the bank documents by Friday.</textarea></label>
+          <label>Meeting description <textarea id="meetingText">I am going to the bank to discuss a loan.</textarea></label>
+          <label>Session ID for recap <input id="recapSessionId" placeholder="saved session uuid" /></label>
+        </div>
+        <div class="actions">
+          <button data-action="dailyBriefGenerate" class="button primary">Generate Brief</button>
+          <button data-action="dailyBriefToday" class="button">Today Brief</button>
+          <button data-action="dailyTasks" class="button">Task Inbox</button>
+          <button data-action="dailyCommitments" class="button">Commitments</button>
+          <button data-action="dailyFollowups" class="button">Follow-ups</button>
+          <button data-action="commitmentPropose" class="button">Propose Commitment</button>
+          <button data-action="meetingPrep" class="button">Generate Prep Pack</button>
+          <button data-action="meetingRecap" class="button">Generate Recap Pack</button>
+          <button data-action="meetingPacks" class="button">Meeting Packs</button>
+        </div>
+        <p class="hint">Tasks and commitments are proposed until you accept or confirm them. No external action is taken.</p>
+        <pre id="dailyOut"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Stress</h2>
+        <p class="warning">Support only. Not therapy, diagnosis, treatment, or emergency service.</p>
+        <div class="actions">
+          <button data-action="stressSettings" class="button">Load Settings</button>
+          <button data-action="stressOptIn" class="button">Opt In</button>
+          <button data-action="stressOptOut" class="button secondary">Opt Out</button>
+        </div>
+        <label>Support test text <textarea id="stressText">I'm stressed before this meeting.</textarea></label>
+        <button data-action="stressSupport" class="button primary">Request Support</button>
+        <pre id="stressOut"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Skills</h2>
+        <div class="actions">
+          <button data-action="skills" class="button">Load Skills</button>
+          <button data-action="skillMatch" class="button">Match Bank Skill</button>
+        </div>
+        <pre id="skillsOut"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Reflections</h2>
+        <button data-action="reflections" class="button">Load Reflections</button>
+        <pre id="reflectionsOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Research</h2>
+        <div class="grid two">
+          <label>Query <textarea id="researchText">official APR explanation consumer loan</textarea></label>
+          <label>Intent <input id="researchIntent" value="quick_lookup" /></label>
+        </div>
+        <label class="check"><input id="allowResearch" type="checkbox" checked /> allowResearch</label>
+        <label class="check"><input id="allowProfileContext" type="checkbox" checked /> allowProfileContext</label>
+        <div class="actions">
+          <button data-action="researchProviders" class="button">Provider Status</button>
+          <button data-action="researchQuery" class="button">Run Research Query</button>
+          <button data-action="brainQuery" class="button primary">Run Brain Query</button>
+        </div>
+        <pre id="researchOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Subagents</h2>
+        <div class="grid two">
+          <label>Task query <textarea id="subagentQuery">official APR explanation consumer loan</textarea></label>
+          <label>Task kind
+            <select id="subagentKind">
+              <option value="research">research</option>
+              <option value="skill_matcher">skill_matcher</option>
+              <option value="stress_support">stress_support</option>
+            </select>
+          </label>
+          <label>Task ID <input id="subagentTaskId" placeholder="task uuid" /></label>
+          <label>Delivery
+            <select id="subagentDelivery">
+              <option value="screen_only">screen_only</option>
+              <option value="main_agent_summary">main_agent_summary</option>
+              <option value="silent">silent</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button data-action="subagentCreate" class="button primary">Create Task</button>
+          <button data-action="subagentList" class="button">List Tasks</button>
+          <button data-action="subagentQueue" class="button">Queue Status</button>
+          <button data-action="subagentMetrics" class="button">Queue Metrics</button>
+          <button data-action="subagentFailures" class="button">Recent Failures</button>
+          <button data-action="subagentNotifications" class="button">Notifications</button>
+          <button data-action="subagentStream" class="button">Start SSE</button>
+          <button data-action="subagentReport" class="button">Load Report</button>
+          <button data-action="subagentEvents" class="button">Load Events</button>
+          <button data-action="subagentCancel" class="button danger">Cancel Task</button>
+        </div>
+        <p class="hint">Subagents produce internal reports only. Main agent remains responsible for user-facing text. Metrics never include task payload secrets.</p>
+        <pre id="subagentsOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Action Proposals</h2>
+        <div class="grid two">
+          <label>Action type
+            <select id="actionType">
+              <option value="draft_email">draft_email</option>
+              <option value="draft_followup_message">draft_followup_message</option>
+              <option value="propose_calendar_event">propose_calendar_event</option>
+              <option value="propose_reminder">propose_reminder</option>
+              <option value="research_watchlist_create">research_watchlist_create</option>
+            </select>
+          </label>
+          <label>Proposal ID <input id="actionProposalId" placeholder="proposal uuid" /></label>
+          <label>Title <input id="actionTitle" value="Draft follow-up email" /></label>
+          <label>Description <input id="actionDescription" value="Draft only. Do not send." /></label>
+          <label>Payload JSON <textarea id="actionPayload">{"to":"client@example.com","subject":"Follow-up","body":"Thanks for meeting. Please confirm the next step.","sendDisabled":true}</textarea></label>
+          <label>Decision reason <input id="actionReason" value="Reviewed in Brain Console" /></label>
+        </div>
+        <div class="actions">
+          <button data-action="actionCreate" class="button primary">Create Proposal</button>
+          <button data-action="actionsList" class="button">List Proposals</button>
+          <button data-action="actionGet" class="button">Load Proposal</button>
+          <button data-action="actionApprove" class="button">Approve</button>
+          <button data-action="actionReject" class="button danger">Reject</button>
+          <button data-action="actionExecute" class="button">Execute Safe Internal</button>
+        </div>
+        <p class="hint">External connector actions remain disabled in v0. Drafts/proposals are review-only unless explicitly approved, and sending is disabled.</p>
+        <pre id="actionsOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Connectors</h2>
+        <div class="grid two">
+          <label>Connector ID
+            <select id="connectorId">
+              <option value="google_gmail">google_gmail</option>
+              <option value="google_calendar">google_calendar</option>
+              <option value="microsoft_outlook">microsoft_outlook</option>
+              <option value="notion">notion</option>
+              <option value="slack">slack</option>
+              <option value="todoist">todoist</option>
+              <option value="github">github</option>
+              <option value="mcp_remote">mcp_remote</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button data-action="connectorsList" class="button">Connector Registry</button>
+          <button data-action="connectorGet" class="button">Connector Detail</button>
+          <button data-action="connectorPermissions" class="button">Connector Permissions</button>
+        </div>
+        <p class="hint">OAuth, sending, calendar creation, browser login, form submission, payments, and arbitrary MCP execution are disabled.</p>
+        <pre id="connectorsOut"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Tool Permissions</h2>
+        <div class="actions">
+          <button data-action="tools" class="button">Load Tools</button>
+          <button data-action="permissions" class="button">Load Permissions</button>
+        </div>
+        <pre id="toolsOut"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Audit</h2>
+        <button data-action="audit" class="button">Load Audit Events</button>
+        <pre id="auditOut"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Session / Privacy</h2>
+        <label>Session ID <input id="sessionId" placeholder="session uuid" /></label>
+        <div class="actions">
+          <button data-action="session" class="button">Load Counts</button>
+          <button data-action="transcript" class="button secondary">Transcript</button>
+          <button data-action="cues" class="button secondary">Cues</button>
+          <button data-action="voiceOutputs" class="button secondary">Voice Outputs</button>
+        </div>
+        <p class="hint">Discarded sessions should show zero retained transcript/cue/output counts.</p>
+        <pre id="sessionOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>/dev/live Manual Microphone Checklist</h2>
+        <ol>
+          <li>Open <a href="/dev/live" target="_blank" rel="noreferrer">/dev/live</a>.</li>
+          <li>Create dev user, confirm consent, and start a microphone conversation_agent session.</li>
+          <li>Say: “What should I ask before this bank loan meeting?”</li>
+          <li>Verify ASR final, assistant text, and browser SpeechSynthesis.</li>
+          <li>Start whisper_copilot microphone mode and say the APR/fee phrase.</li>
+          <li>Verify short cue and client-side TTS instruction.</li>
+        </ol>
+        <p class="hint">This console does not claim microphone transcription. Real mic validation must happen in the browser.</p>
+      </section>
+
+      <section class="panel wide">
+        <h2>Event Log</h2>
+        <pre id="eventLog"></pre>
+      </section>
+    </main>
+
+    <script src="/dev/brain/brain-console.js"></script>
+  </body>
+</html>

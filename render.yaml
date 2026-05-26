@@ -1,0 +1,104 @@
+services:
+  - type: web
+    name: gorkh-api
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run api:start
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: LLM_PROVIDER
+        value: deepseek
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: DEEPSEEK_CHAT_MODEL
+        value: deepseek-v4-flash
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: RESEARCH_PROVIDER
+        value: none
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: BRAVE_API_KEY
+        sync: false
+      - key: EXA_API_KEY
+        sync: false
+
+  - type: web
+    name: gorkh-voice-gateway
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run gateway:start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VOICE_GATEWAY_HOST
+        value: 0.0.0.0
+      - key: VOICE_GATEWAY_PORT
+        value: 10000
+      - key: JWT_SECRET
+        sync: false
+      - key: GORKH_BACKEND_HTTP_URL
+        sync: false
+      - key: GORKH_BACKEND_WS_URL
+        sync: false
+      - key: VOICE_GATEWAY_ASR_PROVIDER
+        value: deepgram
+      - key: VOICE_GATEWAY_OUTPUT_STRATEGY
+        value: client_tts
+      - key: DEEPGRAM_MODEL
+        value: nova-3
+      - key: DEEPGRAM_API_KEY
+        sync: false
+
+  - type: worker
+    name: gorkh-subagent-worker
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run worker:start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: SUBAGENT_RUNNER_MODE
+        value: db_worker
+      - key: LLM_PROVIDER
+        value: deepseek
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: DEEPSEEK_CHAT_MODEL
+        value: deepseek-v4-flash
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: RESEARCH_PROVIDER
+        value: none
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: BRAVE_API_KEY
+        sync: false
+      - key: EXA_API_KEY
+        sync: false

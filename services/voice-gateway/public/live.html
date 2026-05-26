@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GORKH Live Voice Dev Console</title>
+    <link rel="stylesheet" href="/dev/live/styles.css" />
+  </head>
+  <body>
+    <main>
+      <aside>
+        <h1>Live Voice Dev Console</h1>
+        <p>Browser TTS is local dev only. Mobile app will use native iOS/Android TTS and OS audio routing.</p>
+        <div class="status">
+          <div>Backend: <span id="backendUrl"></span></div>
+          <div>Gateway: <span id="gatewayUrl"></span></div>
+          <div>Auth: <span id="authStatus">none</span></div>
+          <div>Socket: <span id="socketStatus">closed</span></div>
+          <div>Consent: <span id="consentStatus">not granted</span></div>
+          <div>State: <span id="stateStatus">idle</span></div>
+          <div>Policy: <span id="policyStatus">conversation_agent</span></div>
+          <div>Input: <span id="inputStatus">typed_text</span></div>
+          <div>Gateway session: <span id="gatewaySessionId">-</span></div>
+          <div>Backend session: <span id="backendSessionId">-</span></div>
+          <div>ASR: <span id="asrStatus">unknown</span></div>
+          <div>LLM: <span id="llmStatus">unknown</span></div>
+          <div>Output: <span id="outputStatus">client_tts</span></div>
+          <div>Speech: <span id="speechStatus">-</span></div>
+        </div>
+
+        <h2>Auth</h2>
+        <label>Backend HTTP URL <input id="backendHttpInput" value="http://127.0.0.1:3000" /></label>
+        <label>Email <input id="email" value="live-dev@example.com" /></label>
+        <label>Display name <input id="displayName" value="Live Dev" /></label>
+        <button id="createUser">Create Dev User</button>
+        <label>Auth token <textarea id="token"></textarea></label>
+        <button id="connect">Connect</button>
+
+        <h2>Session</h2>
+        <label>Policy
+          <select id="policy">
+            <option value="conversation_agent">conversation_agent</option>
+            <option value="whisper_copilot">whisper_copilot</option>
+          </select>
+        </label>
+        <label>Scenario
+          <select id="scenario">
+            <option value="bank_loan">bank_loan</option>
+            <option value="doctor_visit">doctor_visit</option>
+            <option value="business_meeting">business_meeting</option>
+            <option value="negotiation">negotiation</option>
+          </select>
+        </label>
+        <label>Situation <textarea id="situationDescription">I am going to the bank to discuss a loan.</textarea></label>
+        <label>Title <input id="title" value="Live voice test" /></label>
+        <label><span><input id="consent" type="checkbox" /> I consent to live assist</span></label>
+        <label>Consent notice <textarea id="notice">Live Assist is active. I confirm I have the right consent for this conversation.</textarea></label>
+        <label>Input
+          <select id="inputKind">
+            <option value="typed_text">typed_text</option>
+            <option value="microphone_pcm16">microphone_pcm16</option>
+          </select>
+        </label>
+        <label>Output
+          <select id="outputKind">
+            <option value="text">text</option>
+            <option value="both">both</option>
+          </select>
+        </label>
+        <div class="row">
+          <button id="start">Start Session</button>
+          <button id="stopDiscard" class="danger">Stop Save=false</button>
+          <button id="stopSave" class="secondary">Stop Save=true</button>
+          <button id="disconnect" class="secondary">Disconnect Without Stop</button>
+        </div>
+
+        <h2>Controls</h2>
+        <label>User text <textarea id="userText">What should I ask before this bank loan meeting?</textarea></label>
+        <button id="pushUserText">Push Typed User Text</button>
+        <label>Transcript <textarea id="transcriptText">The APR is 9.4 percent and there is also an arrangement fee.</textarea></label>
+        <button id="pushTranscript">Push Typed Transcript</button>
+        <div class="row">
+          <button id="barge" class="secondary">Simulate Barge-In</button>
+          <button id="mute" class="secondary">Mute Client TTS</button>
+          <button id="clear" class="secondary">Clear Logs</button>
+        </div>
+        <p class="live" id="recordingIndicator">Not recording</p>
+        <div class="meter"><span id="micMeter"></span></div>
+      </aside>
+
+      <section>
+        <div class="grid">
+          <div class="panel"><h2>Events</h2><div id="events" class="log"></div></div>
+          <div class="panel"><h2>Transcript</h2><div id="transcripts" class="log"></div></div>
+          <div class="panel"><h2>Cues</h2><div id="cues" class="log"></div></div>
+          <div class="panel"><h2>Assistant</h2><div id="assistant" class="log"></div></div>
+          <div class="panel"><h2>Latency Metrics</h2><div id="metrics" class="log"></div></div>
+          <div class="panel"><h2>Privacy / Stop Result</h2><div id="privacy" class="log"></div></div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/dev/live/live-client.js"></script>
+  </body>
+</html>
