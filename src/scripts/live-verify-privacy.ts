@@ -34,11 +34,15 @@ const checks = [
     if (!ack?.sessionId) throw new Error("session id missing");
     const sessionId = ack.sessionId;
     ws.send(JSON.stringify({ type: "stop", save: false }));
-    await delay(500);
+    const session = await waitFor(async () => {
+      const current = await getSessionOrNull(sessionId);
+      if (!current || current.status === "discarded") return current ?? { status: "not_found_after_discard", counts: { transcriptSegments: 0, suggestions: 0, cueEvents: 0, agentTurns: 0, voiceOutputs: 0 } };
+      return null;
+    }, cfg.timeoutMs, 250);
+    await delay(100);
     ws.close();
-    const session = await getSessionOrNull(sessionId);
     const counts = session?.counts ?? { transcriptSegments: 0, suggestions: 0, cueEvents: 0, agentTurns: 0, voiceOutputs: 0 };
-    assert(!session || session.status === "discarded", "session was not discarded or suppressed");
+    assert(!session || session.status === "discarded" || session.status === "not_found_after_discard", "session was not discarded or suppressed");
     assert(Object.values(counts).every((count) => count === 0), "discarded session retained content counts");
     return { sessionId, status: session?.status ?? "not_found_after_discard", counts };
   }),

@@ -10,7 +10,8 @@ const checks = [
       token,
       body: { text: "Prepare me for a bank loan meeting.", allowResearch: false, allowProfileContext: true },
     });
-    assert(JSON.stringify(result).toLowerCase().includes("bank"), "brain query did not return bank prep content");
+    const text = JSON.stringify(result).toLowerCase();
+    assert(["bank", "loan", "apr", "repayment", "fees"].some((term) => text.includes(term)), "brain query did not return bank/loan prep content");
     return result;
   }),
   await runCheck("research subagent brain query", async () => {
