@@ -725,9 +725,21 @@ npm run live:verify:brain
 npm run live:verify:actions
 npm run live:verify:research
 npm run live:verify:privacy
+npm run live:verify:prod-safety
 ```
 
 These scripts require deployed `LIVE_*` URLs and never print provider keys or JWT secrets. They fail clearly when URLs are missing. They do not claim browser microphone ASR or provider-live research unless those paths are actually configured and observed.
+
+Production must keep `/dev/live` and `/dev/brain` disabled. For browser-only staging validation, enable protected ops consoles only with:
+
+```sh
+OPS_CONSOLE_ENABLED=true
+OPS_CONSOLE_ADMIN_TOKEN=<secret>
+OPS_CONSOLE_ALLOW_TEST_USER=true
+OPS_CONSOLE_ALLOWED_ORIGINS=https://voice.gorkh.com
+```
+
+Then open `https://voice.gorkh.com/ops/live?token=<ops-admin-token>` or `https://voice.gorkh.com/ops/brain?token=<ops-admin-token>`. Prefer a separate staging Render gateway/API for this flow. Disable `OPS_CONSOLE_ENABLED` again after testing if used on production.
 
 Deployment runbooks:
 
@@ -763,13 +775,15 @@ npm run subagents:replay -- sse-notifications
 npm run subagents:replay:all
 npm run research:live:all
 npm run subagents:live-research:all
+npm run research:live:verify
+npm run subagents:live-research:verify
 ```
 
 See `docs/brain/subagent-orchestration.md`, `docs/brain/durable-subagent-runtime.md`, `docs/brain/subagent-worker-runbook.md`, `docs/brain/subagent-notification-stream.md`, `docs/brain/subagent-privacy-retention.md`, and `docs/brain/subagent-research-workflow.md`.
 
-### /dev/live Microphone Validation
+### Protected Browser Microphone Validation
 
-The browser microphone path still requires manual validation from `/dev/live`. Use it to confirm:
+The browser microphone path still requires manual validation from protected `/ops/live` on staging, or from local `/dev/live`. Use it to confirm:
 
 - Deepgram ASR final events from real microphone audio
 - conversation_agent routes ASR finals to `user_text`

@@ -88,10 +88,13 @@ Use this checklist from the forwarded `/dev/live` gateway URL. Do not claim ASR 
 
 ## Render Manual Validation
 
+Production should keep `/dev/live` and `/dev/brain` disabled. Use protected `/ops/live` and `/ops/brain` only on staging, or temporarily on production with `OPS_CONSOLE_ENABLED=true`, `OPS_CONSOLE_ADMIN_TOKEN` configured, and the console disabled again immediately after testing.
+
 After deployment:
 
-- Open `LIVE_GATEWAY_URL/dev/live`.
-- Create or use the smoke user.
+- Open `LIVE_GATEWAY_URL/ops/live?token=<ops-admin-token>`.
+- Create a smoke user through protected `/ops/test-user`, or paste a JWT.
+- Confirm the consent checkbox is unchecked by default.
 - Start `conversation_agent` with `typed_text`.
 - Ask: `What should I ask before this bank loan meeting?`
 - Verify deterministic assistant text and client TTS instruction.
@@ -103,12 +106,13 @@ After deployment:
 - Verify real ASR final, trigger/cue events, and short client-side TTS cue.
 - Click `Stop Save=false`.
 - Verify discarded session state and zero retained transcript/cue/output counts.
+- Verify microphone tracks stop on stop, disconnect, and socket close.
 
 Do not claim browser microphone ASR success until a real browser microphone test produces a real Deepgram final transcript.
 
 ## Brain Console Manual Validation
 
-Open `LIVE_GATEWAY_URL/dev/brain` and verify:
+Open `LIVE_GATEWAY_URL/ops/brain?token=<ops-admin-token>` and verify:
 
 - Dashboard loads.
 - Profile review separates confirmed, proposed, sensitive, and rejected facts.
@@ -120,3 +124,5 @@ Open `LIVE_GATEWAY_URL/dev/brain` and verify:
 - Research provider status is accurate.
 - Audit events load without secrets.
 - Session privacy panel shows discarded content is deleted.
+
+After testing, set `OPS_CONSOLE_ENABLED=false` or remove `OPS_CONSOLE_ADMIN_TOKEN` and redeploy/restart the gateway/API services.

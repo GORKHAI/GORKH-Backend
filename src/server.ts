@@ -144,6 +144,10 @@ export async function buildServer() {
   validateBootConfig();
   const app = Fastify({ logger: true });
   await app.register(websocket);
+  app.addHook("onRequest", async (request, reply) => {
+    applyOpsCors(request, reply);
+    if (request.method === "OPTIONS") return reply.code(204).send();
+  });
   const stopSubagentWorker = config.SUBAGENT_RUNNER_MODE === "db_worker" ? startSubagentWorkerLoop() : () => undefined;
   app.addHook("onClose", async () => {
     stopSubagentWorker();
@@ -193,6 +197,25 @@ export async function buildServer() {
       return reply.send({ user, token: await signUserToken(user.id) });
     });
   }
+
+  app.post("/ops/test-user", async (request, reply) => {
+    if (!config.OPS_CONSOLE_ENABLED || !config.OPS_CONSOLE_ALLOW_TEST_USER || !config.OPS_CONSOLE_ADMIN_TOKEN) {
+      return reply.code(404).send({ error: "not found" });
+    }
+    if (!isOpsAdminRequest(request)) return reply.code(401).send({ error: "missing or invalid ops token" });
+    const body = devUserBody.parse(request.body);
+    const [user] = await db
+      .insert(users)
+      .values({ email: body.email, displayName: body.displayName ?? null })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { displayName: body.displayName ?? null },
+      })
+      .returning();
+    if (!user) throw new Error("failed to create ops test user");
+    const ttl = `${config.OPS_CONSOLE_SESSION_TTL_SECONDS}s`;
+    return reply.send({ user, token: await signUserToken(user.id, ttl), expiresInSeconds: config.OPS_CONSOLE_SESSION_TTL_SECONDS });
+  });
 
   app.post("/situations", async (request, reply) => {
     const userId = await requireAuth(request, reply);
@@ -1180,6 +1203,34 @@ async function streamSubagentNotifications(
     }
   }, 1000);
   return reply;
+}
+
+function isOpsAdminRequest(request: FastifyRequest): boolean {
+  const expected = config.OPS_CONSOLE_ADMIN_TOKEN;
+  if (!expected) return false;
+  const header = request.headers.authorization;
+  if (header?.startsWith("Bearer ") && header.slice("Bearer ".length).trim() === expected) return true;
+  const query = request.query as { token?: string } | undefined;
+  return query?.token === expected;
+}
+
+function applyOpsCors(request: FastifyRequest, reply: FastifyReply): void {
+  if (!config.OPS_CONSOLE_ENABLED) return;
+  const origin = request.headers.origin;
+  if (!origin || !isAllowedOpsOrigin(origin)) return;
+  reply.header("Access-Control-Allow-Origin", origin);
+  reply.header("Vary", "Origin");
+  reply.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  reply.header("Access-Control-Allow-Headers", "Authorization,Content-Type");
+  reply.header("Access-Control-Max-Age", "600");
+}
+
+function isAllowedOpsOrigin(origin: string): boolean {
+  const allowed = config.OPS_CONSOLE_ALLOWED_ORIGINS.split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (allowed.length === 0) return false;
+  return allowed.includes(origin);
 }
 
 async function main(): Promise<void> {

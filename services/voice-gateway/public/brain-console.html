@@ -24,6 +24,7 @@
         <div class="grid two">
           <label>Backend URL <input id="backendUrl" /></label>
           <label>Gateway URL <input id="gatewayUrl" /></label>
+          <label>Ops admin token <input id="opsAdminToken" type="password" autocomplete="off" placeholder="Only for protected /ops/test-user" /></label>
           <label>Email <input id="email" value="brain-console@example.com" /></label>
           <label>Display name <input id="displayName" value="Brain Console" /></label>
         </div>
@@ -32,6 +33,7 @@
           <button id="createDevUser" class="button primary">Create Dev User</button>
           <button id="refreshAll" class="button">Refresh All</button>
         </div>
+        <p class="hint">On protected ops pages, Create Dev User uses /ops/test-user with the ops admin token. JWTs are not stored by default.</p>
         <div id="authStatus" class="status">No token loaded</div>
       </section>
 

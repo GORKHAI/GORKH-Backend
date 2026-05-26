@@ -47,6 +47,7 @@ interface VoiceLiveSession {
   state: VoiceStateMachine;
   emit: (event: VoiceServerEvent) => void;
   lastCueAt: number | null;
+  emittedSubagentReports: Set<string>;
 }
 
 type AgentFn = typeof answerVoiceUserText;
@@ -146,6 +147,7 @@ export function handleVoiceConnection(socket: WebSocket, userId: string): void {
         state: new VoiceStateMachine("listening"),
         emit,
         lastCueAt: null,
+        emittedSubagentReports: new Set<string>(),
       };
       live.set(sessionId, session);
       emit({
@@ -333,6 +335,7 @@ async function startVoiceResearchSubagent(session: VoiceLiveSession, query: stri
   });
   if (!(await canWrite(session, generation))) return;
   session.emit({ type: "voice_subagent_started", taskId: task.id, kind: task.kind, title: "Checking sources" });
+  void watchSubagentReport(session, generation, task.id, task.kind, liveDelivery);
 }
 
 async function emitSubagentProgress(
@@ -349,8 +352,35 @@ async function emitSubagentProgress(
     session.emit({ type: "voice_subagent_progress", taskId, status: "running", message });
     return;
   }
+  await emitSubagentReport(session, generation, taskId, kind, liveDelivery);
+}
+
+async function watchSubagentReport(
+  session: VoiceLiveSession,
+  generation: number,
+  taskId: string,
+  kind: string,
+  liveDelivery: "screen_only" | "main_agent_summary",
+): Promise<void> {
+  const deadline = Date.now() + Math.max(config.SUBAGENT_RESEARCH_TIMEOUT_MS, config.SUBAGENT_DEFAULT_TIMEOUT_MS) + 1000;
+  while (Date.now() < deadline) {
+    if (session.emittedSubagentReports.has(taskId) || !(await canWrite(session, generation))) return;
+    if (await emitSubagentReport(session, generation, taskId, kind, liveDelivery)) return;
+    await sleep(150);
+  }
+}
+
+async function emitSubagentReport(
+  session: VoiceLiveSession,
+  generation: number,
+  taskId: string,
+  kind: string,
+  liveDelivery: "screen_only" | "main_agent_summary",
+): Promise<boolean> {
+  if (session.emittedSubagentReports.has(taskId)) return true;
   const report = await getOwnedSubagentReport(session.userId, taskId);
-  if (!report || !(await canWrite(session, generation))) return;
+  if (!report || !(await canWrite(session, generation))) return false;
+  session.emittedSubagentReports.add(taskId);
   const payload = {
     title: report.title,
     summary: report.summary,
@@ -362,6 +392,11 @@ async function emitSubagentProgress(
     session.emit({ type: "voice_subagent_failed", taskId, kind, message: report.recommendedMainAgentMessage ?? report.summary });
   }
   session.emit({ type: "voice_subagent_report", taskId, kind, report: payload, delivery: liveDelivery === "screen_only" ? "screen_only" : "main_agent_summary" });
+  return true;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function immediateResearchHoldingAnswer(session: VoiceLiveSession): string {

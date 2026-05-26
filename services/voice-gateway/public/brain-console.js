@@ -4,6 +4,7 @@ const state = {
   skills: [],
   subagentStream: null,
 };
+const opsMode = window.location.pathname.startsWith("/ops/brain");
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,6 +29,7 @@ function boot() {
 
 function guessBackendUrl() {
   const url = new URL(window.location.href);
+  if (url.hostname.startsWith("voice.")) return `${url.protocol}//api.${url.hostname.slice("voice.".length)}`;
   const port = url.port === "3010" ? "3000" : "3003";
   return `${url.protocol}//${url.hostname}:${port}`;
 }
@@ -154,7 +156,11 @@ async function createSubagentTask() {
 
 async function createDevUser() {
   const body = { email: $("email").value.trim(), displayName: $("displayName").value.trim() };
-  const result = await fetchJson(`${backendBase()}/dev/users`, { method: "POST", body });
+  const result = await fetchJson(`${backendBase()}${opsMode ? "/ops/test-user" : "/dev/users"}`, {
+    method: "POST",
+    body,
+    adminToken: $("opsAdminToken")?.value?.trim() || "",
+  });
   state.token = result.token;
   $("jwt").value = result.token;
   updateAuthStatus(`Authenticated as ${result.user.email}`);
@@ -191,6 +197,7 @@ async function post(path, body) {
 async function fetchJson(url, options = {}) {
   const headers = { "Content-Type": "application/json" };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
+  if (options.adminToken) headers.Authorization = `Bearer ${options.adminToken}`;
   const response = await fetch(url, {
     method: options.method ?? "GET",
     headers,

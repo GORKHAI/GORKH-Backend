@@ -52,6 +52,43 @@ export async function buildGatewayServer() {
     app.get("/dev/brain/brain-console.css", async (_, reply) => sendPublicFile(reply, "brain-console.css", "text/css; charset=utf-8"));
   }
 
+  app.get("/ops/live", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    const html = await readPublicFile("live.html");
+    return reply
+      .type("text/html; charset=utf-8")
+      .header("Cache-Control", "no-store")
+      .send(toOpsHtml(html.replace("Live Voice Dev Console", "Protected Live Voice Ops Console"), "live"));
+  });
+  app.get("/ops/live/live-client.js", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    return reply.type("text/javascript; charset=utf-8").header("Cache-Control", "no-store").send(await readPublicFile("live-client.js"));
+  });
+  app.get("/ops/live/audio-worklet.js", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    return reply.type("text/javascript; charset=utf-8").header("Cache-Control", "no-store").send(await readPublicFile("audio-worklet.js"));
+  });
+  app.get("/ops/live/styles.css", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    return reply.type("text/css; charset=utf-8").header("Cache-Control", "no-store").send(await readPublicFile("styles.css"));
+  });
+  app.get("/ops/brain", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    const html = await readPublicFile("brain-console.html");
+    return reply
+      .type("text/html; charset=utf-8")
+      .header("Cache-Control", "no-store")
+      .send(toOpsHtml(html.replace("GORKH Brain Console", "Protected GORKH Brain Ops Console"), "brain"));
+  });
+  app.get("/ops/brain/brain-console.js", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    return reply.type("text/javascript; charset=utf-8").header("Cache-Control", "no-store").send(await readPublicFile("brain-console.js"));
+  });
+  app.get("/ops/brain/brain-console.css", async (request, reply) => {
+    if (!(await requireOpsConsole(request, reply))) return;
+    return reply.type("text/css; charset=utf-8").header("Cache-Control", "no-store").send(await readPublicFile("brain-console.css"));
+  });
+
   app.get("/sessions/:gatewaySessionId", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -111,9 +148,69 @@ async function readBackendHealth(): Promise<{ ok?: boolean; providers?: { llm?: 
 }
 
 async function sendPublicFile(reply: FastifyReply, fileName: string, contentType: string) {
-  const fileUrl = new URL(`../public/${fileName}`, import.meta.url);
-  const contents = await readFile(fileUrl);
+  const contents = await readPublicFile(fileName);
   return reply.type(contentType).send(contents);
+}
+
+async function readPublicFile(fileName: string): Promise<string> {
+  const fileUrl = new URL(`../public/${fileName}`, import.meta.url);
+  return readFile(fileUrl, "utf8");
+}
+
+async function requireOpsConsole(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+  if (!gatewayConfig.OPS_CONSOLE_ENABLED || !gatewayConfig.OPS_CONSOLE_ADMIN_TOKEN) {
+    reply.code(404).send({ error: "not found" });
+    return false;
+  }
+  const query = request.query as { token?: string } | undefined;
+  if (query?.token === gatewayConfig.OPS_CONSOLE_ADMIN_TOKEN) {
+    setOpsCookie(reply, gatewayConfig.OPS_CONSOLE_ADMIN_TOKEN);
+    const cleanUrl = request.url.replace(/[?&]token=[^&]+/, "").replace(/[?&]$/, "");
+    reply.redirect(cleanUrl || request.url.split("?")[0] || "/ops/live");
+    return false;
+  }
+  if (isOpsAuthorized(request)) return true;
+  reply.code(401).send({ error: "missing or invalid ops token" });
+  return false;
+}
+
+function isOpsAuthorized(request: FastifyRequest): boolean {
+  const expected = gatewayConfig.OPS_CONSOLE_ADMIN_TOKEN;
+  if (!expected) return false;
+  const header = request.headers.authorization;
+  if (header?.startsWith("Bearer ") && header.slice("Bearer ".length).trim() === expected) return true;
+  const cookie = parseCookie(request.headers.cookie ?? "").gorkh_ops;
+  return cookie === expected;
+}
+
+function setOpsCookie(reply: FastifyReply, token: string): void {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  reply.header(
+    "Set-Cookie",
+    `gorkh_ops=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/ops; Max-Age=${gatewayConfig.OPS_CONSOLE_SESSION_TTL_SECONDS}${secure}`,
+  );
+}
+
+function parseCookie(header: string): Record<string, string> {
+  const entries = header
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const index = part.indexOf("=");
+      return index === -1 ? [part, ""] : [part.slice(0, index), decodeURIComponent(part.slice(index + 1))];
+    });
+  return Object.fromEntries(entries);
+}
+
+function toOpsHtml(html: string, consoleName: "live" | "brain"): string {
+  const prefix = `/ops/${consoleName}`;
+  return html
+    .replaceAll(`/dev/${consoleName}`, prefix)
+    .replace(
+      "<body>",
+      '<body><div style="background:#7f1d1d;color:white;padding:10px 16px;font:14px system-ui">Protected staging/ops console. Do not expose publicly.</div>',
+    );
 }
 
 async function main(): Promise<void> {

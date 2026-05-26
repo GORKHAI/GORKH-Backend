@@ -81,6 +81,12 @@ const envSchema = z.object({
   SUBAGENT_NOTIFICATION_RETENTION_HOURS: z.coerce.number().int().positive().default(24),
   SUBAGENT_REPORT_MAX_CHARS: z.coerce.number().int().positive().default(2000),
   SUBAGENT_LIVE_REPORT_SCREEN_ONLY: z.coerce.boolean().default(true),
+  OPS_CONSOLE_ENABLED: z.coerce.boolean().default(false),
+  OPS_CONSOLE_ADMIN_TOKEN: emptyToUndefined(z.string().min(16).optional()),
+  OPS_CONSOLE_ALLOW_TEST_USER: z.coerce.boolean().default(false),
+  OPS_CONSOLE_ALLOWED_ORIGINS: z.string().default(""),
+  OPS_CONSOLE_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  RESEARCH_LIVE_REQUIRED: z.coerce.boolean().default(false),
 });
 
 function emptyToUndefined<T extends z.ZodTypeAny>(schema: T): z.ZodEffects<T, z.output<T>, unknown> {

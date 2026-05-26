@@ -8,7 +8,12 @@ requireUrl(cfg.gatewayUrl, "LIVE_GATEWAY_URL");
 const checks = [
   await runCheck("live verification suite", async () => {
     await run("npm", ["run", "live:verify"]);
-    return { nextManualChecks: ["/dev/live microphone validation", "/dev/brain control surface review"] };
+    return { nextManualChecks: ["protected /ops/live microphone validation when enabled", "protected /ops/brain control surface review when enabled"] };
+  }),
+  await runCheck("research live verification", async () => {
+    await run("npm", ["run", "research:live:verify"]);
+    await run("npm", ["run", "subagents:live-research:verify"]);
+    return { providerLiveResearchChecked: true };
   }),
 ];
 

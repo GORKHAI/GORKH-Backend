@@ -7,7 +7,7 @@ import type { SubagentReport, SubagentTask, SubagentWorkerContext } from "../typ
 
 export async function runResearchSubagent(task: SubagentTask, context: SubagentWorkerContext): Promise<SubagentReport> {
   const input = normalizeInput(task.input);
-  const status = researchProviderStatus();
+  const status = context.researchProviderStatus?.() ?? researchProviderStatus();
   await context.emitProgress("Checking research provider...");
   if (!task.policy.allowResearch) {
     return failed(task, "Research not allowed by policy.", status.selected, status.configured, "research_not_allowed");
@@ -29,7 +29,7 @@ export async function runResearchSubagent(task: SubagentTask, context: SubagentW
   }
   try {
     await context.emitProgress("Searching public sources...");
-    const provider = createSearchProvider();
+    const provider = (context.createSearchProvider ?? createSearchProvider)();
     const results = await provider.search({
       query: decision.suggestedQuery ?? input.query,
       maxResults: Math.min(input.maxResults ?? config.RESEARCH_MAX_RESULTS, config.RESEARCH_MAX_RESULTS),

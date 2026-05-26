@@ -26,7 +26,13 @@ try {
   if (task.statusCode !== 200) throw new Error(`task enqueue failed: ${task.statusCode} ${task.body}`);
   await processDueSubagentTasksOnce();
   const taskId = task.json<{ task: { id: string } }>().task.id;
-  const report = await app.inject({ method: "GET", url: `/subagents/tasks/${taskId}/report`, headers: { Authorization: `Bearer ${token}` } });
+  let report = await app.inject({ method: "GET", url: `/subagents/tasks/${taskId}/report`, headers: { Authorization: `Bearer ${token}` } });
+  const deadline = Date.now() + 15_000;
+  while (report.statusCode === 404 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await processDueSubagentTasksOnce();
+    report = await app.inject({ method: "GET", url: `/subagents/tasks/${taskId}/report`, headers: { Authorization: `Bearer ${token}` } });
+  }
   console.log(JSON.stringify({ ok: health.statusCode === 200 && report.statusCode === 200, db: await checkDb(), redis: await checkRedis(), health: health.json(), taskId, reportStatus: report.statusCode }, null, 2));
   if (health.statusCode !== 200 || report.statusCode !== 200) process.exit(1);
 } finally {

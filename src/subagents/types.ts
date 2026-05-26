@@ -119,6 +119,8 @@ export interface SubagentNotificationPayload {
 export interface SubagentWorkerContext {
   signal: AbortSignal;
   emitProgress: (message: string) => Promise<void>;
+  researchProviderStatus?: () => { selected: string; configured: boolean };
+  createSearchProvider?: typeof import("../research/provider.js").createSearchProvider;
 }
 
 export type SubagentWorker = (task: SubagentTask, context: SubagentWorkerContext) => Promise<SubagentReport>;

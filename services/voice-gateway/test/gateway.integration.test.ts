@@ -89,6 +89,13 @@ describe("gateway health and providers", () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain("GORKH Brain Console");
   });
+
+  it("keeps ops console routes protected by default", async () => {
+    const live = await gatewayApp.inject({ method: "GET", url: "/ops/live" });
+    const brain = await gatewayApp.inject({ method: "GET", url: "/ops/brain" });
+    expect(live.statusCode).toBe(404);
+    expect(brain.statusCode).toBe(404);
+  });
 });
 
 describe("gateway websocket integration", () => {

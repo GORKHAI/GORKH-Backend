@@ -2,7 +2,9 @@ const $ = (id) => document.getElementById(id);
 
 const gatewayHttp = window.location.origin;
 const gatewayWs = gatewayHttp.replace(/^http/, "ws");
-let backendHttp = "http://127.0.0.1:3000";
+const liveBase = window.location.pathname.startsWith("/ops/live") ? "/ops/live" : "/dev/live";
+const opsMode = liveBase.startsWith("/ops");
+let backendHttp = guessBackendUrl();
 
 let socket = null;
 let token = "";
@@ -14,6 +16,7 @@ let mediaStream = null;
 let workletNode = null;
 
 $("backendUrl").textContent = backendHttp;
+$("backendHttpInput").value = backendHttp;
 $("gatewayUrl").textContent = gatewayHttp;
 $("backendHttpInput").addEventListener("change", () => {
   backendHttp = $("backendHttpInput").value.replace(/\/$/, "");
@@ -35,9 +38,13 @@ $("scenario").addEventListener("change", () => {
 
 $("createUser").addEventListener("click", async () => {
   try {
-    const response = await fetch(`${backendHttp}/dev/users`, {
+    const opsToken = $("opsAdminToken")?.value?.trim() || "";
+    const authPath = opsMode ? "/ops/test-user" : "/dev/users";
+    const headers = { "Content-Type": "application/json" };
+    if (opsMode && opsToken) headers.Authorization = `Bearer ${opsToken}`;
+    const response = await fetch(`${backendHttp}${authPath}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ email: $("email").value, displayName: $("displayName").value }),
     });
     const body = await response.json();
@@ -166,7 +173,7 @@ async function startMic() {
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioContext = new AudioContext();
-    await audioContext.audioWorklet.addModule("/dev/live/audio-worklet.js");
+    await audioContext.audioWorklet.addModule(`${liveBase}/audio-worklet.js`);
     const source = audioContext.createMediaStreamSource(mediaStream);
     workletNode = new AudioWorkletNode(audioContext, "pcm16-capture");
     workletNode.port.onmessage = (event) => {
@@ -226,4 +233,11 @@ function log(id, text) {
   const el = $(id);
   el.textContent += `[${new Date().toLocaleTimeString()}] ${text}\n`;
   el.scrollTop = el.scrollHeight;
+}
+
+function guessBackendUrl() {
+  const url = new URL(window.location.href);
+  if (url.hostname.startsWith("voice.")) return `${url.protocol}//api.${url.hostname.slice("voice.".length)}`;
+  if (url.port === "3010" || url.port === "3013" || url.port === "3014") return `${url.protocol}//${url.hostname}:3000`;
+  return "http://127.0.0.1:3000";
 }

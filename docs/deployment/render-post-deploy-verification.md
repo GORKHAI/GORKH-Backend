@@ -20,6 +20,7 @@ Then run:
 ```bash
 npm run render:postdeploy
 npm run live:verify
+npm run live:verify:prod-safety
 ```
 
 Expected summary fields:
@@ -39,4 +40,16 @@ Expected summary fields:
 
 Provider-live research can only pass with real source-backed results if `RESEARCH_PROVIDER` and the matching provider key are configured. Otherwise the correct passing behavior is `provider_not_configured` with no fake citations.
 
-Browser microphone ASR cannot be claimed from scripts. It must be tested manually from `/dev/live`.
+Production `/dev/live` and `/dev/brain` must return 404 or disabled. Browser microphone ASR cannot be claimed from scripts. It must be tested manually from protected `/ops/live` on staging, or from a temporary protected production ops console that is disabled again after testing.
+
+Protected ops console variables:
+
+```bash
+OPS_CONSOLE_ENABLED=true
+OPS_CONSOLE_ADMIN_TOKEN=[secret]
+OPS_CONSOLE_ALLOW_TEST_USER=true
+OPS_CONSOLE_ALLOWED_ORIGINS=https://voice.gorkh.com
+OPS_CONSOLE_SESSION_TTL_SECONDS=3600
+```
+
+Do not print the admin token in logs or screenshots. Prefer staging for this flow.

@@ -25,7 +25,12 @@ Manual dev pages outside production:
 - `/dev/live`
 - `/dev/brain`
 
-In production, these pages may be disabled by policy.
+In production, these pages must remain disabled by policy. For staging or temporary protected validation, use:
+
+- `/ops/live?token=<ops-admin-token>`
+- `/ops/brain?token=<ops-admin-token>`
+
+Disable `OPS_CONSOLE_ENABLED` again after testing if it was enabled on production.
 
 ## Worker
 

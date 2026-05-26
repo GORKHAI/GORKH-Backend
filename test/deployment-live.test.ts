@@ -23,4 +23,23 @@ describe("render deployment rehearsal helpers", () => {
     expect(scan.findings).toEqual([{ path: file, rule: "jwt_secret_assignment", line: 1 }]);
     expect(JSON.stringify(scan.findings)).not.toContain("super-secret-value");
   });
+
+  it("declares ops and live verification scripts", async () => {
+    const pkg = JSON.parse(await import("node:fs/promises").then((fs) => fs.readFile("package.json", "utf8"))) as { scripts: Record<string, string> };
+    expect(pkg.scripts["live:verify:prod-safety"]).toBe("tsx src/scripts/live-verify-prod-safety.ts");
+    expect(pkg.scripts["ops:console:check"]).toBe("tsx src/scripts/ops-console-check.ts");
+    expect(pkg.scripts["ops:console:smoke"]).toBe("tsx src/scripts/ops-console-smoke.ts");
+    expect(pkg.scripts["research:live:verify"]).toBe("tsx src/scripts/research-live-verify.ts");
+    expect(pkg.scripts["subagents:live-research:verify"]).toBe("tsx src/scripts/subagents-live-research-verify.ts");
+  });
+
+  it("browser console code does not persist secrets in localStorage", async () => {
+    const fs = await import("node:fs/promises");
+    const live = await fs.readFile("services/voice-gateway/public/live-client.js", "utf8");
+    const brain = await fs.readFile("services/voice-gateway/public/brain-console.js", "utf8");
+    expect(live).not.toMatch(/localStorage|sessionStorage/);
+    expect(brain).not.toMatch(/localStorage|sessionStorage/);
+    expect(live).toContain("/ops/test-user");
+    expect(brain).toContain("/ops/test-user");
+  });
 });

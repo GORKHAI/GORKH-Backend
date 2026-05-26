@@ -5,12 +5,12 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(requireKey(config.JWT_SECRET, "JWT_SECRET"));
 }
 
-export async function signUserToken(userId: string): Promise<string> {
+export async function signUserToken(userId: string, expiresIn = "30d"): Promise<string> {
   return new SignJWT({})
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime(expiresIn)
     .sign(secret());
 }
 

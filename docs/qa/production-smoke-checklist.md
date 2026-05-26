@@ -10,6 +10,7 @@ npm run worker:health
 npm run worker:metrics
 npm run production:smoke
 npm run production:privacy-smoke
+npm run live:verify:prod-safety
 ```
 
 Expected:
@@ -22,6 +23,6 @@ Expected:
 
 Manual checks:
 
-- Open `/dev/brain` only in non-production.
-- Open `/dev/live` only in non-production.
+- Confirm `/dev/brain` and `/dev/live` are disabled in production.
+- Open protected `/ops/brain` or `/ops/live` only in staging or temporary protected ops mode.
 - Browser microphone ASR requires a real browser and explicit consent.

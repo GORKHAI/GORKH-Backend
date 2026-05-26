@@ -14,6 +14,9 @@ const gatewayEnvSchema = z.object({
   GATEWAY_MAX_PCM_FRAME_BYTES: z.coerce.number().int().positive().default(64000),
   GATEWAY_SESSION_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   GATEWAY_BACKEND_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  OPS_CONSOLE_ENABLED: z.coerce.boolean().default(false),
+  OPS_CONSOLE_ADMIN_TOKEN: emptyToUndefined(z.string().min(16).optional()),
+  OPS_CONSOLE_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
 });
 
 function emptyToUndefined<T extends z.ZodTypeAny>(schema: T): z.ZodEffects<T, z.output<T>, unknown> {

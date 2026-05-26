@@ -30,9 +30,11 @@
 
         <h2>Auth</h2>
         <label>Backend HTTP URL <input id="backendHttpInput" value="http://127.0.0.1:3000" /></label>
+        <label>Ops admin token <input id="opsAdminToken" type="password" autocomplete="off" placeholder="Only for protected /ops/test-user" /></label>
         <label>Email <input id="email" value="live-dev@example.com" /></label>
         <label>Display name <input id="displayName" value="Live Dev" /></label>
         <button id="createUser">Create Dev User</button>
+        <p class="hint">On protected ops pages, this button calls /ops/test-user with the ops admin token. Tokens are kept in visible inputs only and are not stored by default.</p>
         <label>Auth token <textarea id="token"></textarea></label>
         <button id="connect">Connect</button>
 

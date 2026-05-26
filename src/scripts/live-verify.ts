@@ -9,6 +9,7 @@ const scripts = [
   "live:verify:actions",
   "live:verify:research",
   "live:verify:privacy",
+  "live:verify:prod-safety",
 ];
 
 const checks = [];

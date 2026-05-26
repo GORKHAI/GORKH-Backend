@@ -45,6 +45,8 @@ Research providers are optional. `RESEARCH_PROVIDER=none` is a valid development
 - `npm run subagents:replay -- research-live-if-configured`
 - `npm run research:live:all`
 - `npm run subagents:live-research:all`
+- `npm run research:live:verify`
+- `npm run subagents:live-research:verify`
 
 If Brave, Tavily, or Exa is configured, the replay must validate that returned citations are source-backed and have non-empty URLs. If no provider is configured, it exits 0 with a clear skip message.
 
@@ -58,3 +60,5 @@ TAVILY_API_KEY=[secret]
 ```
 
 Provider-live validation requires real source URLs. If no LLM is configured, GORKH returns source lists/snippets only rather than synthesizing an answer.
+
+Set `RESEARCH_LIVE_REQUIRED=true` only when a provider key is configured and source-backed results must be mandatory for a deployment gate. With `RESEARCH_PROVIDER=none`, the correct result is `provider_not_configured` and no fake citations.

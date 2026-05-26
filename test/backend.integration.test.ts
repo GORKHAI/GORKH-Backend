@@ -14,6 +14,10 @@ process.env.ANTHROPIC_API_KEY = "";
 process.env.DEEPSEEK_API_KEY = "";
 process.env.DEEPGRAM_API_KEY = "";
 process.env.VOYAGE_API_KEY = "";
+process.env.RESEARCH_PROVIDER = "none";
+process.env.TAVILY_API_KEY = "";
+process.env.BRAVE_API_KEY = "";
+process.env.EXA_API_KEY = "";
 
 const { Pool } = pg;
 
@@ -81,6 +85,15 @@ describe("integration auth and situations", () => {
     expect(missing.statusCode).toBe(401);
     const invalid = await app.inject({ method: "POST", url: "/situations", headers: auth("bad-token"), payload: { description: "business meeting" } });
     expect(invalid.statusCode).toBe(401);
+  });
+
+  it("keeps ops test-user disabled by default", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/ops/test-user",
+      payload: { email: "ops-disabled@example.com", displayName: "Ops Disabled" },
+    });
+    expect(response.statusCode).toBe(404);
   });
 
   it("creates bank and doctor situations and enforces ownership", async () => {
@@ -749,8 +762,13 @@ describe("integration subagent orchestration", () => {
     expect(created.statusCode).toBe(200);
     const taskId = (created.json() as { task: { id: string } }).task.id;
     const report = await waitForSubagentReport(userA.token, taskId);
-    expect(JSON.stringify(report)).toContain("provider_not_configured");
-    expect(JSON.stringify(report)).not.toMatch(/"citations":\s*\[[^\]]+\]/);
+    const reportText = JSON.stringify(report);
+    if (reportText.includes("provider_not_configured")) {
+      expect(reportText).not.toMatch(/"citations":\s*\[[^\]]+\]/);
+    } else {
+      expect(reportText).toContain('"configured":true');
+      expect(reportText).toMatch(/"citations":\s*\[[^\]]+\]/);
+    }
     const blocked = await app.inject({ method: "GET", url: `/subagents/tasks/${taskId}`, headers: auth(userB.token) });
     expect(blocked.statusCode).toBe(404);
     const events = await app.inject({ method: "GET", url: `/subagents/events/${taskId}`, headers: auth(userA.token) });
@@ -828,7 +846,8 @@ describe("integration subagent orchestration", () => {
 });
 
 async function loadModules() {
-  const [{ buildServer }, { db, pool, closeDb }, { runMigration }, redis, manager, voice] = await Promise.all([
+  const [{ config }, { buildServer }, { db, pool, closeDb }, { runMigration }, redis, manager, voice] = await Promise.all([
+    import("../src/config.js"),
     import("../src/server.js"),
     import("../src/db/client.js"),
     import("../src/scripts/migrate.js"),
@@ -836,6 +855,10 @@ async function loadModules() {
     import("../src/session/manager.js"),
     import("../src/voice/ws.js"),
   ]);
+  config.RESEARCH_PROVIDER = "none";
+  config.TAVILY_API_KEY = undefined;
+  config.BRAVE_API_KEY = undefined;
+  config.EXA_API_KEY = undefined;
   return {
     buildServer,
     db,

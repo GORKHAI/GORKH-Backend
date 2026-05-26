@@ -56,13 +56,23 @@ describe("subagent workers", () => {
         input: { query: "find official source for current APR explanation", internalType: "bank_loan" },
         policy: { ...task({}).policy, allowResearch: true, allowUserFacingReport: true },
       }),
-      { signal: new AbortController().signal, emitProgress: async () => undefined },
+      {
+        signal: new AbortController().signal,
+        emitProgress: async () => undefined,
+        researchProviderStatus: () => ({ selected: "none", configured: false }),
+        createSearchProvider: () => ({
+          name: "none",
+          search: async () => {
+            const { ResearchProviderError } = await import("../src/research/types.js");
+            throw new ResearchProviderError("provider_not_configured", "Research provider is not configured");
+          },
+        }),
+      },
     );
-    if (report.providerStatus?.provider === "none") {
-      expect(report.providerStatus.configured).toBe(false);
-      expect(report.providerStatus.errorCode).toBe("provider_not_configured");
-      expect(report.findings).toEqual([]);
-    }
+    expect(report.providerStatus?.provider).toBe("none");
+    expect(report.providerStatus?.configured).toBe(false);
+    expect(report.providerStatus?.errorCode).toBe("provider_not_configured");
+    expect(report.findings).toEqual([]);
   });
 
   it("source verifier refuses to verify claims without sources", async () => {
