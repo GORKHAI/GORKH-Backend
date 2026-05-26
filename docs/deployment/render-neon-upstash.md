@@ -40,7 +40,7 @@ Do not paste provider keys into docs, logs, screenshots, `render.yaml`, or sourc
 Build:
 
 ```bash
-npm ci && npm run build
+npm ci --include=dev && npm run build
 ```
 
 Start:

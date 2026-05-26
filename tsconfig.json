@@ -11,8 +11,8 @@
     "resolveJsonModule": true,
     "outDir": "dist",
     "rootDir": ".",
-    "types": ["node", "vitest"]
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "services/**/*.ts"],
+  "include": ["src/**/*.ts", "services/voice-gateway/src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

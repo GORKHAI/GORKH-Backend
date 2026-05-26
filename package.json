@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "api:start": "node dist/src/server.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "gateway:dev": "tsx services/voice-gateway/src/server.ts",

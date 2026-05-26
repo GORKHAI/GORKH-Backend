@@ -3,7 +3,7 @@ services:
     name: gorkh-api
     runtime: node
     plan: starter
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run api:start
     healthCheckPath: /health/ready
     envVars:
@@ -42,7 +42,7 @@ services:
     name: gorkh-voice-gateway
     runtime: node
     plan: starter
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run gateway:start
     healthCheckPath: /health
     envVars:
@@ -71,7 +71,7 @@ services:
     name: gorkh-subagent-worker
     runtime: node
     plan: starter
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run worker:start
     envVars:
       - key: NODE_ENV
