@@ -24,7 +24,12 @@ export type GatewayConfig = z.infer<typeof gatewayEnvSchema>;
 export type GatewayAsrProviderName = GatewayConfig["VOICE_GATEWAY_ASR_PROVIDER"];
 export type GatewayOutputStrategy = GatewayConfig["VOICE_GATEWAY_OUTPUT_STRATEGY"];
 
-export const gatewayConfig: GatewayConfig = gatewayEnvSchema.parse(process.env);
+const gatewayEnv = {
+  ...process.env,
+  VOICE_GATEWAY_PORT: process.env.VOICE_GATEWAY_PORT ?? process.env.PORT,
+};
+
+export const gatewayConfig: GatewayConfig = gatewayEnvSchema.parse(gatewayEnv);
 
 export function requireGatewayKey(value: string | undefined, label: string): string {
   if (!value || value.trim() === "") throw new Error(`${label} is not configured`);
