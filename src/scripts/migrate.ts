@@ -552,6 +552,59 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS connector_accounts (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider text NOT NULL,
+        account_email text,
+        status text NOT NULL,
+        scopes jsonb NOT NULL,
+        token_ref text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS connector_consent_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        connector_account_id uuid REFERENCES connector_accounts(id) ON DELETE SET NULL,
+        provider text NOT NULL,
+        scopes jsonb NOT NULL,
+        consent_text text NOT NULL,
+        status text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS connector_sync_runs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        connector_account_id uuid NOT NULL REFERENCES connector_accounts(id) ON DELETE CASCADE,
+        provider text NOT NULL,
+        sync_type text NOT NULL,
+        status text NOT NULL,
+        started_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz,
+        error text,
+        item_counts jsonb NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS connector_items (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        connector_account_id uuid NOT NULL REFERENCES connector_accounts(id) ON DELETE CASCADE,
+        provider text NOT NULL,
+        item_type text NOT NULL,
+        external_id text NOT NULL,
+        title text,
+        summary text,
+        starts_at timestamptz,
+        ends_at timestamptz,
+        metadata jsonb NOT NULL,
+        sensitivity text NOT NULL DEFAULT 'low',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS evaluation_events (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid REFERENCES users(id) ON DELETE CASCADE,
@@ -645,6 +698,15 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS action_approvals_by_user ON action_approvals(user_id);
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_proposal ON action_execution_logs(proposal_id);
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_user ON action_execution_logs(user_id);
+      CREATE INDEX IF NOT EXISTS connector_accounts_by_user ON connector_accounts(user_id);
+      CREATE INDEX IF NOT EXISTS connector_accounts_by_user_provider ON connector_accounts(user_id, provider);
+      CREATE INDEX IF NOT EXISTS connector_consent_events_by_user ON connector_consent_events(user_id);
+      CREATE INDEX IF NOT EXISTS connector_consent_events_by_account ON connector_consent_events(connector_account_id);
+      CREATE INDEX IF NOT EXISTS connector_sync_runs_by_user ON connector_sync_runs(user_id);
+      CREATE INDEX IF NOT EXISTS connector_sync_runs_by_account ON connector_sync_runs(connector_account_id);
+      CREATE INDEX IF NOT EXISTS connector_items_by_user ON connector_items(user_id);
+      CREATE INDEX IF NOT EXISTS connector_items_by_account ON connector_items(connector_account_id);
+      CREATE INDEX IF NOT EXISTS connector_items_by_user_type ON connector_items(user_id, item_type);
       CREATE INDEX IF NOT EXISTS evaluation_events_by_user ON evaluation_events(user_id);
       CREATE INDEX IF NOT EXISTS evaluation_events_by_target ON evaluation_events(target_type, target_id);
       CREATE INDEX IF NOT EXISTS provider_usage_events_by_user ON provider_usage_events(user_id);

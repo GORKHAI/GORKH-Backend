@@ -6,8 +6,11 @@ export const disabledConnectorCapabilities = [
   "submit_form",
   "payment",
   "browser_login",
+  "private_browser_session_access",
   "stdio_mcp_server_execution",
+  "shell_command_mcp_server",
   "arbitrary_mcp_tool_invocation",
+  "connector_token_frontend_exposure",
 ];
 
 export function connectorPermissionSummary(manifest: ConnectorManifest) {

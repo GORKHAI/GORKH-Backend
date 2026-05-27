@@ -114,6 +114,11 @@ export type ActionApprovalDecision = "approved" | "rejected";
 export type ActionExecutionStatus = "completed" | "failed" | "blocked" | "dry_run";
 export type EvaluationTargetType = "research_answer" | "cue" | "assistant_text" | "subagent_report" | "action_proposal" | "daily_brief";
 export type EvaluationStatus = "passed" | "warning" | "failed";
+export type ConnectorProvider = "google_gmail" | "google_calendar" | "microsoft_outlook" | "notion" | "slack" | "todoist" | "github" | "mcp_remote";
+export type ConnectorAccountStatus = "oauth_not_enabled" | "pending" | "connected" | "disconnected" | "error";
+export type ConnectorConsentStatus = "shown" | "accepted" | "revoked" | "denied";
+export type ConnectorSyncStatus = "previewed" | "completed" | "failed" | "skipped";
+export type ConnectorItemType = "calendar_event" | "email_thread" | "email_message" | "task" | "document";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1011,6 +1016,100 @@ export const actionExecutionLogs = pgTable(
   }),
 );
 
+export const connectorAccounts = pgTable(
+  "connector_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").$type<ConnectorProvider>().notNull(),
+    accountEmail: text("account_email"),
+    status: text("status").$type<ConnectorAccountStatus>().notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+    tokenRef: text("token_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("connector_accounts_by_user").on(t.userId),
+    byUserProvider: index("connector_accounts_by_user_provider").on(t.userId, t.provider),
+  }),
+);
+
+export const connectorConsentEvents = pgTable(
+  "connector_consent_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectorAccountId: uuid("connector_account_id").references(() => connectorAccounts.id, { onDelete: "set null" }),
+    provider: text("provider").$type<ConnectorProvider>().notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+    consentText: text("consent_text").notNull(),
+    status: text("status").$type<ConnectorConsentStatus>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("connector_consent_events_by_user").on(t.userId),
+    byAccount: index("connector_consent_events_by_account").on(t.connectorAccountId),
+  }),
+);
+
+export const connectorSyncRuns = pgTable(
+  "connector_sync_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectorAccountId: uuid("connector_account_id")
+      .notNull()
+      .references(() => connectorAccounts.id, { onDelete: "cascade" }),
+    provider: text("provider").$type<ConnectorProvider>().notNull(),
+    syncType: text("sync_type").notNull(),
+    status: text("status").$type<ConnectorSyncStatus>().notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    error: text("error"),
+    itemCounts: jsonb("item_counts").$type<Record<string, number>>().notNull(),
+  },
+  (t) => ({
+    byUser: index("connector_sync_runs_by_user").on(t.userId),
+    byAccount: index("connector_sync_runs_by_account").on(t.connectorAccountId),
+  }),
+);
+
+export const connectorItems = pgTable(
+  "connector_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    connectorAccountId: uuid("connector_account_id")
+      .notNull()
+      .references(() => connectorAccounts.id, { onDelete: "cascade" }),
+    provider: text("provider").$type<ConnectorProvider>().notNull(),
+    itemType: text("item_type").$type<ConnectorItemType>().notNull(),
+    externalId: text("external_id").notNull(),
+    title: text("title"),
+    summary: text("summary"),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull(),
+    sensitivity: text("sensitivity").$type<Sensitivity>().notNull().default("low"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("connector_items_by_user").on(t.userId),
+    byAccount: index("connector_items_by_account").on(t.connectorAccountId),
+    byUserType: index("connector_items_by_user_type").on(t.userId, t.itemType),
+  }),
+);
+
 export const evaluationEvents = pgTable(
   "evaluation_events",
   {
@@ -1081,5 +1180,9 @@ export type WeeklyReview = typeof weeklyReviews.$inferSelect;
 export type ActionProposal = typeof actionProposals.$inferSelect;
 export type ActionApproval = typeof actionApprovals.$inferSelect;
 export type ActionExecutionLog = typeof actionExecutionLogs.$inferSelect;
+export type ConnectorAccount = typeof connectorAccounts.$inferSelect;
+export type ConnectorConsentEvent = typeof connectorConsentEvents.$inferSelect;
+export type ConnectorSyncRun = typeof connectorSyncRuns.$inferSelect;
+export type ConnectorItem = typeof connectorItems.$inferSelect;
 export type EvaluationEvent = typeof evaluationEvents.$inferSelect;
 export type ProviderUsageEvent = typeof providerUsageEvents.$inferSelect;

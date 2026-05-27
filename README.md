@@ -834,6 +834,7 @@ POST /actions/proposals
 GET  /actions/proposals/:id
 POST /actions/proposals/:id/approve
 POST /actions/proposals/:id/reject
+POST /actions/proposals/:id/preview
 POST /actions/proposals/:id/execute
 ```
 
@@ -845,9 +846,18 @@ Connector registry routes:
 GET /connectors
 GET /connectors/:id
 GET /connectors/:id/permissions
+GET /connectors/oauth/:provider/start
+GET /connectors/oauth/:provider/callback
+GET /connectors/accounts
+GET /connectors/accounts/:id
+POST /connectors/accounts/:id/disconnect
+POST /connectors/accounts/:id/sync-preview
+GET /connectors/consent-events
 ```
 
-The connector manifest layer includes disabled-by-default manifests for Gmail, Google Calendar, Outlook, Notion, Slack, Todoist, GitHub, and remote MCP. MCP support is a restricted design surface only: no stdio execution, no shell spawning, no arbitrary remote server access, and no unregistered tool invocation.
+The connector manifest layer includes disabled-by-default manifests for Gmail, Google Calendar, Outlook, Notion, Slack, Todoist, GitHub, and remote MCP. Google Calendar/Gmail OAuth is readiness-only: least-privilege read-only scopes are registered, consent events are audited, and account tokens are represented by opaque `tokenRef` values only. Raw tokens are not stored in DB responses, prompts, frontend state, or MCP tool inputs.
+
+MCP support is a restricted design surface only: no remote server execution, no stdio execution, no shell spawning, no arbitrary remote server access, no private browser/session access, and no unregistered tool invocation.
 
 Action replay commands:
 
@@ -860,9 +870,17 @@ npm run actions:replay -- mcp-disabled
 npm run actions:replay -- approval-lifecycle
 npm run actions:replay -- voice-draft-followup
 npm run actions:replay:all
+npm run connectors:replay -- scope-registry
+npm run connectors:replay -- oauth-readiness
+npm run connectors:replay -- calendar-fixture-import
+npm run connectors:replay -- gmail-fixture-import
+npm run connectors:replay -- daily-brief-from-fixtures
+npm run connectors:replay -- action-preview-blocked
+npm run connectors:replay -- mcp-security
+npm run connectors:replay:all
 ```
 
-See `docs/actions/action-approval-engine.md`, `docs/connectors/connector-manifest-layer.md`, `docs/connectors/mcp-ready-design.md`, and `docs/security/external-action-policy.md`.
+See `docs/actions/action-approval-engine.md`, `docs/actions/action-approval-hardening.md`, `docs/connectors/connector-manifest-layer.md`, `docs/connectors/oauth-readiness.md`, `docs/connectors/google-calendar-readonly-plan.md`, `docs/connectors/gmail-readonly-plan.md`, `docs/connectors/token-storage-policy.md`, `docs/connectors/mcp-ready-design.md`, `docs/connectors/mcp-security-policy.md`, and `docs/security/external-action-policy.md`.
 
 ### Intelligence Quality Layer
 

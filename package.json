@@ -39,6 +39,8 @@
     "daily:replay:all": "tsx src/scripts/daily-replay-all.ts",
     "actions:replay": "tsx src/scripts/actions-replay.ts",
     "actions:replay:all": "tsx src/scripts/actions-replay-all.ts",
+    "connectors:replay": "tsx src/scripts/connectors-replay.ts",
+    "connectors:replay:all": "tsx src/scripts/connectors-replay-all.ts",
     "quality:replay": "tsx src/scripts/quality-replay.ts",
     "quality:replay:all": "tsx src/scripts/quality-replay-all.ts",
     "research:check": "tsx src/scripts/research-check.ts",

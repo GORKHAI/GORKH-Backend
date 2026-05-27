@@ -1,18 +1,19 @@
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { actionProposals, commitments, dailyBriefFeedback, dailyBriefs, followupSuggestions, situationBriefs, taskItems, type DailyBrief } from "../db/schema.js";
+import { actionProposals, commitments, connectorItems, dailyBriefFeedback, dailyBriefs, followupSuggestions, situationBriefs, taskItems, type DailyBrief } from "../db/schema.js";
 import { summarizeHumanContext } from "../human/profile.js";
 import { explainTaskRanking, rankTasks } from "./priority-ranker.js";
 import type { DailyBriefDraft, DailyBriefQuality, DailyBriefSection } from "./types.js";
 
 export async function buildDailyBriefDraft(userId: string, date = new Date()): Promise<DailyBriefDraft> {
   const todayStart = startOfUtcDay(date);
-  const [profile, tasks, openCommitments, followups, situations, actions, feedback] = await Promise.all([
+  const [profile, tasks, openCommitments, followups, situations, connectorEvents, actions, feedback] = await Promise.all([
     summarizeHumanContext(userId).catch(() => null),
     db.select().from(taskItems).where(and(eq(taskItems.userId, userId), inArray(taskItems.status, ["proposed", "accepted", "scheduled", "blocked", "waiting"]))).orderBy(desc(taskItems.suggestedAt)),
     db.select().from(commitments).where(and(eq(commitments.userId, userId), inArray(commitments.status, ["proposed", "confirmed", "overdue"]))).orderBy(asc(commitments.dueAt)),
     db.select().from(followupSuggestions).where(and(eq(followupSuggestions.userId, userId), eq(followupSuggestions.status, "proposed"))).orderBy(desc(followupSuggestions.createdAt)),
     db.select().from(situationBriefs).where(and(eq(situationBriefs.userId, userId), gte(situationBriefs.scheduledAt, todayStart))).orderBy(asc(situationBriefs.scheduledAt)).limit(5),
+    db.select().from(connectorItems).where(and(eq(connectorItems.userId, userId), eq(connectorItems.itemType, "calendar_event"), gte(connectorItems.startsAt, todayStart))).orderBy(asc(connectorItems.startsAt)).limit(5),
     db.select().from(actionProposals).where(and(eq(actionProposals.userId, userId), eq(actionProposals.status, "proposed"))).orderBy(desc(actionProposals.createdAt)).limit(5),
     db.select().from(dailyBriefFeedback).where(eq(dailyBriefFeedback.userId, userId)).orderBy(desc(dailyBriefFeedback.createdAt)).limit(50),
   ]);
@@ -30,7 +31,14 @@ export async function buildDailyBriefDraft(userId: string, date = new Date()): P
     { key: "top_priorities", title: "Top 3 priorities", items: topThree.map((task) => `${labelWithDue(task.title, task.dueAt)} — ${task.nextStep ?? "review next step"}`) },
     { key: "time_sensitive_commitments", title: "Time-sensitive commitments", items: timeSensitive.map((commitment) => labelWithDue(commitment.title, commitment.dueAt)) },
     { key: "followups_due", title: "Follow-ups due", items: followups.slice(0, 5).map((followup) => labelWithDue(followup.reason, followup.dueAt)) },
-    { key: "upcoming_situations", title: "Meetings/situations to prepare for", items: situations.map((situation) => `${situation.description}${situation.scheduledAt ? ` (${situation.scheduledAt.toISOString()})` : ""}`) },
+    {
+      key: "upcoming_situations",
+      title: "Meetings/situations to prepare for",
+      items: [
+        ...situations.map((situation) => `${situation.description}${situation.scheduledAt ? ` (${situation.scheduledAt.toISOString()})` : ""}`),
+        ...connectorEvents.map((event) => `${event.title ?? "Calendar event"}${event.startsAt ? ` (${event.startsAt.toISOString()})` : ""}`),
+      ],
+    },
     { key: "waiting_on_others", title: "Waiting on others", items: waiting.map((item) => item.title) },
     { key: "risk_items", title: "Risk items", items: openCommitments.filter((c) => c.sensitivity !== "low").slice(0, 5).map((c) => `${c.title} (${c.sensitivity}; review, do not treat as final advice)`) },
     { key: "low_effort_admin", title: "Low-effort admin tasks", items: lowEffort.map((task) => task.title) },

@@ -238,7 +238,7 @@ async function runVoiceResearch(base: string, wsBase: string, token: string, pol
   await waitForEvent(events, "voice_ack");
   ws.send(transcript ? JSON.stringify({ type: "transcript", speaker: "speaker_1", text, offsetMs: 1000 }) : JSON.stringify({ type: "user_text", text }));
   await waitForEvent(events, "voice_subagent_started", 6000);
-  await waitForEvent(events, "voice_subagent_report", 9000).catch(() => waitForEvent(events, "voice_subagent_failed", 2000));
+  await waitForAnyEvent(events, ["voice_subagent_report", "voice_subagent_failed"], 20000);
   ws.send(JSON.stringify({ type: "stop", save: false }));
   await delay(250);
   ws.close();
@@ -288,6 +288,15 @@ async function waitForEvent(events: Array<{ type: string }>, type: string, timeo
     await delay(25);
   }
   throw new Error(`timed out waiting for ${type}; saw ${events.map((event) => event.type).join(", ")}`);
+}
+
+async function waitForAnyEvent(events: Array<{ type: string }>, types: string[], timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (events.some((event) => types.includes(event.type))) return;
+    await delay(25);
+  }
+  throw new Error(`timed out waiting for ${types.join(" or ")}; saw ${events.map((event) => event.type).join(", ")}`);
 }
 
 function delay(ms: number): Promise<void> {

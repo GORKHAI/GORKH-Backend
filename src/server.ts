@@ -14,6 +14,7 @@ import {
   brainAuditEvents,
   brainReflections,
   commitments,
+  connectorConsentEvents,
   cueEvents,
   evaluationEvents,
   followupSuggestions,
@@ -36,8 +37,16 @@ import {
 } from "./db/schema.js";
 import { approveActionProposal, rejectActionProposal } from "./actions/approval.js";
 import { executeActionProposal } from "./actions/executor.js";
+import { previewActionProposal } from "./actions/preview.js";
 import { createActionProposal, getOwnedActionProposal, listActionProposals } from "./actions/proposal.js";
 import { actionDecisionBodySchema, createActionProposalSchema } from "./actions/types.js";
+import { createFixtureConnectorAccount, disconnectConnectorAccount, getOwnedConnectorAccount, importConnectorItems, listConnectorAccounts, syncPreview } from "./connectors/accounts.js";
+import { oauthNotEnabledResponse, oauthReadiness } from "./connectors/oauth/callback.js";
+import { recordConnectorConsentEvent } from "./connectors/oauth/consent.js";
+import { normalizeGmailMessage } from "./connectors/oauth/gmail.js";
+import { normalizeGoogleCalendarEvent } from "./connectors/oauth/google-calendar.js";
+import { enabledScopeStrings, scopesForProvider } from "./connectors/oauth/scopes.js";
+import { tokenVaultStatus } from "./connectors/oauth/token-vault.js";
 import { getConnectorManifest, listConnectorManifests } from "./connectors/registry.js";
 import { connectorIdSchema } from "./connectors/types.js";
 import { connectorPermissionSummary } from "./connectors/permissions.js";
@@ -592,10 +601,126 @@ export async function buildServer() {
     }
   });
 
+  app.post("/actions/proposals/:id/preview", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const proposal = await getOwnedActionProposal(userId, params.id);
+    if (!proposal) return reply.code(404).send({ error: "not found" });
+    return reply.send({ preview: previewActionProposal(proposal) });
+  });
+
   app.get("/connectors", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
     return reply.send({ connectors: listConnectorManifests() });
+  });
+
+  app.get("/connectors/oauth/:provider/start", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ provider: connectorIdSchema }).parse(request.params);
+    const readiness = oauthReadiness(params.provider);
+    await recordConnectorConsentEvent({ userId, provider: params.provider, scopes: readiness.scopes, status: "shown" }).catch(() => null);
+    if (!readiness.enabled) return reply.send(oauthNotEnabledResponse(params.provider));
+    return reply.send({
+      readiness,
+      authorizationUrl: null,
+      message: "OAuth env is present, but token exchange remains disabled until token vault integration is completed.",
+    });
+  });
+
+  app.get("/connectors/oauth/:provider/callback", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ provider: connectorIdSchema }).parse(request.params);
+    const readiness = oauthReadiness(params.provider);
+    await recordConnectorConsentEvent({ userId, provider: params.provider, scopes: readiness.scopes, status: readiness.enabled ? "accepted" : "denied" }).catch(() => null);
+    return reply.send(oauthNotEnabledResponse(params.provider));
+  });
+
+  app.get("/connectors/accounts", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const accounts = await listConnectorAccounts(userId);
+    return reply.send({ accounts: accounts.map(redactConnectorAccount), tokenPolicy: tokenVaultStatus() });
+  });
+
+  app.get("/connectors/accounts/:id", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const account = await getOwnedConnectorAccount(userId, params.id);
+    if (!account) return reply.code(404).send({ error: "not found" });
+    return reply.send({ account: redactConnectorAccount(account), tokenPolicy: tokenVaultStatus() });
+  });
+
+  app.post("/connectors/accounts/:id/disconnect", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const account = await disconnectConnectorAccount(userId, params.id);
+    if (!account) return reply.code(404).send({ error: "not found" });
+    await recordConnectorConsentEvent({ userId, connectorAccountId: account.id, provider: account.provider, scopes: account.scopes, status: "revoked" }).catch(() => null);
+    return reply.send({ account: redactConnectorAccount(account) });
+  });
+
+  app.post("/connectors/accounts/:id/sync-preview", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const preview = await syncPreview(userId, params.id);
+    if (!preview) return reply.code(404).send({ error: "not found" });
+    return reply.send({ ...preview, account: redactConnectorAccount(preview.account) });
+  });
+
+  app.post("/connectors/accounts/import-fixture", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = z
+      .object({
+        provider: z.enum(["google_calendar", "google_gmail"]),
+        accountEmail: z.string().email().optional(),
+        items: z.array(z.record(z.string(), z.unknown())).default([]),
+      })
+      .parse(request.body);
+    const account = await createFixtureConnectorAccount({
+      userId,
+      provider: body.provider,
+      accountEmail: body.accountEmail ?? null,
+      scopes: enabledScopeStrings(body.provider),
+      tokenRef: `fixture:${body.provider}:${userId}`,
+    });
+    await recordConnectorConsentEvent({ userId, connectorAccountId: account.id, provider: account.provider, scopes: account.scopes, status: "accepted" }).catch(() => null);
+    const normalized =
+      body.provider === "google_calendar"
+        ? body.items.map((item, index) =>
+            normalizeGoogleCalendarEvent({
+              id: String(item.id ?? `fixture-calendar-${index}`),
+              summary: typeof item.summary === "string" ? item.summary : typeof item.title === "string" ? item.title : null,
+              description: typeof item.description === "string" ? item.description : null,
+              start: typeof item.startsAt === "string" ? { dateTime: item.startsAt } : undefined,
+              end: typeof item.endsAt === "string" ? { dateTime: item.endsAt } : undefined,
+            }),
+          )
+        : body.items.map((item, index) =>
+            normalizeGmailMessage({
+              id: String(item.id ?? `fixture-gmail-${index}`),
+              threadId: typeof item.threadId === "string" ? item.threadId : undefined,
+              subject: typeof item.subject === "string" ? item.subject : typeof item.title === "string" ? item.title : null,
+              snippet: typeof item.snippet === "string" ? item.snippet : typeof item.summary === "string" ? item.summary : null,
+              from: typeof item.from === "string" ? item.from : null,
+            }),
+          );
+    const imported = await importConnectorItems({ userId, accountId: account.id, items: normalized });
+    return reply.send({ account: redactConnectorAccount(imported.account), items: imported.items });
+  });
+
+  app.get("/connectors/consent-events", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const events = await db.select().from(connectorConsentEvents).where(eq(connectorConsentEvents.userId, userId)).orderBy(desc(connectorConsentEvents.createdAt)).limit(100);
+    return reply.send({ events });
   });
 
   app.get("/connectors/:id", async (request, reply) => {
@@ -604,7 +729,7 @@ export async function buildServer() {
     const params = z.object({ id: connectorIdSchema }).parse(request.params);
     const connector = getConnectorManifest(params.id);
     if (!connector) return reply.code(404).send({ error: "not found" });
-    return reply.send({ connector });
+    return reply.send({ connector, oauth: { scopes: scopesForProvider(params.id), readiness: oauthReadiness(params.id) } });
   });
 
   app.get("/connectors/:id/permissions", async (request, reply) => {
@@ -1461,6 +1586,10 @@ function isAllowedOpsOrigin(origin: string): boolean {
     .filter(Boolean);
   if (allowed.length === 0) return false;
   return allowed.includes(origin);
+}
+
+function redactConnectorAccount<T extends { tokenRef: string | null }>(account: T): Omit<T, "tokenRef"> & { tokenRef: string | null; tokenStored: boolean } {
+  return { ...account, tokenRef: account.tokenRef ? "token_ref_present" : null, tokenStored: Boolean(account.tokenRef) };
 }
 
 async function main(): Promise<void> {

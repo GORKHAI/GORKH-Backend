@@ -779,6 +779,9 @@ describe("integration action approval and connectors", () => {
     const executed = await app.inject({ method: "POST", url: `/actions/proposals/${id}/execute`, headers: auth(user.token), payload: {} });
     expect(executed.statusCode).toBe(200);
     expect(JSON.stringify(executed.json())).toContain("connector_not_configured");
+    const preview = await app.inject({ method: "POST", url: `/actions/proposals/${id}/preview`, headers: auth(user.token), payload: {} });
+    expect(preview.statusCode).toBe(200);
+    expect(JSON.stringify(preview.json())).toContain("draft_only_no_send");
   });
 
   it("exposes disabled connector registry and permissions", async () => {
@@ -786,9 +789,53 @@ describe("integration action approval and connectors", () => {
     const list = await app.inject({ method: "GET", url: "/connectors", headers: auth(user.token) });
     expect(list.statusCode).toBe(200);
     expect(JSON.stringify(list.json())).toContain("google_gmail");
+    const calendar = await app.inject({ method: "GET", url: "/connectors/google_calendar", headers: auth(user.token) });
+    expect(JSON.stringify(calendar.json())).toContain("calendar.readonly");
     const permissions = await app.inject({ method: "GET", url: "/connectors/mcp_remote/permissions", headers: auth(user.token) });
     expect(permissions.statusCode).toBe(200);
     expect(JSON.stringify(permissions.json())).toContain("arbitrary_mcp_tool_invocation");
+  });
+
+  it("keeps OAuth readiness explicit and never exposes connector tokens", async () => {
+    const user = await devUser("it-connectors-oauth@example.com");
+    const start = await app.inject({ method: "GET", url: "/connectors/oauth/google_calendar/start", headers: auth(user.token) });
+    expect(start.statusCode).toBe(200);
+    expect(JSON.stringify(start.json())).toContain("oauth_not_enabled");
+    const accounts = await app.inject({ method: "GET", url: "/connectors/accounts", headers: auth(user.token) });
+    expect(accounts.statusCode).toBe(200);
+    expect(JSON.stringify(accounts.json())).toContain("rawTokenStorageAllowed");
+    const consents = await app.inject({ method: "GET", url: "/connectors/consent-events", headers: auth(user.token) });
+    expect(JSON.stringify(consents.json())).toContain("read-only connector access");
+    expect(JSON.stringify(consents.json())).not.toMatch(/access_token|refresh_token|ya29\./i);
+  });
+
+  it("imports connector fixtures, previews sync, feeds daily brief, and enforces account ownership", async () => {
+    const userA = await devUser("it-connectors-fixture-a@example.com");
+    const userB = await devUser("it-connectors-fixture-b@example.com");
+    const imported = await app.inject({
+      method: "POST",
+      url: "/connectors/accounts/import-fixture",
+      headers: auth(userA.token),
+      payload: {
+        provider: "google_calendar",
+        accountEmail: "fixture@example.com",
+        items: [{ id: "cal-1", title: "Bank meeting", description: "Discuss APR", startsAt: new Date(Date.now() + 86_400_000).toISOString() }],
+      },
+    });
+    expect(imported.statusCode).toBe(200);
+    const accountId = (imported.json() as { account: { id: string; tokenRef: string } }).account.id;
+    expect(JSON.stringify(imported.json())).toContain("calendar_event");
+    expect(JSON.stringify(imported.json())).not.toMatch(/access_token|refresh_token|ya29\./i);
+    const blocked = await app.inject({ method: "GET", url: `/connectors/accounts/${accountId}`, headers: auth(userB.token) });
+    expect(blocked.statusCode).toBe(404);
+    const preview = await app.inject({ method: "POST", url: `/connectors/accounts/${accountId}/sync-preview`, headers: auth(userA.token), payload: {} });
+    expect(preview.statusCode).toBe(200);
+    expect(JSON.stringify(preview.json())).toContain("Bank meeting");
+    const brief = await app.inject({ method: "POST", url: "/daily/brief/generate", headers: auth(userA.token), payload: {} });
+    expect(JSON.stringify(brief.json())).toContain("Bank meeting");
+    const disconnected = await app.inject({ method: "POST", url: `/connectors/accounts/${accountId}/disconnect`, headers: auth(userA.token), payload: {} });
+    expect(disconnected.statusCode).toBe(200);
+    expect(JSON.stringify(disconnected.json())).toContain("disconnected");
   });
 
   it("voice creates draft follow-up proposal without sending", async () => {
@@ -964,7 +1011,7 @@ async function assertInfra(): Promise<void> {
 }
 
 async function cleanData(): Promise<void> {
-  await modules.pool.query("TRUNCATE provider_usage_events, evaluation_events, action_execution_logs, action_approvals, action_proposals, weekly_reviews, daily_brief_feedback, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
+  await modules.pool.query("TRUNCATE provider_usage_events, evaluation_events, connector_items, connector_sync_runs, connector_consent_events, connector_accounts, action_execution_logs, action_approvals, action_proposals, weekly_reviews, daily_brief_feedback, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
   await modules.clearAllRedisForTest();
 }
 

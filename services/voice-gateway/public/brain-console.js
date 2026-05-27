@@ -106,10 +106,18 @@ async function handleAction(action) {
     if (action === "actionGet") return show("actionsOut", await get(`/actions/proposals/${actionProposalId()}`));
     if (action === "actionApprove") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/approve`, { reason: $("actionReason").value }));
     if (action === "actionReject") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/reject`, { reason: $("actionReason").value }));
+    if (action === "actionPreview") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/preview`, {}));
     if (action === "actionExecute") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/execute`, {}));
     if (action === "connectorsList") return show("connectorsOut", await get("/connectors"));
     if (action === "connectorGet") return show("connectorsOut", await get(`/connectors/${connectorId()}`));
     if (action === "connectorPermissions") return show("connectorsOut", await get(`/connectors/${connectorId()}/permissions`));
+    if (action === "connectorOauthStart") return show("connectorsOut", await get(`/connectors/oauth/${connectorId()}/start`));
+    if (action === "connectorAccounts") return show("connectorsOut", await get("/connectors/accounts"));
+    if (action === "connectorAccountGet") return show("connectorsOut", await get(`/connectors/accounts/${connectorAccountId()}`));
+    if (action === "connectorFixtureImport") return importConnectorFixture();
+    if (action === "connectorSyncPreview") return show("connectorsOut", await post(`/connectors/accounts/${connectorAccountId()}/sync-preview`, {}));
+    if (action === "connectorDisconnect") return show("connectorsOut", await post(`/connectors/accounts/${connectorAccountId()}/disconnect`, {}));
+    if (action === "connectorConsentEvents") return show("connectorsOut", await get("/connectors/consent-events"));
     if (action === "tools") return show("toolsOut", await get("/tools"));
     if (action === "permissions") return show("toolsOut", await get("/tools/permissions"));
     if (action === "audit") return show("auditOut", await get("/brain/audit-events"));
@@ -133,6 +141,16 @@ async function createActionProposal() {
   });
   $("actionProposalId").value = result.proposal.id;
   show("actionsOut", result);
+}
+
+async function importConnectorFixture() {
+  const result = await post("/connectors/accounts/import-fixture", {
+    provider: $("connectorId").value,
+    accountEmail: $("connectorAccountEmail").value.trim(),
+    items: JSON.parse($("connectorFixtureItems").value || "[]"),
+  });
+  if (result.account?.id) $("connectorAccountId").value = result.account.id;
+  show("connectorsOut", result);
 }
 
 function startSubagentStream() {
@@ -319,6 +337,12 @@ function actionProposalId() {
 
 function connectorId() {
   return encodeURIComponent($("connectorId").value);
+}
+
+function connectorAccountId() {
+  const id = $("connectorAccountId").value.trim();
+  if (!id) throw new Error("Connector account ID is required");
+  return encodeURIComponent(id);
 }
 
 function backendBase() {

@@ -200,6 +200,7 @@
           <button data-action="actionGet" class="button">Load Proposal</button>
           <button data-action="actionApprove" class="button">Approve</button>
           <button data-action="actionReject" class="button danger">Reject</button>
+          <button data-action="actionPreview" class="button">Preview Risk</button>
           <button data-action="actionExecute" class="button">Execute Safe Internal</button>
         </div>
         <p class="hint">External connector actions remain disabled in v0. Drafts/proposals are review-only unless explicitly approved, and sending is disabled.</p>
@@ -221,13 +222,23 @@
               <option value="mcp_remote">mcp_remote</option>
             </select>
           </label>
+          <label>Account ID <input id="connectorAccountId" placeholder="connector account uuid" /></label>
+          <label>Fixture account email <input id="connectorAccountEmail" value="fixture@example.com" /></label>
+          <label>Fixture items JSON <textarea id="connectorFixtureItems">[{"id":"cal-1","title":"Bank meeting","description":"Discuss APR and fees.","startsAt":"2026-06-01T09:00:00.000Z"}]</textarea></label>
         </div>
         <div class="actions">
           <button data-action="connectorsList" class="button">Connector Registry</button>
           <button data-action="connectorGet" class="button">Connector Detail</button>
           <button data-action="connectorPermissions" class="button">Connector Permissions</button>
+          <button data-action="connectorOauthStart" class="button">OAuth Readiness</button>
+          <button data-action="connectorAccounts" class="button">Accounts</button>
+          <button data-action="connectorAccountGet" class="button">Load Account</button>
+          <button data-action="connectorFixtureImport" class="button">Import Fixture</button>
+          <button data-action="connectorSyncPreview" class="button">Sync Preview</button>
+          <button data-action="connectorDisconnect" class="button danger">Disconnect</button>
+          <button data-action="connectorConsentEvents" class="button">Consent Audit</button>
         </div>
-        <p class="hint">OAuth, sending, calendar creation, browser login, form submission, payments, and arbitrary MCP execution are disabled.</p>
+        <p class="hint">OAuth is readiness-only unless explicitly configured. Tokens are never shown here. Sending, calendar creation, browser login, form submission, payments, and arbitrary MCP execution are disabled.</p>
         <pre id="connectorsOut"></pre>
       </section>
 

@@ -1,0 +1,133 @@
+import { config } from "../config.js";
+import { validateMcpInvocation } from "../connectors/mcp-adapter.js";
+
+type Scenario =
+  | "scope-registry"
+  | "oauth-readiness"
+  | "calendar-fixture-import"
+  | "gmail-fixture-import"
+  | "daily-brief-from-fixtures"
+  | "action-preview-blocked"
+  | "mcp-security";
+
+const scenario = (process.argv[2] ?? "scope-registry") as Scenario;
+const allowed: Scenario[] = ["scope-registry", "oauth-readiness", "calendar-fixture-import", "gmail-fixture-import", "daily-brief-from-fixtures", "action-preview-blocked", "mcp-security"];
+if (!allowed.includes(scenario)) throw new Error(`unknown connectors replay "${scenario}"`);
+
+const base = `http://${config.HOST === "0.0.0.0" ? "127.0.0.1" : config.HOST}:${config.PORT}`;
+const dev = await postJson<{ user: { id: string; email: string }; token: string }>(`${base}/dev/users`, {
+  email: `connectors-${scenario}@example.com`,
+  displayName: "Connectors Replay",
+});
+
+if (scenario === "scope-registry") {
+  const calendar = await getJson(`${base}/connectors/google_calendar`, dev.token);
+  const gmail = await getJson(`${base}/connectors/google_gmail`, dev.token);
+  console.log(`scope-registry: ${JSON.stringify({ calendar, gmail })}`);
+  assertIncludes(JSON.stringify(calendar), "calendar.readonly");
+  assertIncludes(JSON.stringify(gmail), "gmail.metadata");
+}
+
+if (scenario === "oauth-readiness") {
+  const start = await getJson(`${base}/connectors/oauth/google_calendar/start`, dev.token);
+  const accounts = await getJson(`${base}/connectors/accounts`, dev.token);
+  console.log(`oauth-readiness: ${JSON.stringify({ start, accounts })}`);
+  assertIncludes(JSON.stringify(start), "oauth_not_enabled");
+  assertIncludes(JSON.stringify(accounts), "rawTokenStorageAllowed");
+}
+
+if (scenario === "calendar-fixture-import") {
+  const imported = await importCalendarFixture(dev.token);
+  console.log(`calendar-fixture-import: ${JSON.stringify(imported)}`);
+  assertIncludes(JSON.stringify(imported), "calendar_event");
+  assertDoesNotInclude(JSON.stringify(imported), "access_token");
+}
+
+if (scenario === "gmail-fixture-import") {
+  const imported = await postJson(
+    `${base}/connectors/accounts/import-fixture`,
+    {
+      provider: "google_gmail",
+      accountEmail: "fixture@example.com",
+      items: [{ id: "gmail-1", subject: "Bank documents requested", snippet: "Please send documents by Friday", from: "bank@example.com" }],
+    },
+    dev.token,
+  );
+  console.log(`gmail-fixture-import: ${JSON.stringify(imported)}`);
+  assertIncludes(JSON.stringify(imported), "email_message");
+  assertDoesNotInclude(JSON.stringify(imported), "access_token");
+}
+
+if (scenario === "daily-brief-from-fixtures") {
+  await importCalendarFixture(dev.token);
+  const brief = await postJson(`${base}/daily/brief/generate`, {}, dev.token);
+  console.log(`daily-brief-from-fixtures: ${JSON.stringify(brief)}`);
+  assertIncludes(JSON.stringify(brief), "Bank meeting");
+}
+
+if (scenario === "action-preview-blocked") {
+  const created = await postJson<{ proposal: { id: string } }>(
+    `${base}/actions/proposals`,
+    {
+      sourceType: "manual",
+      actionType: "draft_email",
+      title: "Draft email",
+      description: "Draft only; do not send.",
+      payload: { to: "client@example.com", body: "Thanks." },
+    },
+    dev.token,
+  );
+  const preview = await postJson(`${base}/actions/proposals/${created.proposal.id}/preview`, {}, dev.token);
+  console.log(`action-preview-blocked: ${JSON.stringify(preview)}`);
+  assertIncludes(JSON.stringify(preview), "draft_only_no_send");
+  assertIncludes(JSON.stringify(preview), "No external connector write");
+}
+
+if (scenario === "mcp-security") {
+  const permissions = await getJson(`${base}/connectors/mcp_remote/permissions`, dev.token);
+  let blocked = "";
+  try {
+    validateMcpInvocation({ connectorId: "mcp_remote", toolName: "bash", input: { apiKey: "redacted-test-value" } });
+  } catch (err) {
+    blocked = (err as Error).message;
+  }
+  console.log(`mcp-security: ${JSON.stringify({ permissions, blocked })}`);
+  assertIncludes(JSON.stringify(permissions), "arbitrary_mcp_tool_invocation");
+  assertIncludes(blocked, "disabled");
+}
+
+async function importCalendarFixture(token: string) {
+  return postJson(
+    `${base}/connectors/accounts/import-fixture`,
+    {
+      provider: "google_calendar",
+      accountEmail: "fixture@example.com",
+      items: [{ id: "cal-1", title: "Bank meeting", description: "Discuss APR and repayment.", startsAt: new Date(Date.now() + 86_400_000).toISOString() }],
+    },
+    token,
+  );
+}
+
+function assertIncludes(text: string, expected: string): void {
+  if (!text.includes(expected)) throw new Error(`expected output to include ${expected}: ${text}`);
+}
+
+function assertDoesNotInclude(text: string, expected: string): void {
+  if (text.includes(expected)) throw new Error(`expected output not to include ${expected}: ${text}`);
+}
+
+async function postJson<T>(url: string, body: unknown, token?: string): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`POST ${url} failed: HTTP ${response.status} ${await response.text()}`);
+  return (await response.json()) as T;
+}
+
+async function getJson<T>(url: string, token: string): Promise<T> {
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) throw new Error(`GET ${url} failed: HTTP ${response.status} ${await response.text()}`);
+  return (await response.json()) as T;
+}

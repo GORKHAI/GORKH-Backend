@@ -16,6 +16,8 @@ export const connectorPermissionSchema = z.enum([
   "create_task_requires_approval",
   "mcp_tool_invoke_requires_manifest",
   "mcp_network_disabled_by_default",
+  "oauth_readonly_scope",
+  "token_ref_required",
 ]);
 
 export type ConnectorId = z.infer<typeof connectorIdSchema>;
