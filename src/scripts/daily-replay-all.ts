@@ -8,6 +8,13 @@ const scenarios = [
   "meeting-recap-pack",
   "voice-open-commitments",
   "discard-no-extraction",
+  "quality-brief",
+  "task-ranking",
+  "commitment-review",
+  "followup-review",
+  "weekly-review",
+  "feedback-loop",
+  "voice-top-priorities",
 ];
 
 for (const scenario of scenarios) {

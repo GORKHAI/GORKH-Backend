@@ -1,11 +1,12 @@
 import { config } from "../config.js";
 import { db } from "../db/client.js";
-import { commitments, type InternalType } from "../db/schema.js";
+import { commitments, taskItems, type InternalType } from "../db/schema.js";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { createActionProposal } from "../actions/proposal.js";
 import { buildDailyBriefDraft } from "../daily/daily-brief.js";
 import { extractCommitmentsFromText } from "../daily/commitment-extractor.js";
 import { proposeTasksForCommitments } from "../daily/task-inbox.js";
+import { generateWeeklyReview } from "../daily/weekly-review.js";
 import { createLlmProvider } from "../llm/provider.js";
 import { LlmProviderError, type LlmProvider } from "../llm/types.js";
 import { recordProviderUsage } from "../governor/budget.js";
@@ -46,6 +47,35 @@ export async function answerVoiceUserText(input: {
   if (input.userId && isDailyBriefRequest(input.text)) {
     const draft = await buildDailyBriefDraft(input.userId);
     return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(formatDailyBriefForVoice(draft), humanContext), input.policy) };
+  }
+
+  if (input.userId && isWaitingOnRequest(input.text)) {
+    const rows = await db
+      .select()
+      .from(commitments)
+      .where(and(eq(commitments.userId, input.userId), inArray(commitments.status, ["proposed", "confirmed", "overdue"])))
+      .orderBy(desc(commitments.createdAt))
+      .limit(20);
+    const waiting = rows.filter((row) => row.owner && !["me", "we"].includes(row.owner));
+    const text = waiting.length ? `Waiting on: ${waiting.map((row) => `${row.owner}: ${row.title}`).join("; ")}.` : "No waiting-on-others items are currently tracked.";
+    return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(text, humanContext), input.policy) };
+  }
+
+  if (input.userId && isMakeDayEasierRequest(input.text)) {
+    const rows = await db
+      .select()
+      .from(taskItems)
+      .where(and(eq(taskItems.userId, input.userId), inArray(taskItems.status, ["proposed", "accepted", "scheduled", "waiting", "blocked"])))
+      .orderBy(desc(taskItems.suggestedAt))
+      .limit(20);
+    const easy = rows.filter((row) => row.effortEstimate?.includes("5-15") || row.priority === "low").slice(0, 3);
+    const text = easy.length ? `Low-effort plan: ${easy.map((row) => row.nextStep ?? row.title).join("; ")}.` : "Make the day easier by picking one small admin task, confirming one deadline, and dismissing stale suggestions.";
+    return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(text, humanContext), input.policy) };
+  }
+
+  if (input.userId && isWeeklyReviewRequest(input.text)) {
+    const review = await generateWeeklyReview(input.userId);
+    return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(review.summary, humanContext), input.policy) };
   }
 
   if (input.policy === "whisper_copilot" && isActionIntentRequest(input.text)) {
@@ -242,11 +272,23 @@ function unique(values: string[]): string[] {
 }
 
 function isDailyBriefRequest(text: string): boolean {
-  return /\b(what do i need to do today|daily brief|today'?s priorities|what'?s on my plate)\b/i.test(text);
+  return /\b(what do i need to do today|daily brief|today'?s priorities|what'?s on my plate|what should i do today)\b/i.test(text);
 }
 
 function isOpenCommitmentsRequest(text: string): boolean {
   return /\b(what did i promise|open commitments|what do i owe|what did i agree to)\b/i.test(text);
+}
+
+function isWaitingOnRequest(text: string): boolean {
+  return /\b(what am i waiting on|waiting on|waiting for others|who owes me|what are others doing)\b/i.test(text);
+}
+
+function isMakeDayEasierRequest(text: string): boolean {
+  return /\b(make my day easier|easy plan|low[- ]effort|quick wins?)\b/i.test(text);
+}
+
+function isWeeklyReviewRequest(text: string): boolean {
+  return /\b(weekly review|review my week|week recap)\b/i.test(text);
 }
 
 function isRememberTaskRequest(text: string): boolean {

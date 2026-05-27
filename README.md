@@ -161,13 +161,15 @@ All read/debug endpoints enforce ownership. User B cannot access User A’s sess
 
 ## Daily Life Brain
 
-Daily Life Brain v0 adds reviewable daily usefulness primitives:
+Daily Life Brain v1 adds reviewable daily usefulness primitives:
 
 - Daily Brief
 - Commitment Tracker
 - Personal Task Inbox
 - Follow-up Detector
 - Meeting Prep and Recap Packs
+- Weekly Review
+- Daily brief and task ranking quality signals
 
 Routes:
 
@@ -179,10 +181,18 @@ POST /daily/tasks/:id/accept
 POST /daily/tasks/:id/dismiss
 POST /daily/tasks/:id/done
 GET  /daily/commitments
+GET  /daily/commitments/review
 POST /daily/commitments/propose
 POST /daily/commitments/:id/confirm
 POST /daily/commitments/:id/dismiss
+POST /daily/commitments/:id/done
 GET  /daily/followups
+GET  /daily/followups/review
+POST /daily/followups/:id/accept
+POST /daily/followups/:id/dismiss
+POST /daily/brief/feedback
+POST /daily/weekly-review/generate
+GET  /daily/weekly-review/latest
 POST /meetings/prep-pack
 POST /meetings/recap-pack
 GET  /meetings/packs
@@ -190,6 +200,8 @@ GET  /meetings/packs/:id
 ```
 
 Commitments and tasks extracted from conversations are proposed only. The backend never sends messages, books appointments, submits forms, or executes external actions in v0. Discarded and interrupted sessions do not create daily-life artifacts.
+
+Daily Brief v1 includes top priorities, time-sensitive commitments, follow-ups, waiting-on-others, risk items, low-effort admin work, deep-work tasks, action approvals, and quality metrics. Task Inbox responses include ranking explanations so bad suggestions can be dismissed and improved through feedback.
 
 Daily replay commands:
 
@@ -201,12 +213,23 @@ npm run daily:replay -- meeting-prep-pack
 npm run daily:replay -- meeting-recap-pack
 npm run daily:replay -- voice-open-commitments
 npm run daily:replay -- discard-no-extraction
+npm run daily:replay -- quality-brief
+npm run daily:replay -- task-ranking
+npm run daily:replay -- commitment-review
+npm run daily:replay -- followup-review
+npm run daily:replay -- weekly-review
+npm run daily:replay -- feedback-loop
+npm run daily:replay -- voice-top-priorities
 npm run daily:replay:all
 ```
 
 See:
 
 - [docs/brain/daily-life-brain.md](docs/brain/daily-life-brain.md)
+- [docs/brain/daily-brief-quality.md](docs/brain/daily-brief-quality.md)
+- [docs/brain/task-ranking-policy.md](docs/brain/task-ranking-policy.md)
+- [docs/brain/commitment-quality.md](docs/brain/commitment-quality.md)
+- [docs/brain/weekly-review.md](docs/brain/weekly-review.md)
 - [docs/brain/commitment-tracker.md](docs/brain/commitment-tracker.md)
 - [docs/brain/task-inbox.md](docs/brain/task-inbox.md)
 - [docs/brain/daily-brief-engine.md](docs/brain/daily-brief-engine.md)

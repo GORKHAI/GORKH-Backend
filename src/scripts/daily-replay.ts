@@ -8,7 +8,14 @@ type Scenario =
   | "meeting-prep-pack"
   | "meeting-recap-pack"
   | "voice-open-commitments"
-  | "discard-no-extraction";
+  | "discard-no-extraction"
+  | "quality-brief"
+  | "task-ranking"
+  | "commitment-review"
+  | "followup-review"
+  | "weekly-review"
+  | "feedback-loop"
+  | "voice-top-priorities";
 
 interface DevUserResponse {
   user: { id: string; email: string };
@@ -16,7 +23,22 @@ interface DevUserResponse {
 }
 
 const scenario = (process.argv[2] ?? "extract-commitments") as Scenario;
-const allowed: Scenario[] = ["extract-commitments", "task-inbox", "daily-brief", "meeting-prep-pack", "meeting-recap-pack", "voice-open-commitments", "discard-no-extraction"];
+const allowed: Scenario[] = [
+  "extract-commitments",
+  "task-inbox",
+  "daily-brief",
+  "meeting-prep-pack",
+  "meeting-recap-pack",
+  "voice-open-commitments",
+  "discard-no-extraction",
+  "quality-brief",
+  "task-ranking",
+  "commitment-review",
+  "followup-review",
+  "weekly-review",
+  "feedback-loop",
+  "voice-top-priorities",
+];
 if (!allowed.includes(scenario)) throw new Error(`unknown daily replay "${scenario}"`);
 
 const base = `http://${config.HOST === "0.0.0.0" ? "127.0.0.1" : config.HOST}:${config.PORT}`;
@@ -40,7 +62,7 @@ if (scenario === "daily-brief") {
   await postJson(`${base}/daily/commitments/propose`, { text: "I need to follow up with the client tomorrow.", sourceType: "manual" }, dev.token);
   const brief = await postJson(`${base}/daily/brief/generate`, {}, dev.token);
   console.log(`daily-brief: ${JSON.stringify(brief)}`);
-  assertIncludes(JSON.stringify(brief), "Today's priorities");
+  assertIncludes(JSON.stringify(brief), "Top 3 priorities");
 }
 
 if (scenario === "meeting-prep-pack") {
@@ -68,6 +90,59 @@ if (scenario === "discard-no-extraction") {
   const commitments = await getJson(`${base}/daily/commitments`, dev.token);
   console.log(`discard-no-extraction: session=${sessionId} commitments=${JSON.stringify(commitments)}`);
   if (JSON.stringify(commitments).includes("send the bank documents")) throw new Error("discarded session created daily commitment");
+}
+
+if (scenario === "quality-brief") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I need to send the bank documents by Friday. I will follow up with the client tomorrow.", sourceType: "manual" }, dev.token);
+  const brief = await postJson(`${base}/daily/brief/generate`, {}, dev.token);
+  console.log(`quality-brief: ${JSON.stringify(brief)}`);
+  assertIncludes(JSON.stringify(brief), "briefRelevanceScore");
+  assertIncludes(JSON.stringify(brief), "Action proposals needing approval");
+}
+
+if (scenario === "task-ranking") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I need to upload the legal documents tomorrow. I will organize notes next week.", sourceType: "manual" }, dev.token);
+  const tasks = await getJson(`${base}/daily/tasks`, dev.token);
+  console.log(`task-ranking: ${JSON.stringify(tasks)}`);
+  assertIncludes(JSON.stringify(tasks), "ranking");
+  assertIncludes(JSON.stringify(tasks), "nextStep");
+}
+
+if (scenario === "commitment-review") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "Waiting on the bank to confirm the document list by Friday.", sourceType: "manual" }, dev.token);
+  const review = await getJson(`${base}/daily/commitments/review`, dev.token);
+  console.log(`commitment-review: ${JSON.stringify(review)}`);
+  assertIncludes(JSON.stringify(review), "waitingOnOthers");
+}
+
+if (scenario === "followup-review") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I will follow up next week with the client about pricing.", sourceType: "manual" }, dev.token);
+  const review = await getJson(`${base}/daily/followups/review`, dev.token);
+  console.log(`followup-review: ${JSON.stringify(review)}`);
+  assertIncludes(JSON.stringify(review), "proposed");
+}
+
+if (scenario === "weekly-review") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I need to prepare bank notes by Friday.", sourceType: "manual" }, dev.token);
+  const review = await postJson(`${base}/daily/weekly-review/generate`, {}, dev.token);
+  console.log(`weekly-review: ${JSON.stringify(review)}`);
+  assertIncludes(JSON.stringify(review), "Weekly review");
+  assertIncludes(JSON.stringify(review), "openLoopCount");
+}
+
+if (scenario === "feedback-loop") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I need to send the bank documents by Friday.", sourceType: "manual" }, dev.token);
+  const brief = await postJson<{ dailyBrief: { id: string } }>(`${base}/daily/brief/generate`, {}, dev.token);
+  const feedback = await postJson(`${base}/daily/brief/feedback`, { briefId: brief.dailyBrief.id, sectionKey: "top_priorities", rating: 5, action: "accepted" }, dev.token);
+  console.log(`feedback-loop: ${JSON.stringify(feedback)}`);
+  assertIncludes(JSON.stringify(feedback), "top_priorities");
+}
+
+if (scenario === "voice-top-priorities") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I need to send the bank documents by Friday.", sourceType: "manual" }, dev.token);
+  const events = await runVoiceQuestion(dev.token, "What should I do today?");
+  console.log(`voice-top-priorities: ${JSON.stringify(events)}`);
+  assertIncludes(JSON.stringify(events), "Top");
 }
 
 async function runVoiceSession(token: string, save: boolean, transcript: string): Promise<string> {

@@ -11,6 +11,10 @@ export const subagentKindSchema = z.enum([
   "daily_brief",
   "meeting_pack",
   "followup",
+  "daily_prioritizer",
+  "commitment_review",
+  "followup_review",
+  "weekly_review",
 ]);
 export const subagentTaskStatusSchema = z.enum(["queued", "running", "completed", "failed", "canceled", "expired", "suppressed"]);
 export const subagentRunnerModeSchema = z.enum(["in_process", "db_worker", "disabled"]);

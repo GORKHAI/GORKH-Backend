@@ -75,7 +75,11 @@ export type SubagentKind =
   | "commitment"
   | "daily_brief"
   | "meeting_pack"
-  | "followup";
+  | "followup"
+  | "daily_prioritizer"
+  | "commitment_review"
+  | "followup_review"
+  | "weekly_review";
 export type SubagentTaskStatus = "queued" | "running" | "completed" | "failed" | "canceled" | "expired" | "suppressed";
 export type SubagentTaskAttemptStatus = "started" | "completed" | "failed" | "retried" | "canceled" | "expired" | "suppressed";
 export type SubagentPriority = "low" | "normal" | "high" | "urgent";
@@ -90,10 +94,11 @@ export type SubagentTrigger =
 export type CommitmentSourceType = "transcript" | "user_text" | "assistant_text" | "document" | "manual" | "subagent_report";
 export type CommitmentStatus = "proposed" | "confirmed" | "done" | "dismissed" | "overdue";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
-export type TaskStatus = "proposed" | "accepted" | "scheduled" | "done" | "dismissed" | "expired";
+export type TaskStatus = "proposed" | "accepted" | "scheduled" | "blocked" | "waiting" | "done" | "dismissed" | "expired";
 export type DailyBriefStatus = "generated" | "stale" | "dismissed";
 export type FollowupStatus = "proposed" | "accepted" | "dismissed" | "sent_elsewhere";
 export type MeetingPackType = "prep" | "recap";
+export type WeeklyReviewStatus = "generated" | "stale" | "dismissed";
 export type ActionSourceType = "voice" | "brain" | "daily" | "manual" | "subagent" | "connector";
 export type ActionType =
   | "draft_email"
@@ -812,6 +817,10 @@ export const taskItems = pgTable(
     sourceType: text("source_type").notNull(),
     sourceId: text("source_id"),
     dueAt: timestamp("due_at", { withTimezone: true }),
+    effortEstimate: text("effort_estimate"),
+    context: text("context"),
+    blockedBy: text("blocked_by"),
+    nextStep: text("next_step"),
     suggestedAt: timestamp("suggested_at", { withTimezone: true }).notNull().defaultNow(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -845,6 +854,28 @@ export const dailyBriefs = pgTable(
   }),
 );
 
+export const dailyBriefFeedback = pgTable(
+  "daily_brief_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    briefId: uuid("brief_id")
+      .notNull()
+      .references(() => dailyBriefs.id, { onDelete: "cascade" }),
+    sectionKey: text("section_key").notNull(),
+    rating: integer("rating"),
+    feedback: text("feedback"),
+    action: text("action"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("daily_brief_feedback_by_user").on(t.userId),
+    byBrief: index("daily_brief_feedback_by_brief").on(t.briefId),
+  }),
+);
+
 export const followupSuggestions = pgTable(
   "followup_suggestions",
   {
@@ -857,6 +888,8 @@ export const followupSuggestions = pgTable(
     organizationName: text("organization_name"),
     reason: text("reason").notNull(),
     suggestedMessage: text("suggested_message"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    channel: text("channel"),
     status: text("status").$type<FollowupStatus>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -864,6 +897,26 @@ export const followupSuggestions = pgTable(
   (t) => ({
     byUser: index("followup_suggestions_by_user").on(t.userId),
     byUserStatus: index("followup_suggestions_by_user_status").on(t.userId, t.status),
+  }),
+);
+
+export const weeklyReviews = pgTable(
+  "weekly_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    weekStartDate: date("week_start_date").notNull(),
+    status: text("status").$type<WeeklyReviewStatus>().notNull(),
+    summary: text("summary").notNull(),
+    sections: jsonb("sections").notNull(),
+    quality: jsonb("quality").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("weekly_reviews_by_user").on(t.userId),
+    byUserWeek: index("weekly_reviews_by_user_week").on(t.userId, t.weekStartDate),
   }),
 );
 
@@ -1021,8 +1074,10 @@ export type SubagentNotification = typeof subagentNotifications.$inferSelect;
 export type Commitment = typeof commitments.$inferSelect;
 export type TaskItem = typeof taskItems.$inferSelect;
 export type DailyBrief = typeof dailyBriefs.$inferSelect;
+export type DailyBriefFeedback = typeof dailyBriefFeedback.$inferSelect;
 export type FollowupSuggestion = typeof followupSuggestions.$inferSelect;
 export type MeetingPack = typeof meetingPacks.$inferSelect;
+export type WeeklyReview = typeof weeklyReviews.$inferSelect;
 export type ActionProposal = typeof actionProposals.$inferSelect;
 export type ActionApproval = typeof actionApprovals.$inferSelect;
 export type ActionExecutionLog = typeof actionExecutionLogs.$inferSelect;

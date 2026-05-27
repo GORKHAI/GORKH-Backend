@@ -10,6 +10,10 @@ export function proposeTaskFromCommitment(commitment: Commitment): TaskProposal 
     detail: commitment.detail ?? null,
     priority: priorityForCommitment(commitment),
     dueAt: commitment.dueAt,
+    effortEstimate: effortForCommitment(commitment),
+    context: contextForCommitment(commitment),
+    blockedBy: commitment.owner && !["me", "we"].includes(commitment.owner) ? commitment.owner : null,
+    nextStep: nextStepForCommitment(commitment),
   };
 }
 
@@ -28,6 +32,10 @@ export async function createTaskFromCommitment(commitment: Commitment): Promise<
       sourceType: "commitment",
       sourceId: commitment.id,
       dueAt: proposal.dueAt ?? null,
+      effortEstimate: proposal.effortEstimate ?? null,
+      context: proposal.context ?? null,
+      blockedBy: proposal.blockedBy ?? null,
+      nextStep: proposal.nextStep ?? null,
     })
     .returning();
   if (!row) throw new Error("failed to propose task");
@@ -44,7 +52,7 @@ export async function listTaskInbox(userId: string): Promise<TaskItem[]> {
   const rows = await db
     .select()
     .from(taskItems)
-    .where(and(eq(taskItems.userId, userId), inArray(taskItems.status, ["proposed", "accepted", "scheduled"])))
+    .where(and(eq(taskItems.userId, userId), inArray(taskItems.status, ["proposed", "accepted", "scheduled", "blocked", "waiting"])))
     .orderBy(desc(taskItems.suggestedAt));
   return rankTaskRows(rows);
 }
@@ -71,4 +79,22 @@ export async function updateCommitmentStatus(userId: string, commitmentId: strin
     .where(and(eq(commitments.id, commitmentId), eq(commitments.userId, userId)))
     .returning();
   return row ?? null;
+}
+
+function effortForCommitment(commitment: Pick<Commitment, "title" | "detail">): string {
+  const text = `${commitment.title} ${commitment.detail ?? ""}`;
+  if (/\b(call|write|draft|prepare|review|collect|upload|send)\b/i.test(text)) return "15-30 min";
+  return "5-15 min";
+}
+
+function contextForCommitment(commitment: Pick<Commitment, "counterparty" | "sensitivity">): string | null {
+  if (commitment.counterparty) return `${commitment.counterparty} follow-up`;
+  if (commitment.sensitivity !== "low") return `${commitment.sensitivity} sensitivity`;
+  return null;
+}
+
+function nextStepForCommitment(commitment: Pick<Commitment, "title" | "counterparty" | "owner">): string {
+  if (commitment.owner && !["me", "we"].includes(commitment.owner)) return `Check whether ${commitment.owner} has responded.`;
+  if (commitment.counterparty) return `Confirm owner, deadline, and next step with ${commitment.counterparty}.`;
+  return `Review and decide whether to accept: ${commitment.title}`;
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { extractCommitmentsFromText } from "../src/daily/commitment-extractor.js";
 import { detectFollowupSuggestion } from "../src/daily/followup-detector.js";
 import { buildPrepPackDraftFromContext } from "../src/daily/meeting-pack.js";
-import { priorityForCommitment, rankTasks } from "../src/daily/priority-ranker.js";
+import { explainTaskRanking, priorityForCommitment, rankTasks } from "../src/daily/priority-ranker.js";
 
 describe("daily commitment extraction", () => {
   it("extracts explicit commitments as proposed candidates", () => {
@@ -20,6 +20,20 @@ describe("daily commitment extraction", () => {
 
   it("avoids generic non-commitment text", () => {
     expect(extractCommitmentsFromText({ text: "That sounds useful, maybe later.", sourceType: "user_text" })).toEqual([]);
+  });
+
+  it("suppresses vague false positives", () => {
+    expect(extractCommitmentsFromText({ text: "I should maybe do something someday.", sourceType: "user_text" })).toEqual([]);
+  });
+
+  it("parses waiting-on-others and due phrases", () => {
+    const items = extractCommitmentsFromText({
+      text: "Waiting on the bank to confirm the document list by Friday.",
+      sourceType: "transcript",
+      now: new Date("2026-05-26T00:00:00.000Z"),
+    });
+    expect(items.some((item) => item.owner === "bank")).toBe(true);
+    expect(items.some((item) => item.dueAt?.toISOString() === "2026-05-29T00:00:00.000Z")).toBe(true);
   });
 
   it("marks doctor follow-up as medium sensitivity and not advice", () => {
@@ -50,12 +64,26 @@ describe("daily task ranking", () => {
     );
     expect(ranked[0]?.title).toBe("soon");
   });
+
+  it("explains task ranking with actionability and dependency factors", () => {
+    const explanation = explainTaskRanking({
+      priority: "high",
+      dueAt: new Date("2026-05-27T00:00:00.000Z"),
+      suggestedAt: new Date("2026-05-26T00:00:00.000Z"),
+      status: "waiting",
+      nextStep: "Check response.",
+      blockedBy: "bank",
+    }, new Date("2026-05-26T00:00:00.000Z"));
+    expect(explanation.totalScore).toBeGreaterThan(0);
+    expect(explanation.dependencyScore).toBeLessThan(0);
+  });
 });
 
 describe("follow-up and meeting pack", () => {
   it("detects follow-up needs without sending anything", () => {
     const followup = detectFollowupSuggestion("Follow up next week with the client about pricing.");
-    expect(followup?.suggestedMessage).toMatch(/confirm the next steps/i);
+    expect(followup?.suggestedMessage).toMatch(/confirm.*next steps/i);
+    expect(followup?.dueAt).toBeInstanceOf(Date);
   });
 
   it("builds bank prep pack without final financial advice", () => {

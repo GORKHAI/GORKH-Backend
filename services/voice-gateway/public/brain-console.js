@@ -42,12 +42,21 @@ async function handleAction(action) {
   try {
     if (action === "dashboard") return show("dashboardOut", await get("/brain/dashboard"));
     if (action === "profileReview") return renderProfileReview(await get("/human/profile/review"));
-    if (action === "dailyBriefGenerate") return show("dailyOut", await post("/daily/brief/generate", {}));
+    if (action === "dailyBriefGenerate") {
+      const result = await post("/daily/brief/generate", {});
+      if (result.dailyBrief?.id) $("dailyBriefId").value = result.dailyBrief.id;
+      return show("dailyOut", result);
+    }
     if (action === "dailyBriefToday") return show("dailyOut", await get("/daily/brief/today"));
+    if (action === "dailyBriefFeedback") return show("dailyOut", await post("/daily/brief/feedback", { briefId: $("dailyBriefId").value.trim(), sectionKey: "top_priorities", rating: 5, action: "accepted" }));
     if (action === "dailyTasks") return show("dailyOut", await get("/daily/tasks"));
     if (action === "dailyCommitments") return show("dailyOut", await get("/daily/commitments"));
+    if (action === "dailyCommitmentsReview") return show("dailyOut", await get("/daily/commitments/review"));
     if (action === "dailyFollowups") return show("dailyOut", await get("/daily/followups"));
+    if (action === "dailyFollowupsReview") return show("dailyOut", await get("/daily/followups/review"));
     if (action === "commitmentPropose") return show("dailyOut", await post("/daily/commitments/propose", { text: $("commitmentText").value, sourceType: "manual" }));
+    if (action === "weeklyReviewGenerate") return show("dailyOut", await post("/daily/weekly-review/generate", {}));
+    if (action === "weeklyReviewLatest") return show("dailyOut", await get("/daily/weekly-review/latest"));
     if (action === "meetingPrep") return show("dailyOut", await post("/meetings/prep-pack", { situationDescription: $("meetingText").value }));
     if (action === "meetingRecap") return show("dailyOut", await post("/meetings/recap-pack", { sessionId: $("recapSessionId").value.trim() }));
     if (action === "meetingPacks") return show("dailyOut", await get("/meetings/packs"));

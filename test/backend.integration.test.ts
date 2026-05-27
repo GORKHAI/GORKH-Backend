@@ -621,8 +621,10 @@ describe("integration daily life brain", () => {
     expect(proposed.statusCode).toBe(200);
     const inbox = await app.inject({ method: "GET", url: "/daily/tasks", headers: auth(user.token) });
     expect(inbox.statusCode).toBe(200);
-    const task = (inbox.json() as { tasks: Array<{ id: string; status: string }> }).tasks[0];
+    expect(JSON.stringify(inbox.json())).toContain("ranking");
+    const task = (inbox.json() as { tasks: Array<{ id: string; status: string; nextStep?: string }> }).tasks[0];
     expect(task?.status).toBe("proposed");
+    expect(task?.nextStep).toBeTruthy();
     expect((await app.inject({ method: "POST", url: `/daily/tasks/${task.id}/accept`, headers: auth(user.token) })).statusCode).toBe(200);
     expect((await app.inject({ method: "POST", url: `/daily/tasks/${task.id}/done`, headers: auth(user.token) })).statusCode).toBe(200);
   });
@@ -632,7 +634,8 @@ describe("integration daily life brain", () => {
     await app.inject({ method: "POST", url: "/daily/commitments/propose", headers: auth(user.token), payload: { text: "I will follow up with the client tomorrow.", sourceType: "manual" } });
     const brief = await app.inject({ method: "POST", url: "/daily/brief/generate", headers: auth(user.token), payload: {} });
     expect(brief.statusCode).toBe(200);
-    expect(JSON.stringify(brief.json())).toContain("Today's priorities");
+    expect(JSON.stringify(brief.json())).toContain("Top 3 priorities");
+    expect(JSON.stringify(brief.json())).toContain("briefRelevanceScore");
     const pack = await app.inject({ method: "POST", url: "/meetings/prep-pack", headers: auth(user.token), payload: { situationDescription: "I am going to the bank to discuss a loan." } });
     expect(pack.statusCode).toBe(200);
     expect(JSON.stringify(pack.json())).toMatch(/APR|repayment|fees/i);
@@ -663,6 +666,48 @@ describe("integration daily life brain", () => {
     ws.send(JSON.stringify({ type: "stop", save: false }));
     ws.close();
     expect(String(answer.text)).toContain("Open commitments");
+  });
+
+  it("supports commitment/follow-up review, brief feedback, and weekly review", async () => {
+    const user = await devUser("it-daily-v1@example.com");
+    const proposed = await app.inject({
+      method: "POST",
+      url: "/daily/commitments/propose",
+      headers: auth(user.token),
+      payload: { text: "Waiting on the bank to confirm the document list by Friday. I will follow up next week with the client.", sourceType: "manual" },
+    });
+    expect(proposed.statusCode).toBe(200);
+    const commitmentReview = await app.inject({ method: "GET", url: "/daily/commitments/review", headers: auth(user.token) });
+    expect(commitmentReview.statusCode).toBe(200);
+    expect(JSON.stringify(commitmentReview.json())).toContain("waitingOnOthers");
+    const followupReview = await app.inject({ method: "GET", url: "/daily/followups/review", headers: auth(user.token) });
+    expect(followupReview.statusCode).toBe(200);
+    const followup = (followupReview.json() as { proposed: Array<{ id: string }> }).proposed[0];
+    expect(followup?.id).toBeTruthy();
+    expect((await app.inject({ method: "POST", url: `/daily/followups/${followup.id}/accept`, headers: auth(user.token) })).statusCode).toBe(200);
+    const brief = await app.inject({ method: "POST", url: "/daily/brief/generate", headers: auth(user.token), payload: {} });
+    const briefId = (brief.json() as { dailyBrief: { id: string } }).dailyBrief.id;
+    const feedback = await app.inject({ method: "POST", url: "/daily/brief/feedback", headers: auth(user.token), payload: { briefId, sectionKey: "top_priorities", rating: 5, action: "accepted" } });
+    expect(feedback.statusCode).toBe(200);
+    const weekly = await app.inject({ method: "POST", url: "/daily/weekly-review/generate", headers: auth(user.token), payload: {} });
+    expect(weekly.statusCode).toBe(200);
+    expect(JSON.stringify(weekly.json())).toContain("openLoopCount");
+    const latest = await app.inject({ method: "GET", url: "/daily/weekly-review/latest", headers: auth(user.token) });
+    expect(latest.statusCode).toBe(200);
+  });
+
+  it("voice can return top priorities", async () => {
+    const user = await devUser("it-daily-voice-priorities@example.com");
+    await app.inject({ method: "POST", url: "/daily/commitments/propose", headers: auth(user.token), payload: { text: "I need to send the bank documents by Friday.", sourceType: "manual" } });
+    const ws = await openVoiceWs(user.token);
+    const events = collectEvents(ws);
+    ws.send(JSON.stringify(voiceStartMessage({ policy: "conversation_agent", situationDescription: "daily planning", outputKind: "text" })));
+    await waitForEvent(events, "voice_ack");
+    ws.send(JSON.stringify({ type: "user_text", text: "What should I do today?" }));
+    const answer = await waitForEvent(events, "voice_assistant_text");
+    ws.send(JSON.stringify({ type: "stop", save: false }));
+    ws.close();
+    expect(String(answer.text)).toMatch(/Top|priority/i);
   });
 });
 
@@ -919,7 +964,7 @@ async function assertInfra(): Promise<void> {
 }
 
 async function cleanData(): Promise<void> {
-  await modules.pool.query("TRUNCATE provider_usage_events, evaluation_events, action_execution_logs, action_approvals, action_proposals, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
+  await modules.pool.query("TRUNCATE provider_usage_events, evaluation_events, action_execution_logs, action_approvals, action_proposals, weekly_reviews, daily_brief_feedback, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
   await modules.clearAllRedisForTest();
 }
 

@@ -5,10 +5,11 @@ import type { BufferedSegment } from "../redis.js";
 import { sensitivityForDailyText, type CommitmentExtractionInput, type ProposedCommitment } from "./types.js";
 
 const commitmentPatterns = [
-  /\b(?:i will|i'll|i need to|i have to|i should)\s+(.+?)(?:[.!?]|$)/gi,
+  /\b(?:i will|i'll|i need to|i have to|i should|remember i need to)\s+(.+?)(?:[.!?]|$)/gi,
   /\bwe agreed\s+(?:to|that)\s+(.+?)(?:[.!?]|$)/gi,
   /\b(?:send|share|provide|upload|bring|prepare|confirm|follow up)\s+(.+?)(?:[.!?]|$)/gi,
   /\b(?:the doctor said|the bank asked for|client asked me to)\s+(.+?)(?:[.!?]|$)/gi,
+  /\b(?:waiting on|waiting for)\s+(.+?)(?:[.!?]|$)/gi,
 ];
 
 export function extractCommitmentsFromText(input: CommitmentExtractionInput): ProposedCommitment[] {
@@ -96,10 +97,15 @@ function normalizeSpaces(text: string): string {
 }
 
 function isFalsePositive(text: string): boolean {
-  return /^(know|think|be|do|go|say|ask)$/.test(text.trim().toLowerCase()) || text.length < 5;
+  const lower = text.trim().toLowerCase();
+  if (/^(know|think|be|do|go|say|ask|maybe|probably|something|anything)$/.test(lower)) return true;
+  if (/^(that|this|it|there)\b/.test(lower)) return true;
+  if (/\b(maybe|someday|if possible|not sure)\b/.test(lower) && !/\bby|before|tomorrow|next week|follow up\b/.test(lower)) return true;
+  return text.length < 5;
 }
 
 function inferOwner(match: string, speaker?: string | null): string | null {
+  if (/^waiting (on|for)/i.test(match)) return inferCounterparty(match) ?? "other";
   if (/^we agreed/i.test(match)) return "we";
   if (/^client asked/i.test(match)) return "me";
   if (/^the (doctor|bank) asked/i.test(match)) return "me";
@@ -111,6 +117,9 @@ function inferCounterparty(text: string): string | null {
   if (/\bdoctor|clinic\b/i.test(text)) return "doctor";
   if (/\bbank|loan officer|lender\b/i.test(text)) return "bank";
   if (/\bclient\b/i.test(text)) return "client";
+  if (/\blawyer|legal|solicitor|attorney\b/i.test(text)) return "lawyer";
+  const waiting = text.match(/\bwaiting (?:on|for)\s+(?:the\s+)?([a-z][a-z -]{1,40}?)(?:\s+to|\s+for| by| before| next| tomorrow| today|[.!?]|$)/i);
+  if (waiting?.[1]) return waiting[1].trim();
   return null;
 }
 
@@ -139,8 +148,18 @@ function inferDueDate(text: string, now: Date): Date | null {
     result.setUTCDate(result.getUTCDate() + 7);
     return result;
   }
+  const inDays = lower.match(/\bin\s+(\d{1,2})\s+days?\b/);
+  if (inDays?.[1]) {
+    result.setUTCDate(result.getUTCDate() + Number(inDays[1]));
+    return result;
+  }
   const weekday = lower.match(/\b(?:by|on|before)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
   if (weekday?.[1]) return nextWeekday(now, weekday[1]);
+  const iso = lower.match(/\b(?:by|on|before)\s+(\d{4}-\d{2}-\d{2})\b/);
+  if (iso?.[1]) {
+    const parsed = new Date(`${iso[1]}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
   return null;
 }
 

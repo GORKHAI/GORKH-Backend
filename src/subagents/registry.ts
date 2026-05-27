@@ -9,6 +9,7 @@ import { runResearchSubagent } from "./workers/research-subagent.js";
 import { runSkillSubagent } from "./workers/skill-subagent.js";
 import { runSourceVerifierSubagent } from "./workers/source-verifier-subagent.js";
 import { runStressSupportSubagent } from "./workers/stress-support-subagent.js";
+import { runWeeklyReviewSubagent } from "./workers/weekly-review-subagent.js";
 
 const workers: Record<SubagentKind, SubagentWorker> = {
   research: runResearchSubagent,
@@ -21,6 +22,10 @@ const workers: Record<SubagentKind, SubagentWorker> = {
   daily_brief: runDailyBriefSubagent,
   meeting_pack: runMeetingPackSubagent,
   followup: runFollowupSubagent,
+  daily_prioritizer: runDailyBriefSubagent,
+  commitment_review: runCommitmentSubagent,
+  followup_review: runFollowupSubagent,
+  weekly_review: runWeeklyReviewSubagent,
 };
 
 export function getSubagentWorker(kind: SubagentKind): SubagentWorker {

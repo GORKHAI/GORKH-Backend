@@ -230,7 +230,7 @@ async function handleUserText(session: VoiceLiveSession, text: string): Promise<
   await transition(session, "thinking");
   const generation = session.generation;
   const researchNeed = detectResearchNeed({ text, internalType: session.internalType, livePolicy: session.policy });
-  if (researchNeed.needsResearch) {
+  if (researchNeed.needsResearch && !isDailyLifeImmediateRequest(text)) {
     await startVoiceResearchSubagent(session, text, generation, session.policy === "whisper_copilot" ? "screen_only" : "main_agent_summary");
     const responseText = immediateResearchHoldingAnswer(session);
     const speechId = randomUUID();
@@ -247,6 +247,10 @@ async function handleUserText(session: VoiceLiveSession, text: string): Promise<
     session.emit({ type: "error", stage: "provider", message: String((err as Error).message ?? err) });
     await transition(session, "listening");
   });
+}
+
+function isDailyLifeImmediateRequest(text: string): boolean {
+  return /\b(what do i need to do today|daily brief|today'?s priorities|what'?s on my plate|what should i do today|what am i waiting on|waiting on|waiting for others|who owes me|what are others doing|make my day easier|easy plan|low[- ]effort|quick wins?|weekly review|review my week|week recap|what did i promise|open commitments|what do i owe|what did i agree to)\b/i.test(text);
 }
 
 async function produceAgentAnswer(session: VoiceLiveSession, text: string, generation: number): Promise<void> {

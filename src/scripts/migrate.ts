@@ -443,6 +443,10 @@ export async function runMigration(): Promise<void> {
         source_type text NOT NULL,
         source_id text,
         due_at timestamptz,
+        effort_estimate text,
+        context text,
+        blocked_by text,
+        next_step text,
         suggested_at timestamptz NOT NULL DEFAULT now(),
         accepted_at timestamptz,
         completed_at timestamptz,
@@ -461,6 +465,17 @@ export async function runMigration(): Promise<void> {
         generated_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS daily_brief_feedback (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        brief_id uuid NOT NULL REFERENCES daily_briefs(id) ON DELETE CASCADE,
+        section_key text NOT NULL,
+        rating integer,
+        feedback text,
+        action text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS followup_suggestions (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -469,9 +484,22 @@ export async function runMigration(): Promise<void> {
         organization_name text,
         reason text NOT NULL,
         suggested_message text,
+        due_at timestamptz,
+        channel text,
         status text NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS weekly_reviews (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_start_date date NOT NULL,
+        status text NOT NULL,
+        summary text NOT NULL,
+        sections jsonb NOT NULL,
+        quality jsonb NOT NULL,
+        generated_at timestamptz NOT NULL DEFAULT now()
       );
 
       CREATE TABLE IF NOT EXISTS meeting_packs (
@@ -602,8 +630,12 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS task_items_by_due_at ON task_items(due_at);
       CREATE INDEX IF NOT EXISTS daily_briefs_by_user ON daily_briefs(user_id);
       CREATE INDEX IF NOT EXISTS daily_briefs_by_user_date ON daily_briefs(user_id, brief_date);
+      CREATE INDEX IF NOT EXISTS daily_brief_feedback_by_user ON daily_brief_feedback(user_id);
+      CREATE INDEX IF NOT EXISTS daily_brief_feedback_by_brief ON daily_brief_feedback(brief_id);
       CREATE INDEX IF NOT EXISTS followup_suggestions_by_user ON followup_suggestions(user_id);
       CREATE INDEX IF NOT EXISTS followup_suggestions_by_user_status ON followup_suggestions(user_id, status);
+      CREATE INDEX IF NOT EXISTS weekly_reviews_by_user ON weekly_reviews(user_id);
+      CREATE INDEX IF NOT EXISTS weekly_reviews_by_user_week ON weekly_reviews(user_id, week_start_date);
       CREATE INDEX IF NOT EXISTS meeting_packs_by_user ON meeting_packs(user_id);
       CREATE INDEX IF NOT EXISTS meeting_packs_by_session ON meeting_packs(session_id);
       CREATE INDEX IF NOT EXISTS action_proposals_by_user ON action_proposals(user_id);
@@ -617,6 +649,15 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS evaluation_events_by_target ON evaluation_events(target_type, target_id);
       CREATE INDEX IF NOT EXISTS provider_usage_events_by_user ON provider_usage_events(user_id);
       CREATE INDEX IF NOT EXISTS provider_usage_events_by_provider ON provider_usage_events(provider);
+    `);
+
+    await pool.query(`
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS effort_estimate text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS context text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS blocked_by text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS next_step text;
+      ALTER TABLE followup_suggestions ADD COLUMN IF NOT EXISTS due_at timestamptz;
+      ALTER TABLE followup_suggestions ADD COLUMN IF NOT EXISTS channel text;
     `);
 
     await pool.query(`

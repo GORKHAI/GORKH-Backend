@@ -42,9 +42,12 @@ import { getConnectorManifest, listConnectorManifests } from "./connectors/regis
 import { connectorIdSchema } from "./connectors/types.js";
 import { connectorPermissionSummary } from "./connectors/permissions.js";
 import { extractCommitmentsFromText } from "./daily/commitment-extractor.js";
-import { generateDailyBrief, getTodayBrief } from "./daily/daily-brief.js";
+import { generateDailyBrief, getTodayBrief, recordDailyBriefFeedback } from "./daily/daily-brief.js";
+import { proposeFollowup } from "./daily/followup-detector.js";
 import { createPrepPack, createRecapPack, getOwnedMeetingPack } from "./daily/meeting-pack.js";
+import { explainTaskRanking } from "./daily/priority-ranker.js";
 import { listTaskInbox, proposeTasksForCommitments, updateCommitmentStatus, updateTaskStatus } from "./daily/task-inbox.js";
+import { generateWeeklyReview, getLatestWeeklyReview } from "./daily/weekly-review.js";
 import { answerBrainQuery } from "./brain/orchestrator.js";
 import { logBrainAuditEvent } from "./brain/audit.js";
 import { selectedLlmStatus } from "./llm/provider.js";
@@ -135,6 +138,14 @@ const feedbackBody = z.object({
 const manualCommitmentBody = z.object({
   text: z.string().min(1),
   sourceType: z.enum(["manual", "user_text"]).default("manual"),
+});
+
+const dailyBriefFeedbackBody = z.object({
+  briefId: z.string().uuid(),
+  sectionKey: z.string().min(1),
+  rating: z.number().int().min(1).max(5).nullable().optional(),
+  feedback: z.string().nullable().optional(),
+  action: z.enum(["accepted", "dismissed", "helpful", "not_helpful", "too_long", "too_short"]).nullable().optional(),
 });
 
 const meetingPrepBody = z.object({
@@ -1011,7 +1022,8 @@ export async function buildServer() {
       )
       .returning();
     const tasks = await proposeTasksForCommitments(inserted);
-    return reply.send({ commitments: inserted, tasks });
+    const followup = await proposeFollowup({ userId, text: body.text });
+    return reply.send({ commitments: inserted, tasks, followup });
   });
 
   app.get("/daily/commitments", async (request, reply) => {
@@ -1019,6 +1031,20 @@ export async function buildServer() {
     if (!userId) return;
     const rows = await db.select().from(commitments).where(eq(commitments.userId, userId)).orderBy(desc(commitments.createdAt)).limit(100);
     return reply.send({ commitments: rows });
+  });
+
+  app.get("/daily/commitments/review", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const rows = await db.select().from(commitments).where(eq(commitments.userId, userId)).orderBy(desc(commitments.createdAt)).limit(100);
+    return reply.send({
+      proposed: rows.filter((item) => item.status === "proposed"),
+      confirmed: rows.filter((item) => item.status === "confirmed"),
+      waitingOnOthers: rows.filter((item) => item.owner && !["me", "we"].includes(item.owner)),
+      sensitiveOrHighRisk: rows.filter((item) => item.sensitivity !== "low"),
+      done: rows.filter((item) => item.status === "done"),
+      dismissed: rows.filter((item) => item.status === "dismissed"),
+    });
   });
 
   app.post("/daily/commitments/:id/confirm", async (request, reply) => {
@@ -1039,6 +1065,15 @@ export async function buildServer() {
     return reply.send({ commitment });
   });
 
+  app.post("/daily/commitments/:id/done", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const commitment = await updateCommitmentStatus(userId, params.id, "done");
+    if (!commitment) return reply.code(404).send({ error: "not found" });
+    return reply.send({ commitment });
+  });
+
   app.post("/daily/brief/generate", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -1051,10 +1086,20 @@ export async function buildServer() {
     return reply.send({ dailyBrief: await getTodayBrief(userId) });
   });
 
+  app.post("/daily/brief/feedback", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = dailyBriefFeedbackBody.parse(request.body);
+    const feedback = await recordDailyBriefFeedback({ userId, ...body });
+    if (!feedback) return reply.code(404).send({ error: "not found" });
+    return reply.send({ feedback });
+  });
+
   app.get("/daily/tasks", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
-    return reply.send({ tasks: await listTaskInbox(userId) });
+    const tasks = await listTaskInbox(userId);
+    return reply.send({ tasks, ranking: tasks.map((task) => ({ taskId: task.id, explanation: explainTaskRanking(task) })) });
   });
 
   app.post("/daily/tasks/:id/accept", async (request, reply) => {
@@ -1089,6 +1134,48 @@ export async function buildServer() {
     if (!userId) return;
     const rows = await db.select().from(followupSuggestions).where(eq(followupSuggestions.userId, userId)).orderBy(desc(followupSuggestions.createdAt)).limit(100);
     return reply.send({ followups: rows });
+  });
+
+  app.get("/daily/followups/review", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const rows = await db.select().from(followupSuggestions).where(eq(followupSuggestions.userId, userId)).orderBy(desc(followupSuggestions.createdAt)).limit(100);
+    return reply.send({
+      proposed: rows.filter((item) => item.status === "proposed"),
+      accepted: rows.filter((item) => item.status === "accepted"),
+      dismissed: rows.filter((item) => item.status === "dismissed"),
+      sentElsewhere: rows.filter((item) => item.status === "sent_elsewhere"),
+    });
+  });
+
+  app.post("/daily/followups/:id/accept", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const [followup] = await db.update(followupSuggestions).set({ status: "accepted", updatedAt: new Date() }).where(and(eq(followupSuggestions.id, params.id), eq(followupSuggestions.userId, userId))).returning();
+    if (!followup) return reply.code(404).send({ error: "not found" });
+    return reply.send({ followup });
+  });
+
+  app.post("/daily/followups/:id/dismiss", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const [followup] = await db.update(followupSuggestions).set({ status: "dismissed", updatedAt: new Date() }).where(and(eq(followupSuggestions.id, params.id), eq(followupSuggestions.userId, userId))).returning();
+    if (!followup) return reply.code(404).send({ error: "not found" });
+    return reply.send({ followup });
+  });
+
+  app.post("/daily/weekly-review/generate", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send({ weeklyReview: await generateWeeklyReview(userId) });
+  });
+
+  app.get("/daily/weekly-review/latest", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send({ weeklyReview: await getLatestWeeklyReview(userId) });
   });
 
   app.post("/meetings/prep-pack", async (request, reply) => {

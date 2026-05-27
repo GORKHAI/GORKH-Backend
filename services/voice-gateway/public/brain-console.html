@@ -55,19 +55,25 @@
           <label>Commitment text <textarea id="commitmentText">I need to send the bank documents by Friday.</textarea></label>
           <label>Meeting description <textarea id="meetingText">I am going to the bank to discuss a loan.</textarea></label>
           <label>Session ID for recap <input id="recapSessionId" placeholder="saved session uuid" /></label>
+          <label>Brief ID <input id="dailyBriefId" placeholder="daily brief uuid" /></label>
         </div>
         <div class="actions">
           <button data-action="dailyBriefGenerate" class="button primary">Generate Brief</button>
           <button data-action="dailyBriefToday" class="button">Today Brief</button>
+          <button data-action="dailyBriefFeedback" class="button">Mark Brief Helpful</button>
           <button data-action="dailyTasks" class="button">Task Inbox</button>
           <button data-action="dailyCommitments" class="button">Commitments</button>
+          <button data-action="dailyCommitmentsReview" class="button">Commitment Review</button>
           <button data-action="dailyFollowups" class="button">Follow-ups</button>
+          <button data-action="dailyFollowupsReview" class="button">Follow-up Review</button>
           <button data-action="commitmentPropose" class="button">Propose Commitment</button>
+          <button data-action="weeklyReviewGenerate" class="button">Generate Weekly Review</button>
+          <button data-action="weeklyReviewLatest" class="button">Latest Weekly Review</button>
           <button data-action="meetingPrep" class="button">Generate Prep Pack</button>
           <button data-action="meetingRecap" class="button">Generate Recap Pack</button>
           <button data-action="meetingPacks" class="button">Meeting Packs</button>
         </div>
-        <p class="hint">Tasks and commitments are proposed until you accept or confirm them. No external action is taken.</p>
+        <p class="hint">Tasks and commitments are proposed until you accept or confirm them. Ranking explanations and brief quality scores are review aids only. No external action is taken.</p>
         <pre id="dailyOut"></pre>
       </section>
 

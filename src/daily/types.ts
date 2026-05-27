@@ -29,17 +29,67 @@ export interface TaskProposal {
   detail?: string | null;
   priority: TaskPriority;
   dueAt?: Date | null;
+  effortEstimate?: string | null;
+  context?: string | null;
+  blockedBy?: string | null;
+  nextStep?: string | null;
 }
 
 export interface DailyBriefSection {
+  key?: string;
   title: string;
   items: string[];
+  quality?: {
+    relevanceScore?: number;
+    staleItemCount?: number;
+    confidence?: number;
+  };
 }
 
 export interface DailyBriefDraft {
   summary: string;
   sections: DailyBriefSection[];
-  actionItems: Array<{ title: string; priority: string; dueAt?: string | null; status?: string }>;
+  actionItems: Array<{
+    title: string;
+    priority: string;
+    dueAt?: string | null;
+    status?: string;
+    nextStep?: string | null;
+    effortEstimate?: string | null;
+    ranking?: TaskRankingExplanation;
+  }>;
+  quality?: DailyBriefQuality;
+}
+
+export interface DailyBriefQuality {
+  briefRelevanceScore: number;
+  staleItemCount: number;
+  overdueItemCount: number;
+  acceptedSuggestionRate: number;
+  dismissedSuggestionRate: number;
+  confidence: number;
+}
+
+export interface TaskRankingExplanation {
+  urgencyScore: number;
+  confidenceScore: number;
+  riskScore: number;
+  actionabilityScore: number;
+  freshnessScore: number;
+  dependencyScore: number;
+  dismissalPenalty: number;
+  totalScore: number;
+}
+
+export interface WeeklyReviewDraft {
+  summary: string;
+  sections: DailyBriefSection[];
+  quality: {
+    completedTaskCount: number;
+    missedCommitmentCount: number;
+    openLoopCount: number;
+    confidence: number;
+  };
 }
 
 export interface MeetingPackDraft {
