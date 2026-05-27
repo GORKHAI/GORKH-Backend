@@ -59,7 +59,11 @@ async function handleAction(action) {
     if (action === "skillMatch") return show("skillsOut", await post("/skills/match", { situationDescription: "I have a bank loan meeting tomorrow", internalType: "bank_loan" }));
     if (action === "reflections") return show("reflectionsOut", await get("/brain/reflections"));
     if (action === "researchProviders") return show("researchOut", await get("/research/providers"));
-    if (action === "researchQuery") return show("researchOut", await post("/research/query", { text: $("researchText").value, intent: $("researchIntent").value }));
+    if (action === "researchQuery") {
+      const result = await post("/research/query", { text: $("researchText").value, intent: $("researchIntent").value });
+      if (result.query?.id) $("qualityQueryId").value = result.query.id;
+      return show("researchOut", result);
+    }
     if (action === "brainQuery") {
       return show(
         "researchOut",
@@ -69,6 +73,14 @@ async function handleAction(action) {
           allowProfileContext: $("allowProfileContext").checked,
         }),
       );
+    }
+    if (action === "evaluationSummary") return show("qualityOut", await get("/evaluation/summary"));
+    if (action === "evaluationEvents") return show("qualityOut", await get("/evaluation/events"));
+    if (action === "governorStatus") return show("qualityOut", await get("/governor/status"));
+    if (action === "governorUsage") return show("qualityOut", await get("/governor/usage"));
+    if (action === "researchEvaluate") return show("qualityOut", await post("/research/query/evaluate", { queryId: $("qualityQueryId").value.trim() }));
+    if (action === "cueRecompute") {
+      return show("qualityOut", await post(`/evaluation/recompute/cue/${$("qualityTargetId").value.trim()}`, { cueText: $("qualityCueText").value.trim() }));
     }
     if (action === "subagentCreate") return createSubagentTask();
     if (action === "subagentList") return show("subagentsOut", await get("/subagents/tasks"));

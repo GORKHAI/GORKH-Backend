@@ -62,3 +62,12 @@ TAVILY_API_KEY=[secret]
 Provider-live validation requires real source URLs. If no LLM is configured, GORKH returns source lists/snippets only rather than synthesizing an answer.
 
 Set `RESEARCH_LIVE_REQUIRED=true` only when a provider key is configured and source-backed results must be mandatory for a deployment gate. With `RESEARCH_PROVIDER=none`, the correct result is `provider_not_configured` and no fake citations.
+
+## Quality Layer
+
+Provider-live validation now feeds the research quality layer:
+
+- Tavily topic/depth are selected from query domain and freshness need.
+- Every citation must match a returned or stored source URL.
+- High-stakes answers require limitations.
+- `npm run quality:replay:all` validates no-fake-citation behavior, cue latency metrics, governor routing, and provider usage recording.

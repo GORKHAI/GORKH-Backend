@@ -8,6 +8,8 @@ import { extractCommitmentsFromText } from "../daily/commitment-extractor.js";
 import { proposeTasksForCommitments } from "../daily/task-inbox.js";
 import { createLlmProvider } from "../llm/provider.js";
 import { LlmProviderError, type LlmProvider } from "../llm/types.js";
+import { recordProviderUsage } from "../governor/budget.js";
+import { routeWork } from "../governor/router.js";
 import { summarizeHumanContext } from "../human/profile.js";
 import { adaptTextToUser } from "../personalization/adaptation.js";
 import { detectResearchNeed } from "../research/need-detector.js";
@@ -172,8 +174,18 @@ export async function answerVoiceUserText(input: {
 
   try {
     const researchNeed = detectResearchNeed({ text: input.text, internalType: input.internalType, livePolicy: input.policy });
-    const result = await (input.llmProvider ?? createLlmProvider()).completeText({
-      model: config.LLM_PROVIDER === "anthropic" ? config.SUGGEST_MODEL : config.DEEPSEEK_CHAT_MODEL,
+    const decision = routeWork({
+      deterministicAvailable: false,
+      needsResearch: researchNeed.needsResearch,
+      operation: input.policy === "whisper_copilot" ? "whisper_cue" : "open_chat",
+    });
+    if (!decision.allowed && decision.errorCode === "provider_budget_exceeded") {
+      return { kind: "provider_not_configured", message: "provider_budget_exceeded" };
+    }
+    const provider = input.llmProvider ?? createLlmProvider();
+    const startedAt = Date.now();
+    const result = await provider.completeText({
+      model: config.LLM_PROVIDER === "anthropic" ? config.SUGGEST_MODEL : decision.model ?? config.DEEPSEEK_CHAT_MODEL,
       maxTokens: input.policy === "whisper_copilot" ? 120 : 500,
       temperature: 0.2,
       system: [
@@ -191,6 +203,16 @@ export async function answerVoiceUserText(input: {
       messages: [{ role: "user", content: input.text }],
       metadata: { policy: input.policy, internalType: input.internalType },
     });
+    await recordProviderUsage({
+      userId: input.userId ?? null,
+      sessionId: input.sessionId ?? null,
+      provider: result.provider,
+      model: result.model,
+      operation: "voice_agent.complete_text",
+      usage: result.usage,
+      latencyMs: Date.now() - startedAt,
+      status: "completed",
+    }).catch(() => null);
     return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(result.text, humanContext), input.policy) };
   } catch (err) {
     if (err instanceof LlmProviderError && err.code === "provider_not_configured") {

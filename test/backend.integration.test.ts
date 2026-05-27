@@ -495,6 +495,19 @@ describe("integration adaptive brain", () => {
     expect(providers.json()).toMatchObject({ selected: "none", configured: false });
   });
 
+  it("exposes evaluation and governor endpoints", async () => {
+    const user = await devUser("it-quality-endpoints@example.com");
+    const governor = await app.inject({ method: "GET", url: "/governor/status", headers: auth(user.token) });
+    expect(governor.statusCode).toBe(200);
+    expect(governor.json()).toMatchObject({ governor: { enabled: expect.any(Boolean), mode: expect.any(String) } });
+    const usage = await app.inject({ method: "GET", url: "/governor/usage", headers: auth(user.token) });
+    expect(usage.statusCode).toBe(200);
+    expect(usage.json()).toMatchObject({ summary: expect.any(Object), usageEvents: expect.any(Array) });
+    const summary = await app.inject({ method: "GET", url: "/evaluation/summary", headers: auth(user.token) });
+    expect(summary.statusCode).toBe(200);
+    expect(summary.json()).toMatchObject({ researchQualitySummary: expect.any(Object), cueLatencySummary: expect.any(Object) });
+  });
+
   it("lists tools and denies dangerous invocations", async () => {
     const user = await devUser("it-brain-tools@example.com");
     const tools = await app.inject({ method: "GET", url: "/tools", headers: auth(user.token) });
@@ -906,7 +919,7 @@ async function assertInfra(): Promise<void> {
 }
 
 async function cleanData(): Promise<void> {
-  await modules.pool.query("TRUNCATE action_execution_logs, action_approvals, action_proposals, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
+  await modules.pool.query("TRUNCATE provider_usage_events, evaluation_events, action_execution_logs, action_approvals, action_proposals, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
   await modules.clearAllRedisForTest();
 }
 

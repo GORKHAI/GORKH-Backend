@@ -841,6 +841,38 @@ npm run actions:replay:all
 
 See `docs/actions/action-approval-engine.md`, `docs/connectors/connector-manifest-layer.md`, `docs/connectors/mcp-ready-design.md`, and `docs/security/external-action-policy.md`.
 
+### Intelligence Quality Layer
+
+The quality layer tunes live research, validates citations, records evaluation events, and tracks provider usage without inventing costs or citations.
+
+New routes:
+
+```text
+GET  /evaluation/events
+GET  /evaluation/summary
+POST /research/query/evaluate
+POST /evaluation/recompute/:targetType/:targetId
+GET  /governor/status
+GET  /governor/usage
+```
+
+Tavily is tuned by domain and freshness need. High-stakes bank, medical, and legal research requires source-backed citations plus limitations. If a provider or citation set is missing, GORKH returns a clear provider/citation error instead of a fabricated answer.
+
+Quality replay commands:
+
+```bash
+npm run quality:replay -- tavily-bank-apr
+npm run quality:replay -- citation-validation
+npm run quality:replay -- no-fake-citation
+npm run quality:replay -- cue-latency
+npm run quality:replay -- governor-deterministic
+npm run quality:replay -- governor-budget
+npm run quality:replay -- provider-usage
+npm run quality:replay:all
+```
+
+See `docs/brain/research-quality-tuning.md`, `docs/brain/citation-validation-policy.md`, `docs/brain/evaluation-engine.md`, `docs/brain/cost-latency-governor.md`, and `docs/brain/provider-usage-tracking.md`.
+
 ### Local Reference Audit
 
 The uploaded Hermes Agent, OpenClaw, and NVIDIA PersonaPlex archives were verified locally and inspected statically. They were extracted into `.reference-agent-labs/`, which is gitignored. No external reference code was executed, installed, or integrated.

@@ -1,8 +1,11 @@
 import { config } from "../../config.js";
+import { persistEvaluation } from "../../evaluation/research-quality.js";
 import { createSearchProvider, researchProviderStatus } from "../../research/provider.js";
 import { detectResearchNeed } from "../../research/need-detector.js";
 import { ResearchProviderError } from "../../research/types.js";
 import { classifySource, scoreSource } from "../../research/verifier.js";
+import { planResearchQuery } from "../../research/query-planner.js";
+import { scoreResearchSources } from "../../research/quality.js";
 import type { SubagentReport, SubagentTask, SubagentWorkerContext } from "../types.js";
 
 export async function runResearchSubagent(task: SubagentTask, context: SubagentWorkerContext): Promise<SubagentReport> {
@@ -12,6 +15,7 @@ export async function runResearchSubagent(task: SubagentTask, context: SubagentW
   if (!task.policy.allowResearch) {
     return failed(task, "Research not allowed by policy.", status.selected, status.configured, "research_not_allowed");
   }
+  const plan = planResearchQuery({ text: input.query, internalType: input.internalType, intent: input.intent, maxResults: input.maxResults ?? config.RESEARCH_MAX_RESULTS });
   const decision = detectResearchNeed({ text: input.query, internalType: input.internalType });
   if (!decision.needsResearch && input.intent !== "source_verification") {
     return {
@@ -31,17 +35,31 @@ export async function runResearchSubagent(task: SubagentTask, context: SubagentW
     await context.emitProgress("Searching public sources...");
     const provider = (context.createSearchProvider ?? createSearchProvider)();
     const results = await provider.search({
-      query: decision.suggestedQuery ?? input.query,
-      maxResults: Math.min(input.maxResults ?? config.RESEARCH_MAX_RESULTS, config.RESEARCH_MAX_RESULTS),
+      query: decision.suggestedQuery ?? plan.normalizedQuery,
+      maxResults: plan.maxResults,
       signal: context.signal,
     });
     if (context.signal.aborted) throw new Error("subagent task canceled");
     const sources = results.map((result) => ({
       ...result,
       sourceType: result.sourceType ?? classifySource(result.url),
-      credibilityScore: scoreSource(result, input.internalType),
+      credibilityScore: scoreSource(result, plan.domain),
     }));
     await context.emitProgress(`Verified ${sources.length} source result(s).`);
+    const sourceQuality = scoreResearchSources(sources, plan.domain);
+    await persistEvaluation({
+      userId: task.userId,
+      sessionId: task.sessionId ?? null,
+      result: {
+        targetType: "subagent_report",
+        targetId: task.id,
+        evaluator: "subagent_research_quality_v0",
+        score: Math.max(0, Math.min(1, sourceQuality.averageCredibility)),
+        status: sourceQuality.warnings.length ? "warning" : "passed",
+        metrics: { sourceQuality, domain: plan.domain, citationMinimum: plan.minCitations },
+        findings: sourceQuality.warnings,
+      },
+    }).catch(() => null);
     return {
       taskId: task.id,
       kind: "research",

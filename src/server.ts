@@ -15,9 +15,11 @@ import {
   brainReflections,
   commitments,
   cueEvents,
+  evaluationEvents,
   followupSuggestions,
   humanProfileFacts,
   meetingPacks,
+  providerUsageEvents,
   researchAnswers,
   researchQueries,
   researchSources,
@@ -54,6 +56,12 @@ import { createSearchProvider } from "./research/provider.js";
 import { ResearchProviderError } from "./research/types.js";
 import { classifySource, scoreSource } from "./research/verifier.js";
 import { composeResearchAnswer } from "./research/composer.js";
+import { evaluateResearchAnswerQuality, persistEvaluation } from "./evaluation/research-quality.js";
+import { evaluateCueQuality } from "./evaluation/cue-quality.js";
+import { planResearchQuery } from "./research/query-planner.js";
+import { classifyResearchDomain } from "./research/source-policy.js";
+import { scoreResearchSources } from "./research/quality.js";
+import { governorStatus, providerUsageSummary } from "./governor/policy.js";
 import { createSituationBrief, getOwnedSituationBrief } from "./situation/brief.js";
 import { approveSkill, disableSkill, enableSkill, listUserSkills, matchEnabledSkillsForSituation } from "./skills/registry.js";
 import { generateStressSupport } from "./stress/support.js";
@@ -461,6 +469,8 @@ export async function buildServer() {
       proposedFollowups,
       meetingPackCount,
       proposedActions,
+      recentEvaluationWarnings,
+      usageSummary,
     ] = await Promise.all([
       summarizeHumanContext(userId),
       countProfileFacts(userId, "proposed"),
@@ -475,6 +485,8 @@ export async function buildServer() {
       countFollowups(userId, "proposed"),
       countMeetingPacks(userId),
       countActionProposals(userId, "proposed"),
+      countRecentEvaluationWarnings(userId),
+      providerUsageSummary(userId),
     ]);
     return reply.send({
       profileSummary,
@@ -496,6 +508,11 @@ export async function buildServer() {
       actionApprovals: {
         proposedActionsCount: proposedActions,
       },
+      researchQualitySummary: await evaluationSummaryForUser(userId, "research_answer"),
+      cueLatencySummary: await evaluationSummaryForUser(userId, "cue"),
+      providerUsageSummary: usageSummary,
+      governorStatus: governorStatus(),
+      recentEvaluationWarnings,
       safetySummary: {
         stressSupportIsNotTherapy: true,
         noHiddenRecording: true,
@@ -701,6 +718,7 @@ export async function buildServer() {
     if (!userId) return;
     const body = brainQueryBody.pick({ text: true, situationBriefId: true, sessionId: true }).parse(request.body);
     if (body.sessionId && !(await ownedSession(userId, body.sessionId))) return reply.code(404).send({ error: "not found" });
+    const plan = planResearchQuery({ text: body.text, maxResults: config.RESEARCH_MAX_RESULTS });
     const decision = detectResearchNeed({ text: body.text });
     const [query] = await db
       .insert(researchQueries)
@@ -709,11 +727,11 @@ export async function buildServer() {
         sessionId: body.sessionId ?? null,
         situationBriefId: body.situationBriefId ?? null,
         query: body.text,
-        normalizedQuery: body.text.toLowerCase().replace(/\s+/g, " ").trim(),
+        normalizedQuery: plan.normalizedQuery.toLowerCase(),
         intent: decision.researchKind,
         provider: config.RESEARCH_PROVIDER,
         status: "pending",
-        requiresFreshness: decision.urgency !== "none",
+        requiresFreshness: plan.requiresFreshness,
       })
       .returning();
     if (!query) throw new Error("failed to create research query");
@@ -725,10 +743,10 @@ export async function buildServer() {
     }).catch(() => null);
     try {
       const provider = createSearchProvider();
-      const sources = (await provider.search({ query: decision.suggestedQuery ?? body.text, maxResults: config.RESEARCH_MAX_RESULTS })).map((source) => ({
+      const sources = (await provider.search({ query: plan.normalizedQuery, maxResults: plan.maxResults })).map((source) => ({
         ...source,
         sourceType: source.sourceType ?? classifySource(source.url),
-        credibilityScore: scoreSource(source),
+        credibilityScore: scoreSource(source, plan.domain),
       }));
       if (sources.length > 0) {
         await db.insert(researchSources).values(
@@ -745,16 +763,26 @@ export async function buildServer() {
       }
       const answer = sources.length > 0 ? await composeResearchAnswer({ query: body.text, sources }) : null;
       if (answer) {
-        await db.insert(researchAnswers).values({
+        const [answerRow] = await db.insert(researchAnswers).values({
           queryId: query.id,
           answer: answer.answer,
           citations: answer.citations,
           confidence: answer.confidence,
           limitations: answer.limitations ?? null,
-        });
+        }).returning({ id: researchAnswers.id });
+        if (config.RESEARCH_EVALUATION_ENABLED) {
+          const evaluation = evaluateResearchAnswerQuality({
+            query: body.text,
+            answer,
+            sources,
+            domain: plan.domain,
+            targetId: answerRow?.id ?? null,
+          });
+          await persistEvaluation({ userId, sessionId: body.sessionId ?? null, result: evaluation }).catch(() => null);
+        }
       }
       await db.update(researchQueries).set({ status: "completed", completedAt: new Date() }).where(eq(researchQueries.id, query.id));
-      return reply.send({ query: { ...query, status: "completed" }, sources, answer });
+      return reply.send({ query: { ...query, status: "completed" }, plan, sourceQuality: scoreResearchSources(sources, plan.domain), sources, answer });
     } catch (err) {
       await db.update(researchQueries).set({ status: "skipped", completedAt: new Date() }).where(eq(researchQueries.id, query.id));
       if (err instanceof ResearchProviderError || /configured/i.test((err as Error).message)) {
@@ -800,6 +828,99 @@ export async function buildServer() {
       db.select().from(researchAnswers).where(eq(researchAnswers.queryId, query.id)).orderBy(asc(researchAnswers.createdAt)),
     ]);
     return reply.send({ query, sources, answers });
+  });
+
+  app.post("/research/query/evaluate", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = z.object({ queryId: z.string().uuid() }).parse(request.body);
+    const [query] = await db.select().from(researchQueries).where(and(eq(researchQueries.id, body.queryId), eq(researchQueries.userId, userId))).limit(1);
+    if (!query) return reply.code(404).send({ error: "not found" });
+    const [sources, answers] = await Promise.all([
+      db.select().from(researchSources).where(eq(researchSources.queryId, query.id)).orderBy(asc(researchSources.createdAt)),
+      db.select().from(researchAnswers).where(eq(researchAnswers.queryId, query.id)).orderBy(desc(researchAnswers.createdAt)).limit(1),
+    ]);
+    const answerRow = answers[0];
+    if (!answerRow) return reply.code(404).send({ error: "answer not found" });
+    const answer = {
+      answer: answerRow.answer,
+      citations: answerRow.citations as Array<{ url: string; title?: string; quote?: string }>,
+      confidence: answerRow.confidence,
+      limitations: answerRow.limitations,
+    };
+    const searchResults = sources.map((source) => ({
+      title: source.title ?? source.url,
+      url: source.url,
+      snippet: source.snippet ?? source.extractedText ?? "",
+      publishedAt: source.publishedAt?.toISOString() ?? null,
+      sourceType: source.sourceType,
+    }));
+    const result = evaluateResearchAnswerQuality({
+      query: query.query,
+      answer,
+      sources: searchResults,
+      domain: classifyResearchDomain({ text: query.query, intent: query.intent }),
+      targetId: answerRow.id,
+    });
+    await persistEvaluation({ userId, sessionId: query.sessionId, result });
+    return reply.send({ evaluation: result });
+  });
+
+  app.get("/evaluation/events", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const rows = await db.select().from(evaluationEvents).where(eq(evaluationEvents.userId, userId)).orderBy(desc(evaluationEvents.createdAt)).limit(100);
+    return reply.send({ evaluationEvents: rows });
+  });
+
+  app.get("/evaluation/summary", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send({
+      researchQualitySummary: await evaluationSummaryForUser(userId, "research_answer"),
+      cueLatencySummary: await evaluationSummaryForUser(userId, "cue"),
+      recentEvaluationWarnings: await countRecentEvaluationWarnings(userId),
+    });
+  });
+
+  app.post("/evaluation/recompute/:targetType/:targetId", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ targetType: z.enum(["research_answer", "cue", "assistant_text", "subagent_report", "action_proposal", "daily_brief"]), targetId: z.string().min(1) }).parse(request.params);
+    if (params.targetType === "cue") {
+      const body = z
+        .object({
+          cueText: z.string().trim().min(1).optional(),
+          transcriptReceivedAt: z.number().int().nonnegative().optional(),
+          cueEmittedAt: z.number().int().nonnegative().optional(),
+          delivery: z.string().optional(),
+        })
+        .parse(request.body ?? {});
+      if (!body.cueText) return reply.code(409).send({ error: "cue_text_required_for_recompute" });
+      const result = evaluateCueQuality({
+        cueText: body.cueText,
+        targetId: params.targetId,
+        transcriptReceivedAt: body.transcriptReceivedAt,
+        cueEmittedAt: body.cueEmittedAt,
+        delivery: body.delivery,
+      });
+      await persistEvaluation({ userId, result });
+      return reply.send({ evaluation: result });
+    }
+    return reply.code(409).send({ error: "recompute_not_available_for_target" });
+  });
+
+  app.get("/governor/status", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send({ governor: governorStatus() });
+  });
+
+  app.get("/governor/usage", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const rows = await db.select().from(providerUsageEvents).where(eq(providerUsageEvents.userId, userId)).orderBy(desc(providerUsageEvents.createdAt)).limit(100);
+    return reply.send({ summary: await providerUsageSummary(userId), usageEvents: rows });
   });
 
   app.get("/tools", async (request, reply) => {
@@ -1162,6 +1283,28 @@ async function countActionProposals(userId: string, status: string): Promise<num
     .from(actionProposals)
     .where(and(eq(actionProposals.userId, userId), eq(actionProposals.status, status as never)));
   return Number(row?.count ?? 0);
+}
+
+async function countRecentEvaluationWarnings(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(evaluationEvents)
+    .where(and(eq(evaluationEvents.userId, userId), eq(evaluationEvents.status, "warning")));
+  return Number(row?.count ?? 0);
+}
+
+async function evaluationSummaryForUser(userId: string, targetType: string) {
+  const rows = await db.execute(sql`
+    SELECT status, count(*)::int AS count, coalesce(avg(score), 0)::real AS average_score
+    FROM evaluation_events
+    WHERE user_id = ${userId}::uuid AND target_type = ${targetType}
+    GROUP BY status
+    ORDER BY status
+  `);
+  return {
+    targetType,
+    events: rows.rows,
+  };
 }
 
 async function streamSubagentNotifications(

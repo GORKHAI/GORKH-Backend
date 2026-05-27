@@ -33,6 +33,8 @@ import { createTtsProvider } from "./tts.js";
 import { voiceClientEventSchema, type OutputKind, type VoicePolicy, type VoiceServerEvent } from "./types.js";
 import { VoiceStateMachine } from "./state.js";
 import { logBrainAuditEvent } from "../brain/audit.js";
+import { evaluateCueQuality } from "../evaluation/cue-quality.js";
+import { persistEvaluation } from "../evaluation/research-quality.js";
 
 interface VoiceLiveSession {
   sessionId: string;
@@ -274,6 +276,7 @@ async function produceAgentAnswer(session: VoiceLiveSession, text: string, gener
 }
 
 async function ingestVoiceTranscript(session: VoiceLiveSession, seg: BufferedSegment): Promise<void> {
+  const transcriptReceivedAt = Date.now();
   if (!(await canWrite(session, session.generation))) return;
   await db.insert(transcriptSegments).values({
     sessionId: session.sessionId,
@@ -311,6 +314,19 @@ async function ingestVoiceTranscript(session: VoiceLiveSession, seg: BufferedSeg
   }).catch(() => null);
   await persistTurn(session, "cue", "cue", cue.spokenCue, { triggers });
   await persistOutput(session, "cue", speechId, cue.spokenCue, "emitted", { cue });
+  const cueEmittedAt = Date.now();
+  await persistEvaluation({
+    userId: session.userId,
+    sessionId: session.sessionId,
+    result: evaluateCueQuality({
+      cueText: cue.spokenCue,
+      targetId: speechId,
+      transcriptReceivedAt,
+      cueEmittedAt,
+      delivery: cue.delivery,
+      source: "deterministic",
+    }),
+  }).catch(() => null);
   session.emit({ type: "voice_cue", cue, speechId });
   await maybeSpeak(session, speechId, cue.spokenCue, cue.delivery);
   const researchNeed = detectResearchNeed({ text: seg.text, internalType: session.internalType, livePolicy: session.policy });

@@ -524,6 +524,36 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS evaluation_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        session_id uuid REFERENCES sessions(id) ON DELETE SET NULL,
+        target_type text NOT NULL,
+        target_id text,
+        evaluator text NOT NULL,
+        score real NOT NULL,
+        status text NOT NULL,
+        metrics jsonb NOT NULL,
+        findings jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS provider_usage_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        session_id uuid REFERENCES sessions(id) ON DELETE SET NULL,
+        provider text NOT NULL,
+        model text,
+        operation text NOT NULL,
+        input_tokens integer,
+        output_tokens integer,
+        cached_input_tokens integer,
+        latency_ms integer,
+        estimated_cost_usd numeric(12, 6),
+        status text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE INDEX IF NOT EXISTS transcript_by_session ON transcript_segments(session_id);
       CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS situation_briefs_by_user ON situation_briefs(user_id);
@@ -583,6 +613,10 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS action_approvals_by_user ON action_approvals(user_id);
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_proposal ON action_execution_logs(proposal_id);
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_user ON action_execution_logs(user_id);
+      CREATE INDEX IF NOT EXISTS evaluation_events_by_user ON evaluation_events(user_id);
+      CREATE INDEX IF NOT EXISTS evaluation_events_by_target ON evaluation_events(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS provider_usage_events_by_user ON provider_usage_events(user_id);
+      CREATE INDEX IF NOT EXISTS provider_usage_events_by_provider ON provider_usage_events(provider);
     `);
 
     await pool.query(`

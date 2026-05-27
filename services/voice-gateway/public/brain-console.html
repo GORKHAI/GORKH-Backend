@@ -116,6 +116,25 @@
       </section>
 
       <section class="panel wide">
+        <h2>Quality & Governor</h2>
+        <div class="grid two">
+          <label>Research query ID <input id="qualityQueryId" placeholder="research query uuid" /></label>
+          <label>Recompute target <input id="qualityTargetId" placeholder="target id" /></label>
+          <label>Cue text <input id="qualityCueText" placeholder="Ask total repayment." /></label>
+        </div>
+        <div class="actions">
+          <button data-action="evaluationSummary" class="button">Evaluation Summary</button>
+          <button data-action="evaluationEvents" class="button">Evaluation Events</button>
+          <button data-action="governorStatus" class="button">Governor Status</button>
+          <button data-action="governorUsage" class="button">Provider Usage</button>
+          <button data-action="researchEvaluate" class="button">Evaluate Research Query</button>
+          <button data-action="cueRecompute" class="button">Recompute Cue Eval</button>
+        </div>
+        <p class="hint">Research citations must be source-backed. Cost is recorded only from provider metadata; exact dollar estimates stay null unless pricing is configured.</p>
+        <pre id="qualityOut"></pre>
+      </section>
+
+      <section class="panel wide">
         <h2>Subagents</h2>
         <div class="grid two">
           <label>Task query <textarea id="subagentQuery">official APR explanation consumer loan</textarea></label>

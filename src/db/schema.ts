@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   real,
   text,
@@ -106,6 +107,8 @@ export type ActionType =
 export type ActionProposalStatus = "proposed" | "approved" | "rejected" | "executed" | "failed" | "expired";
 export type ActionApprovalDecision = "approved" | "rejected";
 export type ActionExecutionStatus = "completed" | "failed" | "blocked" | "dry_run";
+export type EvaluationTargetType = "research_answer" | "cue" | "assistant_text" | "subagent_report" | "action_proposal" | "daily_brief";
+export type EvaluationStatus = "passed" | "warning" | "failed";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -955,6 +958,50 @@ export const actionExecutionLogs = pgTable(
   }),
 );
 
+export const evaluationEvents = pgTable(
+  "evaluation_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    targetType: text("target_type").$type<EvaluationTargetType>().notNull(),
+    targetId: text("target_id"),
+    evaluator: text("evaluator").notNull(),
+    score: real("score").notNull(),
+    status: text("status").$type<EvaluationStatus>().notNull(),
+    metrics: jsonb("metrics").notNull(),
+    findings: jsonb("findings").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("evaluation_events_by_user").on(t.userId),
+    byTarget: index("evaluation_events_by_target").on(t.targetType, t.targetId),
+  }),
+);
+
+export const providerUsageEvents = pgTable(
+  "provider_usage_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    provider: text("provider").notNull(),
+    model: text("model"),
+    operation: text("operation").notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
+    latencyMs: integer("latency_ms"),
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 12, scale: 6 }),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("provider_usage_events_by_user").on(t.userId),
+    byProvider: index("provider_usage_events_by_provider").on(t.provider),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type SituationBrief = typeof situationBriefs.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -979,3 +1026,5 @@ export type MeetingPack = typeof meetingPacks.$inferSelect;
 export type ActionProposal = typeof actionProposals.$inferSelect;
 export type ActionApproval = typeof actionApprovals.$inferSelect;
 export type ActionExecutionLog = typeof actionExecutionLogs.$inferSelect;
+export type EvaluationEvent = typeof evaluationEvents.$inferSelect;
+export type ProviderUsageEvent = typeof providerUsageEvents.$inferSelect;
