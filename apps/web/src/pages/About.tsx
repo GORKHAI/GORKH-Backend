@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { Seo } from '@/components/Seo';
 
 const PRINCIPLES = [
   {
@@ -56,6 +57,11 @@ export default function About() {
 
   return (
     <main className="min-h-screen bg-pitch-black pt-32 lg:pt-40 pb-24">
+      <Seo
+        title="About GORKH | Consent-First AI Copilot"
+        description="Learn how GORKH uses explicit sessions, consent gates, safe personalization, and approval-first actions for high-stakes moments."
+        path="/about"
+      />
       <div className="max-w-5xl mx-auto px-6 lg:px-12">
         {/* Hero */}
         <div

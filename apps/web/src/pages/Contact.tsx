@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { Mail, MessageSquare, ArrowRight } from 'lucide-react';
+import { Seo } from '@/components/Seo';
 
 export default function Contact() {
   const [inView, setInView] = useState(false);
@@ -36,6 +37,11 @@ export default function Contact() {
 
   return (
     <main className="min-h-screen bg-pitch-black pt-32 lg:pt-40 pb-24">
+      <Seo
+        title="Contact GORKH | Support and Partnerships"
+        description="Contact GORKH for product access, support, partnerships, and privacy questions."
+        path="/contact"
+      />
       <div className="max-w-4xl mx-auto px-6 lg:px-12">
         {/* Header */}
         <div

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Shield, Lock, Eye, Volume2, Database, FileKey, Fingerprint, Zap } from 'lucide-react';
+import { Seo } from '@/components/Seo';
 
 const PRIVACY_SECTIONS = [
   {
@@ -151,6 +152,11 @@ export default function Privacy() {
 
   return (
     <main className="min-h-screen bg-pitch-black pt-32 lg:pt-40 pb-24">
+      <Seo
+        title="GORKH Privacy | Consent, Memory, and Action Controls"
+        description="Review GORKH privacy controls for explicit sessions, retention choices, profile review, encrypted connector tokens, and no fake citations."
+        path="/privacy"
+      />
       <div className="max-w-4xl mx-auto px-6 lg:px-12">
         {/* Header */}
         <div
