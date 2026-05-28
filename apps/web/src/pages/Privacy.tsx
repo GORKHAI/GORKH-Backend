@@ -204,11 +204,11 @@ export default function Privacy() {
             Questions about our privacy practices?
           </p>
           <a
-            href="mailto:privacy@gorkh.ai"
+            href="mailto:privacy@gorkh.com"
             className="font-geist font-semibold text-pure-white hover:text-neon-signal transition-colors interactive"
             data-cursor-text=""
           >
-            privacy@gorkh.ai
+            privacy@gorkh.com
           </a>
         </div>
       </div>

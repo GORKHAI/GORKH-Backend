@@ -52,7 +52,6 @@
     --ring: 0 0% 98%;
     --radius: 0px;
 
-    /* Cursor tracking */
     --cursor-x: 50%;
     --cursor-y: 50%;
   }
@@ -69,15 +68,9 @@
     background-color: var(--pitch-black);
     color: var(--pure-white);
     font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    cursor: none;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Hide default cursor on interactive elements */
-  a, button, [role="button"], input, textarea, select {
-    cursor: none;
   }
 
   /* Selection */

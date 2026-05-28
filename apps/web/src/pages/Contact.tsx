@@ -31,7 +31,7 @@ export default function Contact() {
     const subject = String(data.get('subject') ?? 'GORKH inquiry');
     const message = String(data.get('message') ?? '');
     const body = encodeURIComponent(`${message}\n\nFrom: ${name} <${email}>`);
-    window.location.href = `mailto:hello@gorkh.ai?subject=${encodeURIComponent(subject)}&body=${body}`;
+    window.location.href = `mailto:hello@gorkh.com?subject=${encodeURIComponent(subject)}&body=${body}`;
   };
 
   return (
@@ -71,11 +71,11 @@ export default function Contact() {
                 <div>
                   <p className="font-geist font-semibold text-pure-white mb-1">Email</p>
                   <a
-                    href="mailto:support@gorkh.ai"
+                    href="mailto:support@gorkh.com"
                     className="text-ash-gray text-sm hover:text-neon-signal transition-colors interactive"
                     data-cursor-text=""
                   >
-                    support@gorkh.ai
+                    support@gorkh.com
                   </a>
                 </div>
               </div>
@@ -87,11 +87,11 @@ export default function Contact() {
                 <div>
                   <p className="font-geist font-semibold text-pure-white mb-1">General Inquiries</p>
                   <a
-                    href="mailto:hello@gorkh.ai"
+                    href="mailto:hello@gorkh.com"
                     className="text-ash-gray text-sm hover:text-cobalt-electric transition-colors interactive"
                     data-cursor-text=""
                   >
-                    hello@gorkh.ai
+                    hello@gorkh.com
                   </a>
                 </div>
               </div>
