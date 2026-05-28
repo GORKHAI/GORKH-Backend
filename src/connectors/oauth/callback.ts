@@ -1,10 +1,12 @@
 import { config } from "../../config.js";
 import type { ConnectorId } from "../types.js";
+import { googleCalendarReadiness } from "../google-calendar/sync.js";
 import { enabledScopeStrings } from "./scopes.js";
 import { tokenVaultStatus } from "./token-vault.js";
 
 export function oauthReadiness(provider: ConnectorId) {
-  const supported = provider === "google_calendar" || provider === "google_gmail";
+  if (provider === "google_calendar") return googleCalendarReadiness();
+  const supported = provider === "google_gmail";
   const scopes = enabledScopeStrings(provider);
   const missing: string[] = [];
   if (!supported) missing.push("provider_oauth_not_supported");

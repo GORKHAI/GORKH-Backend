@@ -564,6 +564,16 @@ export async function runMigration(): Promise<void> {
         updated_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS connector_token_vault (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider text NOT NULL,
+        key_id text NOT NULL,
+        encrypted_payload text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS connector_consent_events (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -700,6 +710,8 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_user ON action_execution_logs(user_id);
       CREATE INDEX IF NOT EXISTS connector_accounts_by_user ON connector_accounts(user_id);
       CREATE INDEX IF NOT EXISTS connector_accounts_by_user_provider ON connector_accounts(user_id, provider);
+      CREATE INDEX IF NOT EXISTS connector_token_vault_by_user ON connector_token_vault(user_id);
+      CREATE INDEX IF NOT EXISTS connector_token_vault_by_user_provider ON connector_token_vault(user_id, provider);
       CREATE INDEX IF NOT EXISTS connector_consent_events_by_user ON connector_consent_events(user_id);
       CREATE INDEX IF NOT EXISTS connector_consent_events_by_account ON connector_consent_events(connector_account_id);
       CREATE INDEX IF NOT EXISTS connector_sync_runs_by_user ON connector_sync_runs(user_id);

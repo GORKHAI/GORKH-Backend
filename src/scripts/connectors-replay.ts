@@ -1,9 +1,16 @@
 import { config } from "../config.js";
+import { validateGoogleCalendarScopes, GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE } from "../connectors/oauth/google-scopes.js";
 import { validateMcpInvocation } from "../connectors/mcp-adapter.js";
 
 type Scenario =
   | "scope-registry"
   | "oauth-readiness"
+  | "google-calendar-oauth-not-configured"
+  | "google-calendar-scope-policy"
+  | "token-vault"
+  | "calendar-fixture-sync"
+  | "calendar-daily-brief"
+  | "calendar-write-blocked"
   | "calendar-fixture-import"
   | "gmail-fixture-import"
   | "daily-brief-from-fixtures"
@@ -11,7 +18,21 @@ type Scenario =
   | "mcp-security";
 
 const scenario = (process.argv[2] ?? "scope-registry") as Scenario;
-const allowed: Scenario[] = ["scope-registry", "oauth-readiness", "calendar-fixture-import", "gmail-fixture-import", "daily-brief-from-fixtures", "action-preview-blocked", "mcp-security"];
+const allowed: Scenario[] = [
+  "scope-registry",
+  "oauth-readiness",
+  "google-calendar-oauth-not-configured",
+  "google-calendar-scope-policy",
+  "token-vault",
+  "calendar-fixture-sync",
+  "calendar-daily-brief",
+  "calendar-write-blocked",
+  "calendar-fixture-import",
+  "gmail-fixture-import",
+  "daily-brief-from-fixtures",
+  "action-preview-blocked",
+  "mcp-security",
+];
 if (!allowed.includes(scenario)) throw new Error(`unknown connectors replay "${scenario}"`);
 
 const base = `http://${config.HOST === "0.0.0.0" ? "127.0.0.1" : config.HOST}:${config.PORT}`;
@@ -24,16 +45,31 @@ if (scenario === "scope-registry") {
   const calendar = await getJson(`${base}/connectors/google_calendar`, dev.token);
   const gmail = await getJson(`${base}/connectors/google_gmail`, dev.token);
   console.log(`scope-registry: ${JSON.stringify({ calendar, gmail })}`);
-  assertIncludes(JSON.stringify(calendar), "calendar.readonly");
+  assertIncludes(JSON.stringify(calendar), "calendar.events.readonly");
   assertIncludes(JSON.stringify(gmail), "gmail.metadata");
 }
 
-if (scenario === "oauth-readiness") {
-  const start = await getJson(`${base}/connectors/oauth/google_calendar/start`, dev.token);
+if (scenario === "oauth-readiness" || scenario === "google-calendar-oauth-not-configured") {
+  const start = await getJson(`${base}/connectors/oauth/google-calendar/start`, dev.token);
   const accounts = await getJson(`${base}/connectors/accounts`, dev.token);
-  console.log(`oauth-readiness: ${JSON.stringify({ start, accounts })}`);
-  assertIncludes(JSON.stringify(start), "oauth_not_enabled");
+  console.log(`${scenario}: ${JSON.stringify({ start, accounts })}`);
+  if (!config.GOOGLE_OAUTH_ENABLED || !config.GOOGLE_CALENDAR_READONLY_ENABLED) assertIncludes(JSON.stringify(start), "oauth_not_configured");
   assertIncludes(JSON.stringify(accounts), "rawTokenStorageAllowed");
+}
+
+if (scenario === "google-calendar-scope-policy") {
+  const allowedScope = validateGoogleCalendarScopes([GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE]);
+  const deniedScope = validateGoogleCalendarScopes(["https://www.googleapis.com/auth/calendar.events"]);
+  console.log(`google-calendar-scope-policy: ${JSON.stringify({ allowedScope, deniedScope })}`);
+  if (!allowedScope.ok) throw new Error("expected read-only calendar events scope to be allowed");
+  if (deniedScope.ok) throw new Error("expected write calendar scope to be denied");
+}
+
+if (scenario === "token-vault") {
+  const accounts = await getJson(`${base}/connectors/accounts`, dev.token);
+  console.log(`token-vault: ${JSON.stringify(accounts)}`);
+  assertIncludes(JSON.stringify(accounts), "rawTokenStorageAllowed");
+  assertDoesNotInclude(JSON.stringify(accounts), "accessToken");
 }
 
 if (scenario === "calendar-fixture-import") {
@@ -58,28 +94,38 @@ if (scenario === "gmail-fixture-import") {
   assertDoesNotInclude(JSON.stringify(imported), "access_token");
 }
 
-if (scenario === "daily-brief-from-fixtures") {
-  await importCalendarFixture(dev.token);
-  const brief = await postJson(`${base}/daily/brief/generate`, {}, dev.token);
-  console.log(`daily-brief-from-fixtures: ${JSON.stringify(brief)}`);
-  assertIncludes(JSON.stringify(brief), "Bank meeting");
+if (scenario === "calendar-fixture-sync") {
+  const imported = await importCalendarFixture(dev.token);
+  const preview = await postJson(`${base}/connectors/accounts/${imported.account.id}/sync-preview`, {}, dev.token);
+  const events = await getJson(`${base}/connectors/google-calendar/events`, dev.token);
+  console.log(`calendar-fixture-sync: ${JSON.stringify({ preview, events })}`);
+  assertIncludes(JSON.stringify(preview), "calendar_event");
+  assertDoesNotInclude(JSON.stringify(events), "access_token");
 }
 
-if (scenario === "action-preview-blocked") {
+if (scenario === "daily-brief-from-fixtures" || scenario === "calendar-daily-brief") {
+  await importCalendarFixture(dev.token);
+  const brief = await postJson(`${base}/daily/brief/generate`, {}, dev.token);
+  console.log(`${scenario}: ${JSON.stringify(brief)}`);
+  assertIncludes(JSON.stringify(brief), "Bank meeting");
+  assertIncludes(JSON.stringify(brief), "google_calendar");
+}
+
+if (scenario === "action-preview-blocked" || scenario === "calendar-write-blocked") {
   const created = await postJson<{ proposal: { id: string } }>(
     `${base}/actions/proposals`,
     {
       sourceType: "manual",
-      actionType: "draft_email",
-      title: "Draft email",
-      description: "Draft only; do not send.",
-      payload: { to: "client@example.com", body: "Thanks." },
+      actionType: scenario === "calendar-write-blocked" ? "propose_calendar_event" : "draft_email",
+      title: scenario === "calendar-write-blocked" ? "Propose meeting" : "Draft email",
+      description: scenario === "calendar-write-blocked" ? "Proposal only; do not create calendar event." : "Draft only; do not send.",
+      payload: scenario === "calendar-write-blocked" ? { title: "Bank meeting", startsAt: new Date(Date.now() + 86_400_000).toISOString() } : { to: "client@example.com", body: "Thanks." },
     },
     dev.token,
   );
   const preview = await postJson(`${base}/actions/proposals/${created.proposal.id}/preview`, {}, dev.token);
-  console.log(`action-preview-blocked: ${JSON.stringify(preview)}`);
-  assertIncludes(JSON.stringify(preview), "draft_only_no_send");
+  console.log(`${scenario}: ${JSON.stringify(preview)}`);
+  assertIncludes(JSON.stringify(preview), scenario === "calendar-write-blocked" ? "calendar_create_disabled_proposal_only" : "draft_only_no_send");
   assertIncludes(JSON.stringify(preview), "No external connector write");
 }
 
@@ -96,8 +142,8 @@ if (scenario === "mcp-security") {
   assertIncludes(blocked, "disabled");
 }
 
-async function importCalendarFixture(token: string) {
-  return postJson(
+async function importCalendarFixture(token: string): Promise<{ account: { id: string }; items: unknown[] }> {
+  return postJson<{ account: { id: string }; items: unknown[] }>(
     `${base}/connectors/accounts/import-fixture`,
     {
       provider: "google_calendar",

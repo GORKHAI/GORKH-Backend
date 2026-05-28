@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ConnectorId } from "../types.js";
+import { GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE } from "./google-scopes.js";
 
 export const connectorScopeSchema = z.object({
   provider: z.string(),
@@ -17,7 +18,7 @@ export const scopeRegistry: Record<ConnectorId, ConnectorScope[]> = {
   google_calendar: [
     {
       provider: "google_calendar",
-      scope: "https://www.googleapis.com/auth/calendar.readonly",
+      scope: GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE,
       label: "Read calendar events",
       riskLevel: "medium",
       access: "read_only",

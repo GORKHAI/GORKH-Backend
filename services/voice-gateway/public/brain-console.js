@@ -112,10 +112,14 @@ async function handleAction(action) {
     if (action === "connectorGet") return show("connectorsOut", await get(`/connectors/${connectorId()}`));
     if (action === "connectorPermissions") return show("connectorsOut", await get(`/connectors/${connectorId()}/permissions`));
     if (action === "connectorOauthStart") return show("connectorsOut", await get(`/connectors/oauth/${connectorId()}/start`));
+    if (action === "googleCalendarOauthStart") return show("connectorsOut", await get("/connectors/oauth/google-calendar/start"));
     if (action === "connectorAccounts") return show("connectorsOut", await get("/connectors/accounts"));
     if (action === "connectorAccountGet") return show("connectorsOut", await get(`/connectors/accounts/${connectorAccountId()}`));
     if (action === "connectorFixtureImport") return importConnectorFixture();
     if (action === "connectorSyncPreview") return show("connectorsOut", await post(`/connectors/accounts/${connectorAccountId()}/sync-preview`, {}));
+    if (action === "googleCalendarSyncPreview") return show("connectorsOut", await post("/connectors/google-calendar/sync-preview", { accountId: optionalConnectorAccountId() }));
+    if (action === "googleCalendarSync") return show("connectorsOut", await post("/connectors/google-calendar/sync", { accountId: optionalConnectorAccountId() }));
+    if (action === "googleCalendarEvents") return show("connectorsOut", await get("/connectors/google-calendar/events"));
     if (action === "connectorDisconnect") return show("connectorsOut", await post(`/connectors/accounts/${connectorAccountId()}/disconnect`, {}));
     if (action === "connectorConsentEvents") return show("connectorsOut", await get("/connectors/consent-events"));
     if (action === "tools") return show("toolsOut", await get("/tools"));
@@ -343,6 +347,11 @@ function connectorAccountId() {
   const id = $("connectorAccountId").value.trim();
   if (!id) throw new Error("Connector account ID is required");
   return encodeURIComponent(id);
+}
+
+function optionalConnectorAccountId() {
+  const id = $("connectorAccountId").value.trim();
+  return id || null;
 }
 
 function backendBase() {

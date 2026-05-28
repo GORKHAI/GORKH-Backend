@@ -790,7 +790,7 @@ describe("integration action approval and connectors", () => {
     expect(list.statusCode).toBe(200);
     expect(JSON.stringify(list.json())).toContain("google_gmail");
     const calendar = await app.inject({ method: "GET", url: "/connectors/google_calendar", headers: auth(user.token) });
-    expect(JSON.stringify(calendar.json())).toContain("calendar.readonly");
+    expect(JSON.stringify(calendar.json())).toContain("calendar.events.readonly");
     const permissions = await app.inject({ method: "GET", url: "/connectors/mcp_remote/permissions", headers: auth(user.token) });
     expect(permissions.statusCode).toBe(200);
     expect(JSON.stringify(permissions.json())).toContain("arbitrary_mcp_tool_invocation");
@@ -798,9 +798,12 @@ describe("integration action approval and connectors", () => {
 
   it("keeps OAuth readiness explicit and never exposes connector tokens", async () => {
     const user = await devUser("it-connectors-oauth@example.com");
-    const start = await app.inject({ method: "GET", url: "/connectors/oauth/google_calendar/start", headers: auth(user.token) });
+    const start = await app.inject({ method: "GET", url: "/connectors/oauth/google-calendar/start", headers: auth(user.token) });
     expect(start.statusCode).toBe(200);
-    expect(JSON.stringify(start.json())).toContain("oauth_not_enabled");
+    expect(JSON.stringify(start.json())).toContain("oauth_not_configured");
+    const syncPreview = await app.inject({ method: "POST", url: "/connectors/google-calendar/sync-preview", headers: auth(user.token), payload: {} });
+    expect(syncPreview.statusCode).toBe(409);
+    expect(JSON.stringify(syncPreview.json())).toContain("connector_not_connected");
     const accounts = await app.inject({ method: "GET", url: "/connectors/accounts", headers: auth(user.token) });
     expect(accounts.statusCode).toBe(200);
     expect(JSON.stringify(accounts.json())).toContain("rawTokenStorageAllowed");
@@ -831,6 +834,9 @@ describe("integration action approval and connectors", () => {
     const preview = await app.inject({ method: "POST", url: `/connectors/accounts/${accountId}/sync-preview`, headers: auth(userA.token), payload: {} });
     expect(preview.statusCode).toBe(200);
     expect(JSON.stringify(preview.json())).toContain("Bank meeting");
+    const googleEvents = await app.inject({ method: "GET", url: "/connectors/google-calendar/events", headers: auth(userA.token) });
+    expect(googleEvents.statusCode).toBe(200);
+    expect(JSON.stringify(googleEvents.json())).toContain("Bank meeting");
     const brief = await app.inject({ method: "POST", url: "/daily/brief/generate", headers: auth(userA.token), payload: {} });
     expect(JSON.stringify(brief.json())).toContain("Bank meeting");
     const disconnected = await app.inject({ method: "POST", url: `/connectors/accounts/${accountId}/disconnect`, headers: auth(userA.token), payload: {} });

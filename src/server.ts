@@ -41,12 +41,21 @@ import { previewActionProposal } from "./actions/preview.js";
 import { createActionProposal, getOwnedActionProposal, listActionProposals } from "./actions/proposal.js";
 import { actionDecisionBodySchema, createActionProposalSchema } from "./actions/types.js";
 import { createFixtureConnectorAccount, disconnectConnectorAccount, getOwnedConnectorAccount, importConnectorItems, listConnectorAccounts, syncPreview } from "./connectors/accounts.js";
+import {
+  buildGoogleCalendarAuthUrl,
+  completeGoogleCalendarOAuth,
+  googleCalendarReadiness,
+  listStoredGoogleCalendarEvents,
+  syncGoogleCalendar,
+  syncGoogleCalendarPreview,
+} from "./connectors/google-calendar/sync.js";
 import { oauthNotEnabledResponse, oauthReadiness } from "./connectors/oauth/callback.js";
 import { recordConnectorConsentEvent } from "./connectors/oauth/consent.js";
 import { normalizeGmailMessage } from "./connectors/oauth/gmail.js";
 import { normalizeGoogleCalendarEvent } from "./connectors/oauth/google-calendar.js";
 import { enabledScopeStrings, scopesForProvider } from "./connectors/oauth/scopes.js";
 import { tokenVaultStatus } from "./connectors/oauth/token-vault.js";
+import { createTokenVault } from "./security/token-vault/provider.js";
 import { getConnectorManifest, listConnectorManifests } from "./connectors/registry.js";
 import { connectorIdSchema } from "./connectors/types.js";
 import { connectorPermissionSummary } from "./connectors/permissions.js";
@@ -168,9 +177,13 @@ const meetingRecapBody = z.object({
   title: z.string().nullable().optional(),
 });
 
+const googleCalendarSyncBody = z.object({
+  accountId: z.string().uuid().nullable().optional(),
+});
+
 export async function buildServer() {
   validateBootConfig();
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: config.NODE_ENV !== "test" && process.env.VITEST !== "true" });
   await app.register(websocket);
   app.addHook("onRequest", async (request, reply) => {
     applyOpsCors(request, reply);
@@ -616,6 +629,68 @@ export async function buildServer() {
     return reply.send({ connectors: listConnectorManifests() });
   });
 
+  app.get("/connectors/oauth/google-calendar/start", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const readiness = googleCalendarReadiness();
+    await recordConnectorConsentEvent({ userId, provider: "google_calendar", scopes: readiness.scopes, status: "shown" }).catch(() => null);
+    if (!readiness.enabled) {
+      return reply.send({
+        error: {
+          code: "oauth_not_configured",
+          message: "Google Calendar read-only OAuth is disabled until OAuth env and encrypted token vault are configured.",
+          missing: readiness.missing,
+        },
+        readiness,
+      });
+    }
+    return reply.send(await buildGoogleCalendarAuthUrl(userId));
+  });
+
+  app.get("/connectors/oauth/google-calendar/callback", async (request, reply) => {
+    const query = z.object({ code: z.string().min(1).optional(), state: z.string().min(1).optional(), error: z.string().optional() }).parse(request.query);
+    if (query.error) return reply.code(400).send({ error: { code: "oauth_denied", message: query.error } });
+    if (!query.code || !query.state) return reply.code(400).send({ error: { code: "oauth_callback_invalid", message: "Missing code or state." } });
+    const readiness = googleCalendarReadiness();
+    if (!readiness.enabled) {
+      return reply.send({
+        error: {
+          code: "oauth_not_configured",
+          message: "Google Calendar read-only OAuth is disabled until OAuth env and encrypted token vault are configured.",
+          missing: readiness.missing,
+        },
+        readiness,
+      });
+    }
+    const result = await completeGoogleCalendarOAuth(query.code, query.state);
+    return reply.send({ account: redactConnectorAccount(result.account), readiness });
+  });
+
+  app.post("/connectors/google-calendar/sync-preview", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = googleCalendarSyncBody.parse(request.body ?? {});
+    const preview = await syncGoogleCalendarPreview(userId, body.accountId ?? null);
+    if ("error" in preview) return reply.code(409).send(preview);
+    return reply.send({ ...preview, account: redactConnectorAccount(preview.account) });
+  });
+
+  app.post("/connectors/google-calendar/sync", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = googleCalendarSyncBody.parse(request.body ?? {});
+    const result = await syncGoogleCalendar(userId, body.accountId ?? null);
+    if ("error" in result) return reply.code(409).send(result);
+    return reply.send({ ...result, account: redactConnectorAccount(result.account) });
+  });
+
+  app.get("/connectors/google-calendar/events", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const events = await listStoredGoogleCalendarEvents(userId);
+    return reply.send({ events });
+  });
+
   app.get("/connectors/oauth/:provider/start", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -659,8 +734,12 @@ export async function buildServer() {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
     const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const before = await getOwnedConnectorAccount(userId, params.id);
     const account = await disconnectConnectorAccount(userId, params.id);
     if (!account) return reply.code(404).send({ error: "not found" });
+    if (before?.tokenRef?.startsWith("vault:")) {
+      await createTokenVault().delete({ userId, tokenRef: before.tokenRef }).catch(() => null);
+    }
     await recordConnectorConsentEvent({ userId, connectorAccountId: account.id, provider: account.provider, scopes: account.scopes, status: "revoked" }).catch(() => null);
     return reply.send({ account: redactConnectorAccount(account) });
   });

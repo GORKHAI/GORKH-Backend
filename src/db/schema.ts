@@ -1037,6 +1037,25 @@ export const connectorAccounts = pgTable(
   }),
 );
 
+export const connectorTokenVault = pgTable(
+  "connector_token_vault",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").$type<ConnectorProvider>().notNull(),
+    keyId: text("key_id").notNull(),
+    encryptedPayload: text("encrypted_payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("connector_token_vault_by_user").on(t.userId),
+    byUserProvider: index("connector_token_vault_by_user_provider").on(t.userId, t.provider),
+  }),
+);
+
 export const connectorConsentEvents = pgTable(
   "connector_consent_events",
   {
@@ -1181,6 +1200,7 @@ export type ActionProposal = typeof actionProposals.$inferSelect;
 export type ActionApproval = typeof actionApprovals.$inferSelect;
 export type ActionExecutionLog = typeof actionExecutionLogs.$inferSelect;
 export type ConnectorAccount = typeof connectorAccounts.$inferSelect;
+export type ConnectorTokenVaultRow = typeof connectorTokenVault.$inferSelect;
 export type ConnectorConsentEvent = typeof connectorConsentEvents.$inferSelect;
 export type ConnectorSyncRun = typeof connectorSyncRuns.$inferSelect;
 export type ConnectorItem = typeof connectorItems.$inferSelect;

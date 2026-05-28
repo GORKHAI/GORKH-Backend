@@ -12,9 +12,16 @@ export async function executeActionProposal(userId: string, proposalId: string):
   if (!proposal) throw new ActionPolicyError("not_found", "Action proposal not found");
   if (proposal.status !== "approved") throw new ActionPolicyError("approval_required", "Action proposal must be approved before execution");
   if (!isSafeInternalExecutable(proposal.actionType)) {
-    const log = await recordExecution(userId, proposalId, "blocked", null, "connector_not_configured");
+    const errorCode = proposal.actionType === "propose_calendar_event" ? "external_write_disabled" : "connector_not_configured";
+    const log = await recordExecution(userId, proposalId, "blocked", null, errorCode);
     await markProposal(userId, proposalId, "failed");
-    return { log, result: { code: "connector_not_configured", message: "External connector actions are disabled or not configured in v0." } };
+    return {
+      log,
+      result: {
+        code: errorCode,
+        message: proposal.actionType === "propose_calendar_event" ? "Google Calendar writes are disabled in v0. Only read-only sync and internal proposals are allowed." : "External connector actions are disabled or not configured in v0.",
+      },
+    };
   }
 
   try {

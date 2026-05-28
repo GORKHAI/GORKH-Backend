@@ -231,14 +231,18 @@
           <button data-action="connectorGet" class="button">Connector Detail</button>
           <button data-action="connectorPermissions" class="button">Connector Permissions</button>
           <button data-action="connectorOauthStart" class="button">OAuth Readiness</button>
+          <button data-action="googleCalendarOauthStart" class="button">Google Calendar Connect</button>
           <button data-action="connectorAccounts" class="button">Accounts</button>
           <button data-action="connectorAccountGet" class="button">Load Account</button>
           <button data-action="connectorFixtureImport" class="button">Import Fixture</button>
           <button data-action="connectorSyncPreview" class="button">Sync Preview</button>
+          <button data-action="googleCalendarSyncPreview" class="button">Calendar Sync Preview</button>
+          <button data-action="googleCalendarSync" class="button">Calendar Sync Now</button>
+          <button data-action="googleCalendarEvents" class="button">Calendar Events</button>
           <button data-action="connectorDisconnect" class="button danger">Disconnect</button>
           <button data-action="connectorConsentEvents" class="button">Consent Audit</button>
         </div>
-        <p class="hint">OAuth is readiness-only unless explicitly configured. Tokens are never shown here. Sending, calendar creation, browser login, form submission, payments, and arbitrary MCP execution are disabled.</p>
+        <p class="hint">Google Calendar is read-only. Tokens are never shown here. Sending, calendar creation, browser login, form submission, payments, and arbitrary MCP execution are disabled.</p>
         <pre id="connectorsOut"></pre>
       </section>
 

@@ -5,6 +5,7 @@ import { connectorPermissionSummary } from "../src/connectors/permissions.js";
 import { connectorConsentText } from "../src/connectors/oauth/consent.js";
 import { oauthReadiness } from "../src/connectors/oauth/callback.js";
 import { enabledScopeStrings, validateRequestedScopes } from "../src/connectors/oauth/scopes.js";
+import { GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE, validateGoogleCalendarScopes } from "../src/connectors/oauth/google-scopes.js";
 import { normalizeGoogleCalendarEvent } from "../src/connectors/oauth/google-calendar.js";
 import { normalizeGmailMessage } from "../src/connectors/oauth/gmail.js";
 import { assertNoRawToken, tokenVaultStatus } from "../src/connectors/oauth/token-vault.js";
@@ -72,8 +73,10 @@ describe("connector manifests and MCP policy", () => {
 
 describe("connector OAuth readiness", () => {
   it("registers least-privilege Google scopes", () => {
-    expect(enabledScopeStrings("google_calendar")).toContain("https://www.googleapis.com/auth/calendar.readonly");
+    expect(enabledScopeStrings("google_calendar")).toContain(GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE);
     expect(enabledScopeStrings("google_gmail")).toContain("https://www.googleapis.com/auth/gmail.metadata");
+    expect(validateGoogleCalendarScopes([GOOGLE_CALENDAR_EVENTS_READONLY_SCOPE]).ok).toBe(true);
+    expect(validateGoogleCalendarScopes(["https://www.googleapis.com/auth/calendar.events"]).ok).toBe(false);
     const validation = validateRequestedScopes("google_gmail", ["https://www.googleapis.com/auth/gmail.send"]);
     expect(validation.ok).toBe(false);
   });
@@ -88,12 +91,22 @@ describe("connector OAuth readiness", () => {
   it("does not allow raw token storage", () => {
     expect(tokenVaultStatus().rawTokenStorageAllowed).toBe(false);
     expect(() => assertNoRawToken({ access_token: "redacted-test-value" })).toThrow(/raw connector tokens/i);
+    expect(() => assertNoRawToken({ accessToken: "redacted-test-value" })).toThrow(/raw connector tokens/i);
   });
 
   it("normalizes fixture connector items without fake live data", () => {
-    const event = normalizeGoogleCalendarEvent({ id: "event-1", summary: "Bank meeting", start: { dateTime: "2026-06-01T09:00:00.000Z" } });
+    const event = normalizeGoogleCalendarEvent({
+      id: "event-1",
+      summary: "Bank meeting",
+      description: "Join https://meet.example/secret",
+      start: { dateTime: "2026-06-01T09:00:00.000Z" },
+      attendees: [{ email: "person@example.com" }],
+      hangoutLink: "https://meet.example/secret",
+    } as never);
     const message = normalizeGmailMessage({ id: "msg-1", subject: "Follow up", snippet: "Send documents" });
     expect(event.itemType).toBe("calendar_event");
+    expect(JSON.stringify(event)).not.toContain("person@example.com");
+    expect(JSON.stringify(event)).not.toContain("meet.example");
     expect(message.itemType).toBe("email_message");
   });
 

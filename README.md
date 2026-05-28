@@ -872,15 +872,52 @@ npm run actions:replay -- voice-draft-followup
 npm run actions:replay:all
 npm run connectors:replay -- scope-registry
 npm run connectors:replay -- oauth-readiness
+npm run connectors:replay -- google-calendar-oauth-not-configured
+npm run connectors:replay -- google-calendar-scope-policy
+npm run connectors:replay -- token-vault
 npm run connectors:replay -- calendar-fixture-import
+npm run connectors:replay -- calendar-fixture-sync
+npm run connectors:replay -- calendar-daily-brief
 npm run connectors:replay -- gmail-fixture-import
 npm run connectors:replay -- daily-brief-from-fixtures
 npm run connectors:replay -- action-preview-blocked
+npm run connectors:replay -- calendar-write-blocked
 npm run connectors:replay -- mcp-security
 npm run connectors:replay:all
 ```
 
 See `docs/actions/action-approval-engine.md`, `docs/actions/action-approval-hardening.md`, `docs/connectors/connector-manifest-layer.md`, `docs/connectors/oauth-readiness.md`, `docs/connectors/google-calendar-readonly-plan.md`, `docs/connectors/gmail-readonly-plan.md`, `docs/connectors/token-storage-policy.md`, `docs/connectors/mcp-ready-design.md`, `docs/connectors/mcp-security-policy.md`, and `docs/security/external-action-policy.md`.
+
+### Google Calendar Read-Only Connector
+
+Google Calendar v0 is read-only. It can connect through Google OAuth, store encrypted token material in the server-side token vault, sync normalized calendar events, and include those events in Daily Brief and meeting prep context. It cannot create, update, delete, move, or invite anyone to calendar events.
+
+Required env for live OAuth:
+
+```env
+GOOGLE_OAUTH_ENABLED=true
+GOOGLE_CALENDAR_READONLY_ENABLED=true
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_OAUTH_REDIRECT_URI=https://api.gorkh.com/connectors/oauth/google-calendar/callback
+TOKEN_VAULT_PROVIDER=encrypted_db
+TOKEN_VAULT_ENCRYPTION_KEY=<32-byte base64 or 64-char hex key>
+TOKEN_VAULT_KEY_ID=render-v1
+```
+
+Allowed scope in v0: `https://www.googleapis.com/auth/calendar.events.readonly`.
+
+Calendar routes:
+
+```text
+GET  /connectors/oauth/google-calendar/start
+GET  /connectors/oauth/google-calendar/callback
+POST /connectors/google-calendar/sync-preview
+POST /connectors/google-calendar/sync
+GET  /connectors/google-calendar/events
+```
+
+If OAuth or the token vault is not configured, routes return `oauth_not_configured` or `connector_not_connected`; no fake account or event is created. Brain Console exposes Calendar connect, sync preview, sync, events, and consent audit controls without exposing raw tokens.
 
 ### Intelligence Quality Layer
 

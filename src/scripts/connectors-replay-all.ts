@@ -1,6 +1,20 @@
 import { spawn } from "node:child_process";
 
-const scenarios = ["scope-registry", "oauth-readiness", "calendar-fixture-import", "gmail-fixture-import", "daily-brief-from-fixtures", "action-preview-blocked", "mcp-security"];
+const scenarios = [
+  "scope-registry",
+  "oauth-readiness",
+  "google-calendar-oauth-not-configured",
+  "google-calendar-scope-policy",
+  "token-vault",
+  "calendar-fixture-import",
+  "calendar-fixture-sync",
+  "calendar-daily-brief",
+  "gmail-fixture-import",
+  "daily-brief-from-fixtures",
+  "action-preview-blocked",
+  "calendar-write-blocked",
+  "mcp-security",
+];
 
 for (const scenario of scenarios) {
   console.log(`connectors:replay:${scenario}`);
