@@ -1,0 +1,193 @@
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* GORKH Brand Tokens */
+    --pitch-black: #111010;
+    --ledger-white: #fafafa;
+    --newsprint-gray: #e0dfdd;
+    --pure-white: #ffffff;
+    --ash-gray: #858484;
+    --neon-signal: #aeff00;
+    --cobalt-electric: #0eafff;
+    --border-muted: #cdcdcd;
+
+    /* shadcn overrides */
+    --background: 0 0% 6.7%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 6.7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 6.7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 6.7%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 98%;
+    --radius: 0px;
+
+    /* Cursor tracking */
+    --cursor-x: 50%;
+    --cursor-y: 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--pitch-black);
+    color: var(--pure-white);
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    cursor: none;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Hide default cursor on interactive elements */
+  a, button, [role="button"], input, textarea, select {
+    cursor: none;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--neon-signal);
+    color: var(--pitch-black);
+  }
+}
+
+@layer components {
+  /* Pill button style */
+  .pill-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 2rem;
+    border-radius: 9999px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+  }
+
+  .pill-button-primary {
+    background-color: var(--pure-white);
+    color: var(--pitch-black);
+    border-color: var(--pure-white);
+  }
+
+  .pill-button-primary:hover {
+    background-color: var(--neon-signal);
+    border-color: var(--neon-signal);
+    color: var(--pitch-black);
+  }
+
+  .pill-button-inverse {
+    background-color: var(--pitch-black);
+    color: var(--pure-white);
+    border-color: var(--pitch-black);
+  }
+
+  .pill-button-inverse:hover {
+    background-color: var(--pure-white);
+    color: var(--pitch-black);
+  }
+
+  .pill-button-outline {
+    background-color: transparent;
+    color: var(--pure-white);
+    border-color: var(--pure-white);
+  }
+
+  .pill-button-outline:hover {
+    background-color: var(--pure-white);
+    color: var(--pitch-black);
+  }
+
+  /* Terminal text style */
+  .terminal-text {
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ash-gray);
+  }
+
+  /* Section spacing */
+  .section-spacing {
+    padding-top: 20vh;
+    padding-bottom: 20vh;
+  }
+
+  /* Display typography */
+  .display-heading {
+    font-family: 'Geist', sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+}
+
+@layer utilities {
+  /* Mono font utility */
+  .font-mono {
+    font-family: 'Geist Mono', monospace;
+  }
+
+  /* Newsprint effect helpers */
+  .newsprint-texture-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    mask-image: radial-gradient(
+      circle 150px at var(--cursor-x) var(--cursor-y),
+      black 20%,
+      rgba(0, 0, 0, 0.85) 50%,
+      rgba(0, 0, 0, 0.4) 70%,
+      transparent 100%
+    );
+    -webkit-mask-image: radial-gradient(
+      circle 150px at var(--cursor-x) var(--cursor-y),
+      black 20%,
+      rgba(0, 0, 0, 0.85) 50%,
+      rgba(0, 0, 0, 0.4) 70%,
+      transparent 100%
+    );
+  }
+}

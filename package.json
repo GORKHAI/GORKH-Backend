@@ -89,7 +89,10 @@
     "infra:reset": "docker compose down -v && docker compose up -d",
     "check:infra": "tsx src/scripts/check-infra.ts",
     "dev:env": "tsx src/scripts/dev-env.ts",
-    "setup:local": "npm run dev:env && npm run infra:up && tsx src/scripts/wait-infra.ts && npm run db:push && npm run check:infra"
+    "setup:local": "npm run dev:env && npm run infra:up && tsx src/scripts/wait-infra.ts && npm run db:push && npm run check:infra",
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "web:lint": "npm --prefix apps/web run lint"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
