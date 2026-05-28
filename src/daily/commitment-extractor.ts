@@ -5,11 +5,11 @@ import type { BufferedSegment } from "../redis.js";
 import { sensitivityForDailyText, type CommitmentExtractionInput, type ProposedCommitment } from "./types.js";
 
 const commitmentPatterns = [
+  /\b(?:waiting on|waiting for)\s+(.+?)(?:[.!?]|$)/gi,
   /\b(?:i will|i'll|i need to|i have to|i should|remember i need to)\s+(.+?)(?:[.!?]|$)/gi,
   /\bwe agreed\s+(?:to|that)\s+(.+?)(?:[.!?]|$)/gi,
   /\b(?:send|share|provide|upload|bring|prepare|confirm|follow up)\s+(.+?)(?:[.!?]|$)/gi,
   /\b(?:the doctor said|the bank asked for|client asked me to)\s+(.+?)(?:[.!?]|$)/gi,
-  /\b(?:waiting on|waiting for)\s+(.+?)(?:[.!?]|$)/gi,
 ];
 
 export function extractCommitmentsFromText(input: CommitmentExtractionInput): ProposedCommitment[] {
@@ -33,6 +33,11 @@ export function extractCommitmentsFromText(input: CommitmentExtractionInput): Pr
         dueAt,
         confidence: confidenceFor(match[0] ?? "", dueAt),
         sensitivity,
+        dedupeKey: commitmentDedupeKey(toTitle(raw), dueAt, inferCounterparty(text)),
+        whySuggested: `Detected phrase: "${truncate(match[0] ?? raw, 160)}"`,
+        sourceQuote: truncate(match[0] ?? text, 240),
+        extractionConfidence: confidenceFor(match[0] ?? "", dueAt),
+        reviewReason: "Review before accepting; extracted commitments are proposed only.",
       });
     }
   }
@@ -76,10 +81,23 @@ export async function proposeCommitmentsFromSavedSession(args: {
       status: "proposed" as const,
       confidence: commitment.confidence,
       sensitivity: commitment.sensitivity,
+      dedupeKey: commitment.dedupeKey ?? null,
+      whySuggested: commitment.whySuggested ?? null,
+      sourceQuote: commitment.sourceQuote ?? null,
+      extractionConfidence: commitment.extractionConfidence ?? commitment.confidence,
+      duplicateOfId: commitment.duplicateOfId ?? null,
+      reviewReason: commitment.reviewReason ?? null,
     })),
   );
   if (values.length === 0) return [];
-  return db.insert(commitments).values(values).returning();
+  const existing = await db
+    .select({ dedupeKey: commitments.dedupeKey })
+    .from(commitments)
+    .where(and(eq(commitments.userId, args.userId), eq(commitments.sessionId, args.sessionId)));
+  const existingKeys = new Set(existing.map((row) => row.dedupeKey).filter(Boolean));
+  const unique = values.filter((value) => !value.dedupeKey || !existingKeys.has(value.dedupeKey));
+  if (unique.length === 0) return [];
+  return db.insert(commitments).values(unique).returning();
 }
 
 export function transcriptToBufferedSegments(rows: Array<{ speaker: string; text: string; offsetMs: number; confidence: number | null; createdAt: Date }>): BufferedSegment[] {
@@ -175,9 +193,21 @@ function nextWeekday(now: Date, weekday: string): Date {
 function dedupeCommitments(values: ProposedCommitment[]): ProposedCommitment[] {
   const seen = new Set<string>();
   return values.filter((value) => {
-    const key = `${value.title.toLowerCase()}|${value.dueAt?.toISOString() ?? ""}`;
+    const title = value.title.toLowerCase().replace(/^(the|a|an)\s+/, "");
+    const key = `${title}|${value.dueAt?.toISOString().slice(0, 10) ?? ""}|${value.counterparty ?? ""}`;
+    const broaderKey = [...seen].find((candidate) => candidate.includes(title) || key.includes(candidate.split("|")[0] ?? ""));
+    if (broaderKey) return false;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function commitmentDedupeKey(title: string, dueAt: Date | null, counterparty: string | null): string {
+  return [title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), dueAt?.toISOString().slice(0, 10) ?? "no-date", counterparty ?? "none"].join("|");
+}
+
+function truncate(text: string, max: number): string {
+  const value = normalizeSpaces(text);
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }

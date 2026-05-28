@@ -42,6 +42,7 @@ async function main(): Promise<void> {
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       ...(name === "open-ended-bank" ? { policy: "conversation_agent" } : {}),
       situationBriefId: situation.situationBrief.id,
       title: `LLM replay ${name}`,

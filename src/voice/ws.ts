@@ -23,10 +23,12 @@ import { startSession, stopSession } from "../session/manager.js";
 import { getOwnedSituationBrief } from "../situation/brief.js";
 import { classifySegment, type TriggerEvent } from "../trigger/classifier.js";
 import { proposeProfileFactsFromText } from "../human/profile.js";
+import { decideProfileMutation } from "../human/profile-mutation-gate.js";
 import { detectResearchNeed } from "../research/need-detector.js";
 import { getPlaybooks } from "../situation/playbooks.js";
 import { cancelSubagentsForSession, getOwnedSubagentReport } from "../subagents/scheduler.js";
 import { startResearchSubagent } from "../subagents/orchestrator.js";
+import { validateVoiceProtocolVersion, VOICE_PROTOCOL_VERSION } from "../protocol/mobile-contract.js";
 import { answerVoiceUserText } from "./agent.js";
 import { enforceCueForPolicy } from "./policy.js";
 import { createTtsProvider } from "./tts.js";
@@ -35,6 +37,7 @@ import { VoiceStateMachine } from "./state.js";
 import { logBrainAuditEvent } from "../brain/audit.js";
 import { evaluateCueQuality } from "../evaluation/cue-quality.js";
 import { persistEvaluation } from "../evaluation/research-quality.js";
+import { recordVoiceLatencyEvent } from "./latency.js";
 
 interface VoiceLiveSession {
   sessionId: string;
@@ -99,6 +102,19 @@ export function handleVoiceConnection(socket: WebSocket, userId: string): void {
     const msg = parsed.data;
 
     if (msg.type === "start") {
+      const protocol = validateVoiceProtocolVersion(msg.protocolVersion);
+      if (!protocol.ok && protocol.error) {
+        emit({ type: "error", stage: "protocol", ...protocol.error });
+        return;
+      }
+      if (protocol.warning) {
+        emit({
+          type: "voice_warning",
+          code: protocol.warning,
+          message: "Start message omitted protocolVersion; protocolVersion=1 is currently assumed.",
+          details: { serverProtocolVersion: VOICE_PROTOCOL_VERSION },
+        });
+      }
       if (session) {
         emit({ type: "error", stage: "start", message: "voice session already started" });
         return;
@@ -154,6 +170,8 @@ export function handleVoiceConnection(socket: WebSocket, userId: string): void {
       live.set(sessionId, session);
       emit({
         type: "voice_ack",
+        protocolVersion: msg.protocolVersion ?? VOICE_PROTOCOL_VERSION,
+        serverProtocolVersion: VOICE_PROTOCOL_VERSION,
         sessionId,
         voiceSessionId: voice.id,
         situationBriefId: base.situationBriefId,
@@ -196,6 +214,13 @@ export function handleVoiceConnection(socket: WebSocket, userId: string): void {
       return;
     }
     if (msg.type === "speech_started") {
+      await recordVoiceLatencyEvent({
+        userId: session.userId,
+        sessionId: session.sessionId,
+        eventType: "client_speech_started",
+        speechId: msg.speechId ?? session.state.currentSpeechId ?? null,
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+      });
       await cancelSpeech(session, "barge_in");
       return;
     }
@@ -226,7 +251,17 @@ async function handleUserText(session: VoiceLiveSession, text: string): Promise<
     eventType: "user_text",
     payload: { chars: text.length, policy: session.policy },
   }).catch(() => null);
-  await proposeProfileFactsFromText({ userId: session.userId, text, sessionId: session.sessionId }).catch(() => []);
+  const profileMutation = decideProfileMutation({ text, allowProfileMutation: true, rememberMode: "explicit_only" });
+  if (profileMutation.allowed) {
+    await proposeProfileFactsFromText({ userId: session.userId, text, sessionId: session.sessionId }).catch(() => []);
+  } else if (profileMutation.explicit) {
+    session.emit({
+      type: "voice_warning",
+      code: "profile_mutation_not_allowed",
+      message: "Profile mutation was not allowed for this turn.",
+      details: { rememberMode: "explicit_only" },
+    });
+  }
   await transition(session, "thinking");
   const generation = session.generation;
   const researchNeed = detectResearchNeed({ text, internalType: session.internalType, livePolicy: session.policy });
@@ -267,6 +302,13 @@ async function produceAgentAnswer(session: VoiceLiveSession, text: string, gener
   }
   const responseText = result.text ?? "";
   const speechId = randomUUID();
+  await recordVoiceLatencyEvent({
+    userId: session.userId,
+    sessionId: session.sessionId,
+    eventType: "assistant_text_generated",
+    speechId,
+    metadata: { chars: responseText.length },
+  });
   await persistTurn(session, "assistant", "text", responseText, { speechId });
   await persistOutput(session, "assistant_text", speechId, responseText, "emitted");
   await logBrainAuditEvent({
@@ -289,6 +331,13 @@ async function ingestVoiceTranscript(session: VoiceLiveSession, seg: BufferedSeg
     isFinal: true,
     offsetMs: seg.offsetMs,
     confidence: seg.confidence ?? null,
+  });
+  await recordVoiceLatencyEvent({
+    userId: session.userId,
+    sessionId: session.sessionId,
+    eventType: "transcript_received",
+    timestamp: new Date(transcriptReceivedAt),
+    metadata: { speaker: seg.speaker, offsetMs: seg.offsetMs },
   });
   await persistTurn(session, "user", "transcript", seg.text, { speaker: seg.speaker, offsetMs: seg.offsetMs });
   await pushSegment(session.sessionId, seg);
@@ -319,6 +368,14 @@ async function ingestVoiceTranscript(session: VoiceLiveSession, seg: BufferedSeg
   await persistTurn(session, "cue", "cue", cue.spokenCue, { triggers });
   await persistOutput(session, "cue", speechId, cue.spokenCue, "emitted", { cue });
   const cueEmittedAt = Date.now();
+  await recordVoiceLatencyEvent({
+    userId: session.userId,
+    sessionId: session.sessionId,
+    eventType: "cue_generated",
+    speechId,
+    timestamp: new Date(cueEmittedAt),
+    metadata: { source: "deterministic", delivery: cue.delivery },
+  });
   await persistEvaluation({
     userId: session.userId,
     sessionId: session.sessionId,
@@ -354,6 +411,13 @@ async function startVoiceResearchSubagent(session: VoiceLiveSession, query: stri
     },
   });
   if (!(await canWrite(session, generation))) return;
+  await recordVoiceLatencyEvent({
+    userId: session.userId,
+    sessionId: session.sessionId,
+    eventType: "subagent_started",
+    speechId: task.id,
+    metadata: { kind: task.kind, liveDelivery },
+  });
   session.emit({ type: "voice_subagent_started", taskId: task.id, kind: task.kind, title: "Checking sources" });
   void watchSubagentReport(session, generation, task.id, task.kind, liveDelivery);
 }
@@ -401,12 +465,23 @@ async function emitSubagentReport(
   const report = await getOwnedSubagentReport(session.userId, taskId);
   if (!report || !(await canWrite(session, generation))) return false;
   session.emittedSubagentReports.add(taskId);
+  await recordVoiceLatencyEvent({
+    userId: session.userId,
+    sessionId: session.sessionId,
+    eventType: "subagent_report",
+    speechId: taskId,
+    metadata: { kind, status: report.status },
+  });
   const payload = {
     title: report.title,
     summary: report.summary,
     findings: report.findings as never,
     safetyNotes: report.safetyNotes as never,
     providerStatus: report.providerStatus as never,
+    researchQueryId: report.researchQueryId,
+    researchAnswerId: report.researchAnswerId,
+    sourceIds: report.sourceIds,
+    citationQualityScore: report.citationQualityScore,
   };
   if (report.status === "failed") {
     session.emit({ type: "voice_subagent_failed", taskId, kind, message: report.recommendedMainAgentMessage ?? report.summary });
@@ -436,6 +511,13 @@ async function maybeSpeak(session: VoiceLiveSession, speechId: string, text: str
   for (const event of provider.requestSpeech({ speechId, text, delivery })) {
     if (!(await canWrite(session, session.generation))) return;
     if (event.type === "voice_speak_request") {
+      await recordVoiceLatencyEvent({
+        userId: session.userId,
+        sessionId: session.sessionId,
+        eventType: "gateway_instruction",
+        speechId: event.speechId,
+        metadata: { delivery: event.delivery },
+      });
       await persistOutput(session, "speak_request", event.speechId, event.text, "emitted", { delivery: event.delivery });
       await db.update(voiceSessions).set({ currentSpeechId: speechId, updatedAt: new Date() }).where(eq(voiceSessions.sessionId, session.sessionId));
       session.state.startSpeech(speechId);

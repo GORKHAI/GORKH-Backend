@@ -152,6 +152,7 @@ async function runVoiceSession(token: string, save: boolean, transcript: string)
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       policy: "whisper_copilot",
       situationDescription: "I am talking with a bank about a loan.",
       consent: { granted: true, method: "user_tap", noticeText: "Live Assist is active.", participantCount: 2 },
@@ -176,6 +177,7 @@ async function runVoiceQuestion(token: string, text: string) {
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       policy: "conversation_agent",
       situationDescription: "Daily planning.",
       consent: { granted: true, method: "user_tap", noticeText: "Live Assist is active.", participantCount: 1 },

@@ -14,11 +14,25 @@ export function proposeTaskFromCommitment(commitment: Commitment): TaskProposal 
     context: contextForCommitment(commitment),
     blockedBy: commitment.owner && !["me", "we"].includes(commitment.owner) ? commitment.owner : null,
     nextStep: nextStepForCommitment(commitment),
+    dedupeKey: commitment.dedupeKey ? `task|${commitment.dedupeKey}` : `task|${commitment.id}`,
+    whySuggested: commitment.whySuggested ?? "Created from a proposed commitment.",
+    sourceQuote: commitment.sourceQuote ?? commitment.detail ?? null,
+    extractionConfidence: commitment.extractionConfidence ?? commitment.confidence,
+    duplicateOfId: commitment.duplicateOfId ?? null,
+    reviewReason: "Accept before treating this as an active task.",
   };
 }
 
 export async function createTaskFromCommitment(commitment: Commitment): Promise<TaskItem> {
   const proposal = proposeTaskFromCommitment(commitment);
+  if (proposal.dedupeKey) {
+    const [existing] = await db
+      .select()
+      .from(taskItems)
+      .where(and(eq(taskItems.userId, commitment.userId), eq(taskItems.dedupeKey, proposal.dedupeKey)))
+      .limit(1);
+    if (existing) return existing;
+  }
   const [row] = await db
     .insert(taskItems)
     .values({
@@ -36,6 +50,12 @@ export async function createTaskFromCommitment(commitment: Commitment): Promise<
       context: proposal.context ?? null,
       blockedBy: proposal.blockedBy ?? null,
       nextStep: proposal.nextStep ?? null,
+      dedupeKey: proposal.dedupeKey ?? null,
+      whySuggested: proposal.whySuggested ?? null,
+      sourceQuote: proposal.sourceQuote ?? null,
+      extractionConfidence: proposal.extractionConfidence ?? null,
+      duplicateOfId: proposal.duplicateOfId ?? null,
+      reviewReason: proposal.reviewReason ?? null,
     })
     .returning();
   if (!row) throw new Error("failed to propose task");

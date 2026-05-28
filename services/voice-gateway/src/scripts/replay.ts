@@ -97,6 +97,7 @@ async function main(): Promise<void> {
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       policy: fixture.policy,
       situationBriefId: situation.situationBrief.id,
       situationDescription: fixture.description,

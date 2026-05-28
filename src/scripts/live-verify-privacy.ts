@@ -18,6 +18,7 @@ const checks = [
     ws.send(
       JSON.stringify({
         type: "start",
+        protocolVersion: 1,
         policy: "whisper_copilot",
         situationDescription: "I am talking with a bank about a loan",
         title: "Privacy smoke",

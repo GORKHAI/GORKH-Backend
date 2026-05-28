@@ -93,6 +93,7 @@ async function runVoiceDraftFollowup(token: string) {
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       policy: "conversation_agent",
       situationDescription: "I met a client about pricing.",
       consent: { granted: true, method: "user_tap", noticeText: "Live Assist is active.", participantCount: 1 },

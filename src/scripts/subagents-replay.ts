@@ -226,6 +226,7 @@ async function runVoiceResearch(base: string, wsBase: string, token: string, pol
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       policy,
       situationBriefId: situation.situationBrief.id,
       title: "Subagent voice replay",

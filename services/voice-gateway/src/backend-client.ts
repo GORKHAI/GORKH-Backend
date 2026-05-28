@@ -43,6 +43,7 @@ export class BackendVoiceClient extends EventEmitter<BackendClientEvents> {
     ws.send(
       JSON.stringify({
         type: "start",
+        protocolVersion: start.protocolVersion ?? 1,
         policy: start.policy,
         situationBriefId: start.situationBriefId,
         situationDescription: start.situationDescription,
@@ -64,8 +65,8 @@ export class BackendVoiceClient extends EventEmitter<BackendClientEvents> {
     this.send({ type: "transcript", speaker: segment.speaker, text: segment.text, offsetMs: segment.offsetMs ?? 0 });
   }
 
-  sendSpeechStarted(): void {
-    this.send({ type: "speech_started" });
+  sendSpeechStarted(event?: { speechId?: string; timestamp?: string }): void {
+    this.send({ type: "speech_started", speechId: event?.speechId, timestamp: event?.timestamp });
   }
 
   sendSpeechEnded(): void {

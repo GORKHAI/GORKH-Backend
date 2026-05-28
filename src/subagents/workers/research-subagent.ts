@@ -1,5 +1,8 @@
 import { config } from "../../config.js";
+import { db } from "../../db/client.js";
+import { researchAnswers, researchQueries, researchSources } from "../../db/schema.js";
 import { persistEvaluation } from "../../evaluation/research-quality.js";
+import { assertGovernorBudgetAvailable, GovernorBudgetExceededError, recordProviderUsage } from "../../governor/budget.js";
 import { createSearchProvider, researchProviderStatus } from "../../research/provider.js";
 import { detectResearchNeed } from "../../research/need-detector.js";
 import { ResearchProviderError } from "../../research/types.js";
@@ -33,12 +36,22 @@ export async function runResearchSubagent(task: SubagentTask, context: SubagentW
   }
   try {
     await context.emitProgress("Searching public sources...");
+    if (status.configured) await assertGovernorBudgetAvailable(task.userId, "research");
     const provider = (context.createSearchProvider ?? createSearchProvider)();
+    const startedAt = Date.now();
     const results = await provider.search({
       query: decision.suggestedQuery ?? plan.normalizedQuery,
       maxResults: plan.maxResults,
       signal: context.signal,
     });
+    await recordProviderUsage({
+      userId: task.userId,
+      sessionId: task.sessionId ?? null,
+      provider: provider.name,
+      operation: "research.search",
+      latencyMs: Date.now() - startedAt,
+      status: "completed",
+    }).catch(() => null);
     if (context.signal.aborted) throw new Error("subagent task canceled");
     const sources = results.map((result) => ({
       ...result,
@@ -47,6 +60,53 @@ export async function runResearchSubagent(task: SubagentTask, context: SubagentW
     }));
     await context.emitProgress(`Verified ${sources.length} source result(s).`);
     const sourceQuality = scoreResearchSources(sources, plan.domain);
+    const [queryRow] = await db
+      .insert(researchQueries)
+      .values({
+        userId: task.userId,
+        sessionId: task.sessionId ?? null,
+        situationBriefId: task.situationBriefId ?? null,
+        query: input.query,
+        normalizedQuery: plan.normalizedQuery.toLowerCase(),
+        intent: decision.researchKind,
+        provider: provider.name,
+        status: "completed",
+        requiresFreshness: plan.requiresFreshness,
+        completedAt: new Date(),
+      })
+      .returning();
+    const sourceRows = queryRow && sources.length > 0
+      ? await db
+          .insert(researchSources)
+          .values(
+            sources.map((source) => ({
+              queryId: queryRow.id,
+              url: source.url,
+              title: source.title,
+              sourceType: source.sourceType ?? "unknown",
+              publishedAt: source.publishedAt ? new Date(source.publishedAt) : null,
+              fetchedAt: new Date(),
+              snippet: source.snippet ?? null,
+              extractedText: null,
+              credibilityScore: source.credibilityScore ?? null,
+            })),
+          )
+          .returning()
+      : [];
+    const citations = sourceRows.map((source) => ({ title: source.title ?? source.url, url: source.url, sourceId: source.id }));
+    const [answerRow] =
+      queryRow && sourceRows.length > 0
+        ? await db
+            .insert(researchAnswers)
+            .values({
+              queryId: queryRow.id,
+              answer: sources.length > 0 ? `Found ${sources.length} public source result(s). Review source snippets and limitations before acting.` : "No public source results were returned.",
+              citations,
+              confidence: Math.max(0, Math.min(1, sourceQuality.averageCredibility)),
+              limitations: sourceQuality.warnings.join("; ") || "Use sources as background context only; do not treat this as final professional advice.",
+            })
+            .returning()
+        : [];
     await persistEvaluation({
       userId: task.userId,
       sessionId: task.sessionId ?? null,
@@ -78,9 +138,19 @@ export async function runResearchSubagent(task: SubagentTask, context: SubagentW
           : "I found sources. Ask whether fees are included in APR and request total repayment in writing.",
       safetyNotes: ["Do not make final financial, legal, or medical decisions from this report alone."],
       providerStatus: { provider: provider.name, configured: true },
+      researchQueryId: queryRow?.id ?? null,
+      researchAnswerId: answerRow?.id ?? null,
+      sourceIds: sourceRows.map((source) => source.id),
+      citationQualityScore: Math.max(0, Math.min(1, sourceQuality.averageCredibility)),
+      provider: provider.name,
+      query: input.query,
+      generatedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
   } catch (err) {
+    if (err instanceof GovernorBudgetExceededError) {
+      return failed(task, "Research daily request budget is exhausted.", status.selected, status.configured, "budget_exceeded");
+    }
     if (err instanceof ResearchProviderError || /configured/i.test((err as Error).message)) {
       return failed(task, "Research provider is not configured.", status.selected, false, "provider_not_configured");
     }

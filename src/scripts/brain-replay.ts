@@ -317,6 +317,7 @@ async function runVoicePrep(wsBase: string, token: string): Promise<string> {
   await waitOpen(ws);
   ws.send(JSON.stringify({
     type: "start",
+    protocolVersion: 1,
     policy: "conversation_agent",
     situationDescription: "I am going to the bank to discuss a loan",
     title: "Bank prep",
@@ -343,6 +344,7 @@ async function runVoicePrep(wsBase: string, token: string): Promise<string> {
 function startMessage(situationDescription: string) {
   return {
     type: "start",
+    protocolVersion: 1,
     situationDescription,
     consent: {
       granted: true,

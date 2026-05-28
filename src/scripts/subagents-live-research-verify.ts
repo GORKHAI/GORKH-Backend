@@ -1,4 +1,6 @@
 import { config } from "../config.js";
+import { db } from "../db/client.js";
+import { users } from "../db/schema.js";
 import { researchProviderStatus } from "../research/provider.js";
 import { runResearchSubagent } from "../subagents/workers/research-subagent.js";
 import type { SubagentTask } from "../subagents/types.js";
@@ -25,7 +27,8 @@ if (!status.configured) {
 }
 
 const controller = new AbortController();
-const report = await runResearchSubagent(task(name), {
+const user = await ensureSmokeUser(name);
+const report = await runResearchSubagent(task(name, user.id), {
   signal: controller.signal,
   emitProgress: async (message) => console.log(`subagents:live-research:verify:${name}: ${message}`),
 });
@@ -37,11 +40,21 @@ for (const citation of citations) {
 }
 console.log(`subagents:live-research:verify:${name}: source-backed subagent report validated with ${citations.length} citation(s).`);
 
-function task(name: ScenarioName): SubagentTask {
+async function ensureSmokeUser(name: ScenarioName): Promise<{ id: string }> {
+  const email = `subagent-live-${name}@gorkh.dev`;
+  const [user] = await db
+    .insert(users)
+    .values({ email, displayName: "Subagent Live Research Verify" })
+    .onConflictDoUpdate({ target: users.email, set: { displayName: "Subagent Live Research Verify" } })
+    .returning({ id: users.id });
+  return user;
+}
+
+function task(name: ScenarioName, userId: string): SubagentTask {
   const scenario = scenarios[name];
   return {
     id: "00000000-0000-0000-0000-000000000101",
-    userId: "00000000-0000-0000-0000-000000000102",
+    userId,
     kind: "research",
     trigger: "user_request",
     priority: "normal",

@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { researchAnswers, researchQueries, researchSources, situationBriefs } from "../db/schema.js";
 import { proposeProfileFactsFromText, summarizeHumanContext } from "../human/profile.js";
+import { decideProfileMutation } from "../human/profile-mutation-gate.js";
 import { createSearchProvider } from "../research/provider.js";
 import { ResearchProviderError } from "../research/types.js";
 import { detectResearchNeed } from "../research/need-detector.js";
@@ -19,7 +20,14 @@ import { logBrainAuditEvent } from "./audit.js";
 import type { BrainQueryInput, BrainQueryResult } from "./types.js";
 
 export async function answerBrainQuery(input: BrainQueryInput): Promise<BrainQueryResult> {
-  await proposeProfileFactsFromText({ userId: input.userId, text: input.text, sessionId: input.sessionId ?? null }).catch(() => []);
+  const profileMutation = decideProfileMutation({
+    text: input.text,
+    allowProfileMutation: input.allowProfileMutation,
+    rememberMode: input.rememberMode ?? "explicit_only",
+  });
+  if (profileMutation.allowed) {
+    await proposeProfileFactsFromText({ userId: input.userId, text: input.text, sessionId: input.sessionId ?? null }).catch(() => []);
+  }
   const profile = input.allowProfileContext === false ? null : await summarizeHumanContext(input.userId);
   const situation = input.situationBriefId ? await getSituation(input.userId, input.situationBriefId) : null;
   const internalType = situation?.inferredType ?? buildSituationBrief({ description: input.text }).inferredType;

@@ -374,8 +374,23 @@ export async function runMigration(): Promise<void> {
         recommended_main_agent_message text,
         safety_notes jsonb NOT NULL,
         provider_status jsonb,
+        research_query_id uuid REFERENCES research_queries(id) ON DELETE SET NULL,
+        research_answer_id uuid REFERENCES research_answers(id) ON DELETE SET NULL,
+        source_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+        citation_quality_score real,
+        provider text,
+        query text,
+        generated_at timestamptz,
         created_at timestamptz NOT NULL DEFAULT now()
       );
+
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS research_query_id uuid REFERENCES research_queries(id) ON DELETE SET NULL;
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS research_answer_id uuid REFERENCES research_answers(id) ON DELETE SET NULL;
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS source_ids jsonb NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS citation_quality_score real;
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS provider text;
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS query text;
+      ALTER TABLE subagent_reports ADD COLUMN IF NOT EXISTS generated_at timestamptz;
 
       CREATE TABLE IF NOT EXISTS subagent_events (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -427,6 +442,12 @@ export async function runMigration(): Promise<void> {
         status text NOT NULL,
         confidence real NOT NULL,
         sensitivity text NOT NULL DEFAULT 'low',
+        dedupe_key text,
+        why_suggested text,
+        source_quote text,
+        extraction_confidence real,
+        duplicate_of_id uuid,
+        review_reason text,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       );
@@ -447,6 +468,12 @@ export async function runMigration(): Promise<void> {
         context text,
         blocked_by text,
         next_step text,
+        dedupe_key text,
+        why_suggested text,
+        source_quote text,
+        extraction_confidence real,
+        duplicate_of_id uuid,
+        review_reason text,
         suggested_at timestamptz NOT NULL DEFAULT now(),
         accepted_at timestamptz,
         completed_at timestamptz,
@@ -645,6 +672,31 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS mobile_notifications (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        session_id uuid REFERENCES sessions(id) ON DELETE SET NULL,
+        type text NOT NULL,
+        title text NOT NULL,
+        body text,
+        payload jsonb NOT NULL,
+        priority text NOT NULL,
+        read_at timestamptz,
+        acknowledged_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS voice_latency_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        session_id uuid NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        event_type text NOT NULL,
+        speech_id text,
+        timestamp timestamptz NOT NULL,
+        metadata jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE INDEX IF NOT EXISTS transcript_by_session ON transcript_segments(session_id);
       CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS situation_briefs_by_user ON situation_briefs(user_id);
@@ -723,6 +775,10 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS evaluation_events_by_target ON evaluation_events(target_type, target_id);
       CREATE INDEX IF NOT EXISTS provider_usage_events_by_user ON provider_usage_events(user_id);
       CREATE INDEX IF NOT EXISTS provider_usage_events_by_provider ON provider_usage_events(provider);
+      CREATE INDEX IF NOT EXISTS mobile_notifications_by_user_created ON mobile_notifications(user_id, created_at);
+      CREATE INDEX IF NOT EXISTS mobile_notifications_by_session ON mobile_notifications(session_id);
+      CREATE INDEX IF NOT EXISTS voice_latency_events_by_session ON voice_latency_events(session_id);
+      CREATE INDEX IF NOT EXISTS voice_latency_events_by_user ON voice_latency_events(user_id);
     `);
 
     await pool.query(`
@@ -730,6 +786,18 @@ export async function runMigration(): Promise<void> {
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS context text;
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS blocked_by text;
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS next_step text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS dedupe_key text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS why_suggested text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS source_quote text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS extraction_confidence real;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS duplicate_of_id uuid;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS review_reason text;
+      ALTER TABLE commitments ADD COLUMN IF NOT EXISTS dedupe_key text;
+      ALTER TABLE commitments ADD COLUMN IF NOT EXISTS why_suggested text;
+      ALTER TABLE commitments ADD COLUMN IF NOT EXISTS source_quote text;
+      ALTER TABLE commitments ADD COLUMN IF NOT EXISTS extraction_confidence real;
+      ALTER TABLE commitments ADD COLUMN IF NOT EXISTS duplicate_of_id uuid;
+      ALTER TABLE commitments ADD COLUMN IF NOT EXISTS review_reason text;
       ALTER TABLE followup_suggestions ADD COLUMN IF NOT EXISTS due_at timestamptz;
       ALTER TABLE followup_suggestions ADD COLUMN IF NOT EXISTS channel text;
     `);

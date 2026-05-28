@@ -44,6 +44,8 @@
     "connectors:live": "tsx src/scripts/connectors-live.ts",
     "quality:replay": "tsx src/scripts/quality-replay.ts",
     "quality:replay:all": "tsx src/scripts/quality-replay-all.ts",
+    "mobile:replay": "tsx src/scripts/mobile-replay.ts",
+    "mobile:replay:all": "tsx src/scripts/mobile-replay-all.ts",
     "research:check": "tsx src/scripts/research-check.ts",
     "research:replay": "tsx src/scripts/research-replay.ts",
     "research:replay:all": "tsx src/scripts/research-replay-all.ts",

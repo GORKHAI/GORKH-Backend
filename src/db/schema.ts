@@ -119,6 +119,7 @@ export type ConnectorAccountStatus = "oauth_not_enabled" | "pending" | "connecte
 export type ConnectorConsentStatus = "shown" | "accepted" | "revoked" | "denied";
 export type ConnectorSyncStatus = "previewed" | "completed" | "failed" | "skipped";
 export type ConnectorItemType = "calendar_event" | "email_thread" | "email_message" | "task" | "document";
+export type MobileNotificationPriority = "low" | "normal" | "high" | "urgent";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -750,6 +751,13 @@ export const subagentReports = pgTable(
     recommendedMainAgentMessage: text("recommended_main_agent_message"),
     safetyNotes: jsonb("safety_notes").notNull(),
     providerStatus: jsonb("provider_status"),
+    researchQueryId: uuid("research_query_id").references(() => researchQueries.id, { onDelete: "set null" }),
+    researchAnswerId: uuid("research_answer_id").references(() => researchAnswers.id, { onDelete: "set null" }),
+    sourceIds: jsonb("source_ids").$type<string[]>().notNull().default([]),
+    citationQualityScore: real("citation_quality_score"),
+    provider: text("provider"),
+    query: text("query"),
+    generatedAt: timestamp("generated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -796,6 +804,12 @@ export const commitments = pgTable(
     status: text("status").$type<CommitmentStatus>().notNull(),
     confidence: real("confidence").notNull(),
     sensitivity: text("sensitivity").$type<Sensitivity>().notNull().default("low"),
+    dedupeKey: text("dedupe_key"),
+    whySuggested: text("why_suggested"),
+    sourceQuote: text("source_quote"),
+    extractionConfidence: real("extraction_confidence"),
+    duplicateOfId: uuid("duplicate_of_id"),
+    reviewReason: text("review_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -826,6 +840,12 @@ export const taskItems = pgTable(
     context: text("context"),
     blockedBy: text("blocked_by"),
     nextStep: text("next_step"),
+    dedupeKey: text("dedupe_key"),
+    whySuggested: text("why_suggested"),
+    sourceQuote: text("source_quote"),
+    extractionConfidence: real("extraction_confidence"),
+    duplicateOfId: uuid("duplicate_of_id"),
+    reviewReason: text("review_reason"),
     suggestedAt: timestamp("suggested_at", { withTimezone: true }).notNull().defaultNow(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -1173,6 +1193,51 @@ export const providerUsageEvents = pgTable(
   }),
 );
 
+export const mobileNotifications = pgTable(
+  "mobile_notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    payload: jsonb("payload").notNull(),
+    priority: text("priority").$type<MobileNotificationPriority>().notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserCreated: index("mobile_notifications_by_user_created").on(t.userId, t.createdAt),
+    bySession: index("mobile_notifications_by_session").on(t.sessionId),
+  }),
+);
+
+export const voiceLatencyEvents = pgTable(
+  "voice_latency_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(),
+    speechId: text("speech_id"),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    bySession: index("voice_latency_events_by_session").on(t.sessionId),
+    byUser: index("voice_latency_events_by_user").on(t.userId),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type SituationBrief = typeof situationBriefs.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -1206,3 +1271,5 @@ export type ConnectorSyncRun = typeof connectorSyncRuns.$inferSelect;
 export type ConnectorItem = typeof connectorItems.$inferSelect;
 export type EvaluationEvent = typeof evaluationEvents.$inferSelect;
 export type ProviderUsageEvent = typeof providerUsageEvents.$inferSelect;
+export type MobileNotification = typeof mobileNotifications.$inferSelect;
+export type VoiceLatencyEvent = typeof voiceLatencyEvents.$inferSelect;

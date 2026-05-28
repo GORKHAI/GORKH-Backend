@@ -101,6 +101,13 @@ export interface SubagentReport {
     configured: boolean;
     errorCode?: string;
   };
+  researchQueryId?: string | null;
+  researchAnswerId?: string | null;
+  sourceIds?: string[];
+  citationQualityScore?: number | null;
+  provider?: string | null;
+  query?: string | null;
+  generatedAt?: string | null;
   createdAt: string;
 }
 

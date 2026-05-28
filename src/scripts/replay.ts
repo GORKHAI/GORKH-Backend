@@ -76,6 +76,7 @@ async function main(): Promise<void> {
   ws.send(
     JSON.stringify({
       type: "start",
+      protocolVersion: 1,
       situationBriefId: situation.situationBrief.id,
       consent: {
         granted: true,

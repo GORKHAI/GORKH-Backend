@@ -12,6 +12,8 @@ const gatewayEnvSchema = z.object({
   DEEPGRAM_API_KEY: emptyToUndefined(z.string().min(1).optional()),
   DEEPGRAM_MODEL: z.string().min(1).default("nova-3"),
   GATEWAY_MAX_PCM_FRAME_BYTES: z.coerce.number().int().positive().default(64000),
+  GATEWAY_PROTOCOL_VERSION: z.coerce.number().int().positive().default(1),
+  MIN_SUPPORTED_GATEWAY_PROTOCOL_VERSION: z.coerce.number().int().positive().default(1),
   GATEWAY_SESSION_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   GATEWAY_BACKEND_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   OPS_CONSOLE_ENABLED: z.coerce.boolean().default(false),

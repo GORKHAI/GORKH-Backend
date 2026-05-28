@@ -33,6 +33,13 @@ export async function persistSubagentReport(task: SubagentTask, report: Subagent
     recommendedMainAgentMessage: report.recommendedMainAgentMessage ?? null,
     safetyNotes: report.safetyNotes,
     providerStatus: report.providerStatus ?? null,
+    researchQueryId: report.researchQueryId ?? null,
+    researchAnswerId: report.researchAnswerId ?? null,
+    sourceIds: report.sourceIds ?? [],
+    citationQualityScore: report.citationQualityScore ?? null,
+    provider: report.provider ?? report.providerStatus?.provider ?? null,
+    query: report.query ?? null,
+    generatedAt: report.generatedAt ? new Date(report.generatedAt) : null,
   });
   await createSubagentNotification(task, report.status === "completed" ? "subagent_report" : "subagent_failed", {
     taskId: task.id,

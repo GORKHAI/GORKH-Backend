@@ -86,6 +86,7 @@ async function handleAction(action) {
     if (action === "evaluationSummary") return show("qualityOut", await get("/evaluation/summary"));
     if (action === "evaluationEvents") return show("qualityOut", await get("/evaluation/events"));
     if (action === "governorStatus") return show("qualityOut", await get("/governor/status"));
+    if (action === "governorBudget") return show("qualityOut", await get("/governor/budget"));
     if (action === "governorUsage") return show("qualityOut", await get("/governor/usage"));
     if (action === "researchEvaluate") return show("qualityOut", await post("/research/query/evaluate", { queryId: $("qualityQueryId").value.trim() }));
     if (action === "cueRecompute") {
@@ -99,6 +100,7 @@ async function handleAction(action) {
     if (action === "subagentNotifications") return show("subagentsOut", await get("/subagents/notifications"));
     if (action === "subagentStream") return startSubagentStream();
     if (action === "subagentReport") return show("subagentsOut", await get(`/subagents/tasks/${subagentTaskId()}/report`));
+    if (action === "subagentCitations") return show("subagentsOut", await get(`/subagents/tasks/${subagentTaskId()}/citations`));
     if (action === "subagentEvents") return show("subagentsOut", await get(`/subagents/events/${subagentTaskId()}`));
     if (action === "subagentCancel") return show("subagentsOut", await post(`/subagents/tasks/${subagentTaskId()}/cancel`, {}));
     if (action === "actionCreate") return createActionProposal();
@@ -129,6 +131,8 @@ async function handleAction(action) {
     if (action === "transcript") return show("sessionOut", await get(`/sessions/${sessionId()}/transcript`));
     if (action === "cues") return show("sessionOut", await get(`/sessions/${sessionId()}/cues`));
     if (action === "voiceOutputs") return show("sessionOut", await get(`/sessions/${sessionId()}/voice-outputs`));
+    if (action === "mobileSessionState") return show("sessionOut", await get(`/mobile/sessions/${sessionId()}/state`));
+    if (action === "latencySummary") return show("sessionOut", await get(`/sessions/${sessionId()}/latency-summary`));
   } catch (err) {
     logError(err);
   }

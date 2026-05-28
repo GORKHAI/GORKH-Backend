@@ -92,6 +92,7 @@ $("start").addEventListener("click", async () => {
   const microphone = $("inputKind").value === "microphone_pcm16";
   send({
     type: "start",
+    protocolVersion: 1,
     policy: $("policy").value,
     situationDescription: $("situationDescription").value,
     title: $("title").value,
@@ -116,7 +117,7 @@ $("disconnect").addEventListener("click", () => {
 });
 $("pushUserText").addEventListener("click", () => send({ type: "user_text", text: $("userText").value }));
 $("pushTranscript").addEventListener("click", () => send({ type: "transcript", speaker: "speaker_1", text: $("transcriptText").value, offsetMs: Date.now() % 100000 }));
-$("barge").addEventListener("click", () => send({ type: "speech_started" }));
+$("barge").addEventListener("click", () => send({ type: "speech_started", timestamp: new Date().toISOString() }));
 $("mute").addEventListener("click", () => {
   ttsMuted = !ttsMuted;
   $("mute").textContent = ttsMuted ? "Unmute Client TTS" : "Mute Client TTS";

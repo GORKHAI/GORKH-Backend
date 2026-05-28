@@ -28,6 +28,7 @@ const pcmInputSchema = z.object({
 
 export const gatewayStartSchema = z.object({
   type: z.literal("start"),
+  protocolVersion: z.number().int().positive().optional(),
   policy: gatewayPolicySchema,
   situationBriefId: z.string().uuid().optional(),
   situationDescription: z.string().min(1).optional(),
@@ -50,7 +51,7 @@ export const gatewayTranscriptSchema = z.object({
   offsetMs: z.number().int().nonnegative().default(0),
 });
 
-export const gatewaySpeechStartedSchema = z.object({ type: z.literal("speech_started") });
+export const gatewaySpeechStartedSchema = z.object({ type: z.literal("speech_started"), speechId: z.string().min(1).optional(), timestamp: z.string().datetime().optional() });
 export const gatewaySpeechEndedSchema = z.object({ type: z.literal("speech_ended") });
 export const gatewayStopSchema = z.object({
   type: z.literal("stop"),
@@ -74,6 +75,8 @@ export type GatewayClientEvent = z.infer<typeof gatewayClientEventSchema>;
 
 export interface BackendVoiceAck {
   type: "voice_ack";
+  protocolVersion?: number;
+  serverProtocolVersion?: number;
   sessionId: string;
   voiceSessionId: string;
   situationBriefId: string | null;
@@ -87,6 +90,8 @@ export type BackendVoiceEvent = { type: string; [key: string]: unknown };
 export type GatewayServerEvent =
   | {
       type: "gateway_ack";
+      protocolVersion: number;
+      serverProtocolVersion: number;
       gatewaySessionId: string;
       backendSessionId: string;
       backendVoiceSessionId: string;
@@ -111,5 +116,6 @@ export type GatewayServerEvent =
         clientToGateway?: number;
       };
     }
-  | { type: "gateway_error"; stage: string; message: string }
+  | { type: "gateway_warning"; code: string; message: string; details?: Record<string, unknown> }
+  | { type: "gateway_error"; stage: string; message: string; code?: string; retryable?: boolean; details?: Record<string, unknown> }
   | BackendVoiceEvent;

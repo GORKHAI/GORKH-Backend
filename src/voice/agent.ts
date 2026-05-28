@@ -9,7 +9,7 @@ import { proposeTasksForCommitments } from "../daily/task-inbox.js";
 import { generateWeeklyReview } from "../daily/weekly-review.js";
 import { createLlmProvider } from "../llm/provider.js";
 import { LlmProviderError, type LlmProvider } from "../llm/types.js";
-import { recordProviderUsage } from "../governor/budget.js";
+import { assertGovernorBudgetAvailable, GovernorBudgetExceededError, recordProviderUsage } from "../governor/budget.js";
 import { routeWork } from "../governor/router.js";
 import { summarizeHumanContext } from "../human/profile.js";
 import { adaptTextToUser } from "../personalization/adaptation.js";
@@ -184,6 +184,12 @@ export async function answerVoiceUserText(input: {
             status: "proposed" as const,
             confidence: item.confidence,
             sensitivity: item.sensitivity,
+            dedupeKey: item.dedupeKey ?? null,
+            whySuggested: item.whySuggested ?? null,
+            sourceQuote: item.sourceQuote ?? null,
+            extractionConfidence: item.extractionConfidence ?? item.confidence,
+            duplicateOfId: item.duplicateOfId ?? null,
+            reviewReason: item.reviewReason ?? null,
           })),
         )
         .returning();
@@ -212,6 +218,7 @@ export async function answerVoiceUserText(input: {
     if (!decision.allowed && decision.errorCode === "provider_budget_exceeded") {
       return { kind: "provider_not_configured", message: "provider_budget_exceeded" };
     }
+    await assertGovernorBudgetAvailable(input.userId, "llm");
     const provider = input.llmProvider ?? createLlmProvider();
     const startedAt = Date.now();
     const result = await provider.completeText({
@@ -247,6 +254,9 @@ export async function answerVoiceUserText(input: {
   } catch (err) {
     if (err instanceof LlmProviderError && err.code === "provider_not_configured") {
       return { kind: "provider_not_configured", message: err.message };
+    }
+    if (err instanceof GovernorBudgetExceededError) {
+      return { kind: "provider_not_configured", message: "budget_exceeded" };
     }
     throw err;
   }

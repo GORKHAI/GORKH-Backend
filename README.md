@@ -932,6 +932,7 @@ POST /research/query/evaluate
 POST /evaluation/recompute/:targetType/:targetId
 GET  /governor/status
 GET  /governor/usage
+GET  /governor/budget
 ```
 
 Tavily is tuned by domain and freshness need. High-stakes bank, medical, and legal research requires source-backed citations plus limitations. If a provider or citation set is missing, GORKH returns a clear provider/citation error instead of a fabricated answer.
@@ -950,6 +951,28 @@ npm run quality:replay:all
 ```
 
 See `docs/brain/research-quality-tuning.md`, `docs/brain/citation-validation-policy.md`, `docs/brain/evaluation-engine.md`, `docs/brain/cost-latency-governor.md`, and `docs/brain/provider-usage-tracking.md`.
+
+### Mobile Readiness Contract
+
+Native clients should target protocol v1 before any mobile build starts. Voice and gateway `start` messages now accept `protocolVersion: 1`; unsupported versions are rejected with stable mobile error codes. Missing versions are temporarily accepted with a warning.
+
+Mobile-facing additions:
+
+```text
+GET  /mobile/sessions/:id/state
+GET  /mobile/notifications
+POST /mobile/notifications/:id/ack
+POST /mobile/notifications/ack-batch
+GET  /mobile/sync
+GET  /sessions/:id/latency-summary
+GET  /research/query/:id/sources
+GET  /research/answers/:id
+GET  /subagents/tasks/:id/citations
+```
+
+Profile mutation defaults to explicit-only. Ordinary chat does not write profile facts unless a profile/settings flow, saved-session reflection, or explicit “remember that ...” request permits it. Daily tasks and commitments expose `whySuggested`, source quote, confidence, and dedupe metadata for mobile review screens.
+
+See `docs/mobile/mobile-protocol-v1.md`, `docs/mobile/voice-gateway-contract-v1.md`, `docs/mobile/mobile-sync-contract-v1.md`, `docs/mobile/mobile-error-codes.md`, `docs/mobile/mobile-privacy-contract.md`, and `docs/mobile/mobile-readiness-checklist.md`.
 
 ### Local Reference Audit
 

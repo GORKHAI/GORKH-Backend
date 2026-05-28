@@ -12,7 +12,7 @@ export interface BackendClientLike {
   start(start: GatewayStartEvent): Promise<{ sessionId: string; voiceSessionId: string }>;
   sendUserText(text: string): void;
   sendTranscript(segment: { speaker: string; text: string; offsetMs?: number }): void;
-  sendSpeechStarted(): void;
+  sendSpeechStarted(event?: { speechId?: string; timestamp?: string }): void;
   sendSpeechEnded(): void;
   sendStop(save: boolean): void;
   close(): void;
@@ -80,6 +80,30 @@ export class GatewaySession {
     }
     const msg = parsed.data;
     if (msg.type === "start") {
+      const protocol = validateGatewayProtocolVersion(msg.protocolVersion);
+      if (!protocol.ok) {
+        this.emit({
+          type: "gateway_error",
+          stage: "protocol",
+          message: "Unsupported gateway protocol version.",
+          code: "unsupported_protocol_version",
+          retryable: false,
+          details: {
+            clientProtocolVersion: msg.protocolVersion,
+            minSupportedProtocolVersion: gatewayConfig.MIN_SUPPORTED_GATEWAY_PROTOCOL_VERSION,
+            serverProtocolVersion: gatewayConfig.GATEWAY_PROTOCOL_VERSION,
+          },
+        } as never);
+        return;
+      }
+      if (protocol.warning) {
+        this.emit({
+          type: "gateway_warning",
+          code: "protocol_version_missing",
+          message: "Start message omitted protocolVersion; protocolVersion=1 is currently assumed.",
+          details: { serverProtocolVersion: gatewayConfig.GATEWAY_PROTOCOL_VERSION },
+        });
+      }
       await this.start(msg);
       return;
     }
@@ -95,7 +119,7 @@ export class GatewaySession {
       this.backend.sendTranscript({ speaker: msg.speaker, text: msg.text, offsetMs: msg.offsetMs });
     } else if (msg.type === "speech_started") {
       this.markBackendForward();
-      this.backend.sendSpeechStarted();
+      this.backend.sendSpeechStarted({ speechId: msg.speechId, timestamp: msg.timestamp });
     } else if (msg.type === "speech_ended") {
       this.markBackendForward();
       this.backend.sendSpeechEnded();
@@ -183,6 +207,8 @@ export class GatewaySession {
     this.emit({ type: "gateway_state", state: "connected_to_backend" });
     this.emit({
       type: "gateway_ack",
+      protocolVersion: start.protocolVersion ?? gatewayConfig.GATEWAY_PROTOCOL_VERSION,
+      serverProtocolVersion: gatewayConfig.GATEWAY_PROTOCOL_VERSION,
       gatewaySessionId: this.gatewaySessionId,
       backendSessionId: ack.sessionId,
       backendVoiceSessionId: ack.voiceSessionId,
@@ -294,6 +320,16 @@ export class GatewaySession {
   private canEmit(generation: number): boolean {
     return this.active && this.generation === generation && !["stopped", "interrupted", "failed"].includes(this.state);
   }
+}
+
+function validateGatewayProtocolVersion(protocolVersion: number | undefined): { ok: boolean; warning?: "protocol_version_missing" } {
+  if (protocolVersion === undefined) return { ok: true, warning: "protocol_version_missing" };
+  return {
+    ok:
+      Number.isInteger(protocolVersion) &&
+      protocolVersion >= gatewayConfig.MIN_SUPPORTED_GATEWAY_PROTOCOL_VERSION &&
+      protocolVersion <= gatewayConfig.GATEWAY_PROTOCOL_VERSION,
+  };
 }
 
 const sessionsByGatewayId = new Map<string, GatewaySession>();

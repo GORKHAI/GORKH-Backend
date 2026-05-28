@@ -34,6 +34,7 @@ import {
   transcriptSegments,
   users,
   voiceOutputs,
+  voiceSessions,
 } from "./db/schema.js";
 import { approveActionProposal, rejectActionProposal } from "./actions/approval.js";
 import { executeActionProposal } from "./actions/executor.js";
@@ -83,6 +84,7 @@ import { planResearchQuery } from "./research/query-planner.js";
 import { classifyResearchDomain } from "./research/source-policy.js";
 import { scoreResearchSources } from "./research/quality.js";
 import { governorStatus, providerUsageSummary } from "./governor/policy.js";
+import { assertGovernorBudgetAvailable, GovernorBudgetExceededError, governorBudgetStatus, recordProviderUsage } from "./governor/budget.js";
 import { createSituationBrief, getOwnedSituationBrief } from "./situation/brief.js";
 import { approveSkill, disableSkill, enableSkill, listUserSkills, matchEnabledSkillsForSituation } from "./skills/registry.js";
 import { generateStressSupport } from "./stress/support.js";
@@ -112,6 +114,9 @@ import {
 } from "./human/profile.js";
 import { handleConnection } from "./ws/handler.js";
 import { getOwnedTurns, getOwnedVoiceOutputs, getOwnedVoiceSession, handleVoiceConnection } from "./voice/ws.js";
+import { ackMobileNotification, ackMobileNotifications, listMobileNotifications, mobileSync } from "./mobile/notifications.js";
+import { latencySummaryForSession } from "./voice/latency.js";
+import { mobileError } from "./protocol/errors.js";
 
 const devUserBody = z.object({
   email: z.string().email(),
@@ -131,6 +136,8 @@ const brainQueryBody = z.object({
   sessionId: z.string().uuid().nullable().optional(),
   allowResearch: z.boolean().optional(),
   allowProfileContext: z.boolean().optional(),
+  allowProfileMutation: z.boolean().optional(),
+  rememberMode: z.enum(["off", "explicit_only", "session_save", "always_propose_low_risk"]).optional(),
   researchMode: z.enum(["inline", "subagent"]).optional(),
 });
 
@@ -307,6 +314,41 @@ export async function buildServer() {
         voiceOutputs: voiceOutputCount,
       },
     });
+  });
+
+  app.get("/mobile/sessions/:id/state", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const [session] = await db.select().from(sessions).where(and(eq(sessions.id, params.id), eq(sessions.userId, userId))).limit(1);
+    if (!session) return reply.code(404).send({ error: mobileError("session_not_found", "Session not found.") });
+    const [voice] = await db.select().from(voiceSessions).where(eq(voiceSessions.sessionId, session.id)).orderBy(desc(voiceSessions.createdAt)).limit(1);
+    const counts = {
+      transcriptSegments: await countTranscriptSegments(session.id),
+      suggestions: await countSuggestions(session.id),
+      cueEvents: await countCueEvents(session.id),
+      agentTurns: await countAgentTurns(session.id),
+      voiceOutputs: await countVoiceOutputs(session.id),
+    };
+    const canResume = false;
+    return reply.send({
+      sessionId: session.id,
+      status: session.status,
+      voiceState: voice ? { voiceSessionId: voice.id, state: voice.state, policy: voice.policy, inputKind: voice.inputKind, outputKind: voice.outputKind } : null,
+      retentionPolicy: session.retentionPolicy,
+      counts,
+      canResume,
+      resumeReason: "mobile_v0_read_only_resume_state",
+      lastEventCursor: null,
+    });
+  });
+
+  app.get("/sessions/:id/latency-summary", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await ownedSession(userId, params.id))) return reply.code(404).send({ error: mobileError("session_not_found", "Session not found.") });
+    return reply.send({ sessionId: params.id, latencySummary: await latencySummaryForSession(userId, params.id) });
   });
 
   app.get("/sessions/:id/transcript", async (request, reply) => {
@@ -544,6 +586,7 @@ export async function buildServer() {
       researchQualitySummary: await evaluationSummaryForUser(userId, "research_answer"),
       cueLatencySummary: await evaluationSummaryForUser(userId, "cue"),
       providerUsageSummary: usageSummary,
+      governorBudget: await governorBudgetStatus(userId),
       governorStatus: governorStatus(),
       recentEvaluationWarnings,
       safetySummary: {
@@ -854,6 +897,38 @@ export async function buildServer() {
     return reply.send({ report });
   });
 
+  app.get("/subagents/tasks/:id/citations", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const report = await getOwnedSubagentReport(userId, params.id);
+    if (!report) return reply.code(404).send({ error: "not found" });
+    if (!report.researchQueryId) {
+      return reply.send({
+        providerStatus: report.providerStatus ?? null,
+        researchQueryId: null,
+        researchAnswerId: null,
+        citationQualityScore: report.citationQualityScore ?? null,
+        sources: [],
+        citations: [],
+      });
+    }
+    const [sources, answers] = await Promise.all([
+      db.select().from(researchSources).where(eq(researchSources.queryId, report.researchQueryId)).orderBy(asc(researchSources.createdAt)),
+      report.researchAnswerId ? db.select().from(researchAnswers).where(eq(researchAnswers.id, report.researchAnswerId)).limit(1) : Promise.resolve([]),
+    ]);
+    const sourceUrls = new Set(sources.map((source) => source.url));
+    const citations = ((answers[0]?.citations ?? []) as Array<{ title?: string; url?: string; sourceId?: string }>).filter((citation) => citation.url && sourceUrls.has(citation.url));
+    return reply.send({
+      providerStatus: report.providerStatus ?? null,
+      researchQueryId: report.researchQueryId,
+      researchAnswerId: report.researchAnswerId,
+      citationQualityScore: report.citationQualityScore ?? null,
+      sources,
+      citations,
+    });
+  });
+
   app.post("/subagents/tasks/:id/cancel", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -957,12 +1032,15 @@ export async function buildServer() {
       payload: { queryId: query.id, researchKind: decision.researchKind, provider: config.RESEARCH_PROVIDER },
     }).catch(() => null);
     try {
+      await assertGovernorBudgetAvailable(userId, "research");
       const provider = createSearchProvider();
+      const startedAt = Date.now();
       const sources = (await provider.search({ query: plan.normalizedQuery, maxResults: plan.maxResults })).map((source) => ({
         ...source,
         sourceType: source.sourceType ?? classifySource(source.url),
         credibilityScore: scoreSource(source, plan.domain),
       }));
+      await recordProviderUsage({ userId, sessionId: body.sessionId ?? null, provider: provider.name, operation: "research.search", latencyMs: Date.now() - startedAt, status: "completed" }).catch(() => null);
       if (sources.length > 0) {
         await db.insert(researchSources).values(
           sources.map((source) => ({
@@ -1000,6 +1078,9 @@ export async function buildServer() {
       return reply.send({ query: { ...query, status: "completed" }, plan, sourceQuality: scoreResearchSources(sources, plan.domain), sources, answer });
     } catch (err) {
       await db.update(researchQueries).set({ status: "skipped", completedAt: new Date() }).where(eq(researchQueries.id, query.id));
+      if (err instanceof GovernorBudgetExceededError) {
+        return reply.send({ query: { ...query, status: "skipped" }, error: mobileError("budget_exceeded", "Research daily request budget is exhausted."), sources: [] });
+      }
       if (err instanceof ResearchProviderError || /configured/i.test((err as Error).message)) {
         return reply.send({ query: { ...query, status: "skipped" }, error: { code: "provider_not_configured", message: "Research provider is not configured" }, sources: [] });
       }
@@ -1043,6 +1124,30 @@ export async function buildServer() {
       db.select().from(researchAnswers).where(eq(researchAnswers.queryId, query.id)).orderBy(asc(researchAnswers.createdAt)),
     ]);
     return reply.send({ query, sources, answers });
+  });
+
+  app.get("/research/query/:id/sources", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const [query] = await db.select({ id: researchQueries.id }).from(researchQueries).where(and(eq(researchQueries.id, params.id), eq(researchQueries.userId, userId))).limit(1);
+    if (!query) return reply.code(404).send({ error: "not found" });
+    const sources = await db.select().from(researchSources).where(eq(researchSources.queryId, query.id)).orderBy(asc(researchSources.createdAt));
+    return reply.send({ sources });
+  });
+
+  app.get("/research/answers/:id", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const [row] = await db
+      .select()
+      .from(researchAnswers)
+      .innerJoin(researchQueries, eq(researchAnswers.queryId, researchQueries.id))
+      .where(and(eq(researchAnswers.id, params.id), eq(researchQueries.userId, userId)))
+      .limit(1);
+    if (!row) return reply.code(404).send({ error: "not found" });
+    return reply.send({ answer: row.research_answers });
   });
 
   app.post("/research/query/evaluate", async (request, reply) => {
@@ -1096,6 +1201,42 @@ export async function buildServer() {
       cueLatencySummary: await evaluationSummaryForUser(userId, "cue"),
       recentEvaluationWarnings: await countRecentEvaluationWarnings(userId),
     });
+  });
+
+  app.get("/governor/budget", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send(await governorBudgetStatus(userId));
+  });
+
+  app.get("/mobile/notifications", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const query = z.object({ cursor: z.string().optional(), limit: z.coerce.number().int().positive().max(100).optional() }).parse(request.query);
+    return reply.send(await listMobileNotifications(userId, query));
+  });
+
+  app.post("/mobile/notifications/:id/ack", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const row = await ackMobileNotification(userId, params.id);
+    if (!row) return reply.code(404).send({ error: "not found" });
+    return reply.send({ notification: row });
+  });
+
+  app.post("/mobile/notifications/ack-batch", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = z.object({ ids: z.array(z.string().uuid()).max(100) }).parse(request.body);
+    return reply.send({ notifications: await ackMobileNotifications(userId, body.ids) });
+  });
+
+  app.get("/mobile/sync", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const query = z.object({ cursor: z.string().optional(), limit: z.coerce.number().int().positive().max(100).optional() }).parse(request.query);
+    return reply.send(await mobileSync(userId, query));
   });
 
   app.post("/evaluation/recompute/:targetType/:targetId", async (request, reply) => {
@@ -1222,6 +1363,12 @@ export async function buildServer() {
           status: "proposed" as const,
           confidence: item.confidence,
           sensitivity: item.sensitivity,
+          dedupeKey: item.dedupeKey ?? null,
+          whySuggested: item.whySuggested ?? null,
+          sourceQuote: item.sourceQuote ?? null,
+          extractionConfidence: item.extractionConfidence ?? item.confidence,
+          duplicateOfId: item.duplicateOfId ?? null,
+          reviewReason: item.reviewReason ?? null,
         })),
       )
       .returning();

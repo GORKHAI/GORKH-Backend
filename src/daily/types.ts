@@ -11,6 +11,12 @@ export const proposedCommitmentSchema = z.object({
   dueAt: z.date().nullable().optional(),
   confidence: z.number().min(0).max(1),
   sensitivity: z.enum(["low", "medium", "high", "sensitive"]),
+  dedupeKey: z.string().nullable().optional(),
+  whySuggested: z.string().nullable().optional(),
+  sourceQuote: z.string().nullable().optional(),
+  extractionConfidence: z.number().min(0).max(1).nullable().optional(),
+  duplicateOfId: z.string().uuid().nullable().optional(),
+  reviewReason: z.string().nullable().optional(),
 });
 
 export type ProposedCommitment = z.infer<typeof proposedCommitmentSchema>;
@@ -33,6 +39,12 @@ export interface TaskProposal {
   context?: string | null;
   blockedBy?: string | null;
   nextStep?: string | null;
+  dedupeKey?: string | null;
+  whySuggested?: string | null;
+  sourceQuote?: string | null;
+  extractionConfidence?: number | null;
+  duplicateOfId?: string | null;
+  reviewReason?: string | null;
 }
 
 export interface DailyBriefSection {

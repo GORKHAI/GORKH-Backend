@@ -27,6 +27,7 @@ const checks = [
       messages: [
         {
           type: "start",
+          protocolVersion: 1,
           policy: "conversation_agent",
           situationDescription: "I am going to the bank to discuss a loan",
           title: "Render smoke bank prep",

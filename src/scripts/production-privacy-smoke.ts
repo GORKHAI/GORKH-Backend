@@ -17,7 +17,7 @@ try {
     ws.once("open", resolve);
     ws.once("error", reject);
   });
-  ws.send(JSON.stringify({ type: "start", policy: "conversation_agent", situationDescription: "bank loan meeting", consent: { granted: true, method: "user_tap", noticeText: "Live Assist active.", participantCount: 1 }, input: { kind: "text" }, output: { kind: "text" }, retentionPolicy: "ask_on_stop" }));
+  ws.send(JSON.stringify({ type: "start", protocolVersion: 1, policy: "conversation_agent", situationDescription: "bank loan meeting", consent: { granted: true, method: "user_tap", noticeText: "Live Assist active.", participantCount: 1 }, input: { kind: "text" }, output: { kind: "text" }, retentionPolicy: "ask_on_stop" }));
   await waitFor(events, "voice_ack");
   const ackEvent = events.find((event) => event.type === "voice_ack");
   if (!ackEvent || typeof ackEvent.sessionId !== "string") throw new Error("voice_ack missing sessionId");

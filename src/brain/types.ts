@@ -1,4 +1,5 @@
 import type { ResearchNeedDecision } from "../research/types.js";
+import type { RememberMode } from "../human/profile-mutation-gate.js";
 
 export interface BrainQueryInput {
   userId: string;
@@ -7,6 +8,8 @@ export interface BrainQueryInput {
   sessionId?: string | null;
   allowResearch?: boolean;
   allowProfileContext?: boolean;
+  allowProfileMutation?: boolean;
+  rememberMode?: RememberMode;
   researchMode?: "inline" | "subagent";
 }
 

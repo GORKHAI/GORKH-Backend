@@ -24,6 +24,7 @@ export const voiceConsentSchema = z.object({
 
 export const voiceStartSchema = z.object({
   type: z.literal("start"),
+  protocolVersion: z.number().int().positive().optional(),
   policy: voicePolicySchema,
   situationBriefId: z.string().uuid().optional(),
   situationDescription: z.string().min(1).optional(),
@@ -50,6 +51,8 @@ export const voiceTranscriptSchema = z.object({
 
 export const voiceSpeechStartedSchema = z.object({
   type: z.literal("speech_started"),
+  speechId: z.string().min(1).optional(),
+  timestamp: z.string().datetime().optional(),
 });
 
 export const voiceSpeechEndedSchema = z.object({
@@ -79,6 +82,8 @@ export type VoiceRetentionPolicy = RetentionPolicy;
 export type VoiceServerEvent =
   | {
       type: "voice_ack";
+      protocolVersion: number;
+      serverProtocolVersion: number;
       sessionId: string;
       voiceSessionId: string;
       situationBriefId: string | null;
@@ -98,5 +103,6 @@ export type VoiceServerEvent =
   | { type: "voice_subagent_progress"; taskId: string; status: string; message: string }
   | { type: "voice_subagent_report"; taskId: string; kind: string; report: unknown; delivery: "silent" | "screen_only" | "main_agent_summary" }
   | { type: "voice_subagent_failed"; taskId: string; kind: string; message: string }
+  | { type: "voice_warning"; code: string; message: string; details?: Record<string, unknown> }
   | { type: "summary"; storedMemoryIds: string[] }
-  | { type: "error"; stage: string; message: string };
+  | { type: "error"; stage: string; message: string; code?: string; retryable?: boolean; details?: Record<string, unknown> };
