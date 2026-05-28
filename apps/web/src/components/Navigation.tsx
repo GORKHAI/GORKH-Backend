@@ -41,15 +41,6 @@ export default function Navigation() {
             GORKH
           </Link>
 
-          {/* Center pill button */}
-          <Link
-            to="/contact"
-            className="hidden md:inline-flex pill-button pill-button-primary interactive"
-            data-cursor-text=""
-          >
-            Request Access
-          </Link>
-
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-8">
             {NAV_ITEMS.map((item) => (
