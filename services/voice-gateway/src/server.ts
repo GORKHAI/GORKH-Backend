@@ -153,8 +153,19 @@ async function sendPublicFile(reply: FastifyReply, fileName: string, contentType
 }
 
 async function readPublicFile(fileName: string): Promise<string> {
-  const fileUrl = new URL(`../public/${fileName}`, import.meta.url);
-  return readFile(fileUrl, "utf8");
+  const candidates = [
+    new URL(`../public/${fileName}`, import.meta.url),
+    new URL(`../../../../services/voice-gateway/public/${fileName}`, import.meta.url),
+  ];
+  let lastError: unknown;
+  for (const fileUrl of candidates) {
+    try {
+      return await readFile(fileUrl, "utf8");
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(`failed to read gateway public file ${fileName}`);
 }
 
 async function requireOpsConsole(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
