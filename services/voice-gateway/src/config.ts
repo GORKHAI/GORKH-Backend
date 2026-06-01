@@ -19,6 +19,13 @@ const gatewayEnvSchema = z.object({
   OPS_CONSOLE_ENABLED: z.coerce.boolean().default(false),
   OPS_CONSOLE_ADMIN_TOKEN: emptyToUndefined(z.string().min(16).optional()),
   OPS_CONSOLE_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  VOICE_LABS_ENABLED: z.coerce.boolean().default(false),
+  VIBEVOICE_LAB_ENABLED: z.coerce.boolean().default(false),
+  VIBEVOICE_ASR_LAB_ENABLED: z.coerce.boolean().default(false),
+  VIBEVOICE_REALTIME_TTS_LAB_ENABLED: z.coerce.boolean().default(false),
+  VIBEVOICE_MODEL_PATH: emptyToUndefined(z.string().min(1).optional()),
+  VIBEVOICE_SERVER_URL: emptyToUndefined(z.string().url().optional()),
+  VIBEVOICE_ALLOW_SYNTHETIC_VOICE: z.coerce.boolean().default(false),
 });
 
 function emptyToUndefined<T extends z.ZodTypeAny>(schema: T): z.ZodEffects<T, z.output<T>, unknown> {

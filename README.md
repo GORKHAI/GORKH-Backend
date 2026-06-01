@@ -974,6 +974,32 @@ Profile mutation defaults to explicit-only. Ordinary chat does not write profile
 
 See `docs/mobile/mobile-protocol-v1.md`, `docs/mobile/voice-gateway-contract-v1.md`, `docs/mobile/mobile-sync-contract-v1.md`, `docs/mobile/mobile-error-codes.md`, `docs/mobile/mobile-privacy-contract.md`, and `docs/mobile/mobile-readiness-checklist.md`.
 
+### Voice Labs
+
+Voice Labs are disabled-by-default provider experiments. The current production voice path remains Deepgram live ASR plus client-side/native TTS instructions. VibeVoice is documented as a reference implementation only; the repository does not install VibeVoice, download model weights, run demos, or enable server-side synthetic voice.
+
+VibeVoice lab flags:
+
+```text
+VOICE_LABS_ENABLED=false
+VIBEVOICE_LAB_ENABLED=false
+VIBEVOICE_ASR_LAB_ENABLED=false
+VIBEVOICE_REALTIME_TTS_LAB_ENABLED=false
+VIBEVOICE_MODEL_PATH=
+VIBEVOICE_SERVER_URL=
+VIBEVOICE_ALLOW_SYNTHETIC_VOICE=false
+```
+
+Lab stubs return `provider_not_configured` when unavailable and reject cloning/impersonation modes. No fake ASR or TTS output is generated.
+
+Replay:
+
+```bash
+npm run voice-labs:replay:all
+```
+
+See `docs/voice-labs/vibevoice-reference-inventory.md`, `docs/voice-labs/vibevoice-architecture-study.md`, `docs/voice-labs/gorkh-vs-vibevoice-gap-analysis.md`, `docs/voice-labs/post-session-longform-asr-plan.md`, `docs/voice-labs/tts-provider-comparison.md`, and `docs/security/synthetic-voice-safety-policy.md`.
+
 ### Local Reference Audit
 
 The uploaded Hermes Agent, OpenClaw, and NVIDIA PersonaPlex archives were verified locally and inspected statically. They were extracted into `.reference-agent-labs/`, which is gitignored. No external reference code was executed, installed, or integrated.

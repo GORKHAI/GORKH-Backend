@@ -33,6 +33,8 @@
     "replay:all": "tsx src/scripts/replay-all.ts",
     "voice:replay": "tsx src/scripts/voice-replay.ts",
     "voice:replay:all": "tsx src/scripts/voice-replay-all.ts",
+    "voice-labs:replay": "tsx src/scripts/voice-labs-replay.ts",
+    "voice-labs:replay:all": "tsx src/scripts/voice-labs-replay-all.ts",
     "brain:replay": "tsx src/scripts/brain-replay.ts",
     "brain:replay:all": "tsx src/scripts/brain-replay-all.ts",
     "daily:replay": "tsx src/scripts/daily-replay.ts",
