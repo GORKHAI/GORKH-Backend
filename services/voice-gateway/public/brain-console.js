@@ -117,10 +117,17 @@ async function handleAction(action) {
     if (action === "outreachListInvestors") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/investors`));
     if (action === "outreachShortlistInvestor") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/shortlist`, {}));
     if (action === "outreachDismissInvestor") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/dismiss`, {}));
+    if (action === "outreachInvestorQuality") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/quality-review`, {}));
+    if (action === "outreachMergeInvestor") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/merge-into/${outreachMergeTargetId()}`, {}));
+    if (action === "outreachDismissDuplicate") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/dismiss-duplicate`, {}));
     if (action === "outreachDraftEmails") return draftOutreachEmails();
     if (action === "outreachListDrafts") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/drafts`));
     if (action === "outreachGetDraft") return show("outreachOut", await get(`/outreach/drafts/${outreachDraftId()}`));
+    if (action === "outreachDraftQuality") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/quality-review`, {}));
+    if (action === "outreachGetDraftQuality") return show("outreachOut", await get(`/outreach/drafts/${outreachDraftId()}/quality-review`));
     if (action === "outreachCompliance") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/compliance`));
+    if (action === "outreachQualitySummary") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/quality-summary`));
+    if (action === "outreachReviewPack") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/review-pack`));
     if (action === "outreachCreateActionProposal") return createOutreachActionProposal();
     if (action === "outreachApproveDraft") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/approve`, {}));
     if (action === "outreachRejectDraft") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/reject`, {}));
@@ -417,6 +424,12 @@ function outreachCampaignId() {
 function outreachInvestorId() {
   const id = $("outreachInvestorId").value.trim();
   if (!id) throw new Error("Investor ID is required.");
+  return id;
+}
+
+function outreachMergeTargetId() {
+  const id = $("outreachMergeTargetId").value.trim();
+  if (!id) throw new Error("Merge target investor ID is required.");
   return id;
 }
 

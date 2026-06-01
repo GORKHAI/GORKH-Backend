@@ -11,7 +11,13 @@ type Scenario =
   | "draft-email"
   | "compliance-check"
   | "action-proposal"
-  | "voice-investor-research";
+  | "voice-investor-research"
+  | "lead-dedupe"
+  | "contact-confidence"
+  | "draft-quality-review"
+  | "campaign-quality-summary"
+  | "review-pack"
+  | "voice-campaign-review";
 
 const scenario = (process.argv[2] ?? "campaign-create") as Scenario;
 const allowed: Scenario[] = [
@@ -23,6 +29,12 @@ const allowed: Scenario[] = [
   "compliance-check",
   "action-proposal",
   "voice-investor-research",
+  "lead-dedupe",
+  "contact-confidence",
+  "draft-quality-review",
+  "campaign-quality-summary",
+  "review-pack",
+  "voice-campaign-review",
 ];
 if (!allowed.includes(scenario)) throw new Error(`unknown outreach replay "${scenario}"`);
 
@@ -98,6 +110,60 @@ if (scenario === "voice-investor-research") {
   assertIncludes(JSON.stringify(events), "No emails will be sent");
 }
 
+if (scenario === "lead-dedupe") {
+  const campaign = await createCampaign();
+  const first = await createSourceBackedInvestor(dev.user.id, campaign.campaign.id, "Y Combinator", "https://www.ycombinator.com");
+  const second = await createSourceBackedInvestor(dev.user.id, campaign.campaign.id, "Y Combinator LLC", "https://www.ycombinator.com/about");
+  const marked = await getJson(`${base}/outreach/campaigns/${campaign.campaign.id}/investors`, dev.token);
+  const merge = await postJson(`${base}/outreach/investors/${second.id}/merge-into/${first.id}`, {}, dev.token);
+  console.log(`lead-dedupe: ${JSON.stringify({ marked, merge })}`);
+  assertIncludes(JSON.stringify(marked), "candidate_duplicate");
+  assertIncludes(JSON.stringify(merge), "merged");
+}
+
+if (scenario === "contact-confidence") {
+  const campaign = await createCampaign();
+  const investor = await createSourceBackedInvestor(dev.user.id, campaign.campaign.id, "Y Combinator", "https://www.ycombinator.com", "Public website source for replay fixture. No source-backed direct email is present.");
+  const review = await postJson(`${base}/outreach/investors/${investor.id}/quality-review`, {}, dev.token);
+  const listed = await getJson(`${base}/outreach/campaigns/${campaign.campaign.id}/investors`, dev.token);
+  console.log(`contact-confidence: ${JSON.stringify({ review, listed })}`);
+  assertIncludes(JSON.stringify(review), "missing_source_backed_email");
+  assertIncludes(JSON.stringify(listed), "unknown");
+}
+
+if (scenario === "draft-quality-review") {
+  const { draft } = await createDraftFixture();
+  const review = await postJson(`${base}/outreach/drafts/${draft.id}/quality-review`, {}, dev.token);
+  const loaded = await getJson(`${base}/outreach/drafts/${draft.id}/quality-review`, dev.token);
+  console.log(`draft-quality-review: ${JSON.stringify({ review, loaded })}`);
+  assertIncludes(JSON.stringify(review), "Draft-only");
+}
+
+if (scenario === "campaign-quality-summary") {
+  const { campaign } = await createDraftFixture();
+  const summary = await getJson(`${base}/outreach/campaigns/${campaign.campaign.id}/quality-summary`, dev.token);
+  console.log(`campaign-quality-summary: ${JSON.stringify(summary)}`);
+  assertIncludes(JSON.stringify(summary), "leadCount");
+  assertIncludes(JSON.stringify(summary), "recommendedNextActions");
+}
+
+if (scenario === "review-pack") {
+  const { campaign, draft } = await createDraftFixture();
+  await postJson(`${base}/outreach/drafts/${draft.id}/create-action-proposal`, {}, dev.token);
+  const pack = await getJson(`${base}/outreach/campaigns/${campaign.campaign.id}/review-pack`, dev.token);
+  console.log(`review-pack: ${JSON.stringify(pack)}`);
+  assertIncludes(JSON.stringify(pack), "investorLeads");
+  assertIncludes(JSON.stringify(pack), "No email has been sent");
+}
+
+if (scenario === "voice-campaign-review") {
+  const campaign = await createCampaign();
+  await createSourceBackedInvestor(dev.user.id, campaign.campaign.id);
+  const events = await runVoiceQuestion(dev.token, "review my investor list");
+  console.log(`voice-campaign-review: ${JSON.stringify(events)}`);
+  assertIncludes(JSON.stringify(events), "Investor list review");
+}
+
 async function createCampaign() {
   return postJson(`${base}/outreach/campaigns`, {
     name: "Nearmind seed outreach",
@@ -110,18 +176,24 @@ async function createCampaign() {
   }, dev.token);
 }
 
-async function createSourceBackedInvestor(userId: string, campaignId: string) {
+async function createSourceBackedInvestor(userId: string, campaignId: string, firmName = "Y Combinator", websiteUrl = "https://www.ycombinator.com", snippet = "Public website source for replay fixture.") {
   const [investor] = await db
     .insert(investorProfiles)
     .values({
       userId,
       campaignId,
-      firmName: "Y Combinator",
+      firmName,
+      canonicalFirmName: firmName.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
       partnerName: null,
       roleTitle: null,
-      websiteUrl: "https://www.ycombinator.com",
+      websiteUrl,
+      websiteDomain: new URL(websiteUrl).hostname.replace(/^www\./, ""),
+      contactUrl: websiteUrl.includes("contact") ? websiteUrl : null,
       linkedinUrl: null,
       email: null,
+      emailSourceId: null,
+      emailConfidence: null,
+      emailStatus: "unknown",
       location: "US",
       checkSize: null,
       stages: ["seed"],
@@ -133,6 +205,9 @@ async function createSourceBackedInvestor(userId: string, campaignId: string) {
       fitReasons: ["Stage match: seed.", "Sector context references startups and AI."],
       riskFlags: ["No source-backed direct email found."],
       status: "discovered",
+      duplicateGroupId: `domain:${new URL(websiteUrl).hostname.replace(/^www\./, "")}`,
+      duplicateStatus: websiteUrl.includes("about") ? "candidate_duplicate" : "unique",
+      contactConfidence: 0.25,
     })
     .returning();
   if (!investor) throw new Error("failed to create source-backed investor fixture");
@@ -140,9 +215,9 @@ async function createSourceBackedInvestor(userId: string, campaignId: string) {
     investorId: investor.id,
     userId,
     sourceType: "website",
-    title: "Y Combinator",
-    url: "https://www.ycombinator.com",
-    snippet: "Public website source for replay fixture.",
+    title: firmName,
+    url: websiteUrl,
+    snippet,
     credibilityScore: 0.8,
     fetchedAt: new Date(),
   });
@@ -183,6 +258,31 @@ async function runVoiceInvestorResearch(token: string) {
   );
   await waitFor(events, "voice_ack");
   ws.send(JSON.stringify({ type: "user_text", text: "Find investors for my seed AI voice assistant startup." }));
+  await waitFor(events, "voice_assistant_text");
+  ws.send(JSON.stringify({ type: "stop", save: false }));
+  await delay(250);
+  ws.close();
+  return events.items;
+}
+
+async function runVoiceQuestion(token: string, text: string) {
+  const ws = new WebSocket(`${wsBase}/voice?token=${encodeURIComponent(token)}`);
+  const events = collectEvents(ws);
+  await open(ws);
+  ws.send(
+    JSON.stringify({
+      type: "start",
+      protocolVersion: 1,
+      policy: "conversation_agent",
+      situationDescription: "Fundraising planning.",
+      consent: { granted: true, method: "user_tap", noticeText: "Live Assist is active.", participantCount: 1 },
+      input: { kind: "text" },
+      output: { kind: "text" },
+      retentionPolicy: "ask_on_stop",
+    }),
+  );
+  await waitFor(events, "voice_ack");
+  ws.send(JSON.stringify({ type: "user_text", text }));
   await waitFor(events, "voice_assistant_text");
   ws.send(JSON.stringify({ type: "stop", save: false }));
   await delay(250);

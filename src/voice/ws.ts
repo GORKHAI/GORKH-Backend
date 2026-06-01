@@ -285,7 +285,7 @@ async function handleUserText(session: VoiceLiveSession, text: string): Promise<
 }
 
 function isDailyLifeImmediateRequest(text: string): boolean {
-  return /\b(what do i need to do today|daily brief|today'?s priorities|what'?s on my plate|what should i do today|what am i waiting on|waiting on|waiting for others|who owes me|what are others doing|make my day easier|easy plan|low[- ]effort|quick wins?|weekly review|review my week|week recap|what did i promise|open commitments|what do i owe|what did i agree to|find investors|draft investor emails|prepare outreach|investor outreach|who should i contact|fundraising outreach|find vcs|find venture capital|investor leads)\b/i.test(text);
+  return /\b(what do i need to do today|daily brief|today'?s priorities|what'?s on my plate|what should i do today|what am i waiting on|waiting on|waiting for others|who owes me|what are others doing|make my day easier|easy plan|low[- ]effort|quick wins?|weekly review|review my week|week recap|what did i promise|open commitments|what do i owe|what did i agree to|find investors|draft investor emails|prepare outreach|investor outreach|who should i contact|fundraising outreach|find vcs|find venture capital|investor leads|review my investor list|campaign quality|outreach quality|strongest investors|best investor leads|why this investor)\b/i.test(text);
 }
 
 async function produceAgentAnswer(session: VoiceLiveSession, text: string, generation: number): Promise<void> {

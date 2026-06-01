@@ -127,6 +127,8 @@ export type ConnectorItemType = "calendar_event" | "email_thread" | "email_messa
 export type MobileNotificationPriority = "low" | "normal" | "high" | "urgent";
 export type InvestorStatus = "discovered" | "shortlisted" | "dismissed" | "contacted" | "replied" | "meeting_scheduled";
 export type InvestorSourceType = "website" | "news" | "database" | "article" | "social" | "manual" | "unknown";
+export type InvestorDuplicateStatus = "unique" | "candidate_duplicate" | "merged";
+export type InvestorEmailStatus = "unknown" | "source_backed" | "generic_contact" | "unavailable" | "rejected";
 export type OutreachCampaignStatus = "draft" | "researching" | "ready_for_review" | "paused" | "completed";
 export type OutreachDraftStatus = "draft" | "proposed" | "approved" | "rejected" | "sent_elsewhere";
 
@@ -1078,11 +1080,17 @@ export const investorProfiles = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     campaignId: uuid("campaign_id").references(() => outreachCampaigns.id, { onDelete: "set null" }),
     firmName: text("firm_name").notNull(),
+    canonicalFirmName: text("canonical_firm_name"),
     partnerName: text("partner_name"),
     roleTitle: text("role_title"),
     websiteUrl: text("website_url"),
+    websiteDomain: text("website_domain"),
+    contactUrl: text("contact_url"),
     linkedinUrl: text("linkedin_url"),
     email: text("email"),
+    emailSourceId: uuid("email_source_id"),
+    emailConfidence: real("email_confidence"),
+    emailStatus: text("email_status").$type<InvestorEmailStatus>().notNull().default("unknown"),
     location: text("location"),
     checkSize: text("check_size"),
     stages: jsonb("stages").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
@@ -1094,6 +1102,11 @@ export const investorProfiles = pgTable(
     fitReasons: jsonb("fit_reasons").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     riskFlags: jsonb("risk_flags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     status: text("status").$type<InvestorStatus>().notNull(),
+    duplicateGroupId: text("duplicate_group_id"),
+    duplicateStatus: text("duplicate_status").$type<InvestorDuplicateStatus>().notNull().default("unique"),
+    mergedIntoInvestorId: uuid("merged_into_investor_id"),
+    contactConfidence: real("contact_confidence"),
+    lastQualityReviewAt: timestamp("last_quality_review_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1101,6 +1114,28 @@ export const investorProfiles = pgTable(
     byUser: index("investor_profiles_by_user").on(t.userId),
     byCampaign: index("investor_profiles_by_campaign").on(t.campaignId),
     byUserStatus: index("investor_profiles_by_user_status").on(t.userId, t.status),
+    byDuplicateGroup: index("investor_profiles_by_duplicate_group").on(t.duplicateGroupId),
+  }),
+);
+
+export const investorQualityReviews = pgTable(
+  "investor_quality_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    investorId: uuid("investor_id")
+      .notNull()
+      .references(() => investorProfiles.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    score: real("score").notNull(),
+    findings: jsonb("findings").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    warnings: jsonb("warnings").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byInvestor: index("investor_quality_reviews_by_investor").on(t.investorId),
+    byUser: index("investor_quality_reviews_by_user").on(t.userId),
   }),
 );
 
@@ -1409,6 +1444,7 @@ export type ActionExecutionLog = typeof actionExecutionLogs.$inferSelect;
 export type OutreachCampaign = typeof outreachCampaigns.$inferSelect;
 export type InvestorProfile = typeof investorProfiles.$inferSelect;
 export type InvestorSource = typeof investorSources.$inferSelect;
+export type InvestorQualityReview = typeof investorQualityReviews.$inferSelect;
 export type OutreachDraft = typeof outreachDrafts.$inferSelect;
 export type OutreachComplianceEvent = typeof outreachComplianceEvents.$inferSelect;
 export type ConnectorAccount = typeof connectorAccounts.$inferSelect;

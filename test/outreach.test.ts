@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { evaluateActionPolicy, isSafeInternalExecutable } from "../src/actions/policy.js";
 import { classifyActionRisk } from "../src/actions/risk-classifier.js";
 import { checkOutboundCompliance } from "../src/outreach/compliance.js";
+import { assessContactConfidence } from "../src/outreach/contact-confidence.js";
 import { scoreInvestorFit } from "../src/outreach/investor-scoring.js";
+import { isDuplicateCandidate, normalizeFirmName, normalizeWebsiteDomain } from "../src/outreach/lead-dedupe.js";
 
 describe("investor outreach scoring", () => {
   it("scores source-backed sector, stage, and geography fit", () => {
@@ -27,6 +29,44 @@ describe("investor outreach scoring", () => {
     expect(result.fitScore).toBeGreaterThan(0.6);
     expect(result.fitReasons.join(" ")).toMatch(/Sector match|Stage match|Geography match/i);
     expect(result.riskFlags.join(" ")).toMatch(/No source-backed direct email/i);
+  });
+});
+
+describe("investor lead dedupe and contact confidence", () => {
+  it("normalizes firm names and domains conservatively", () => {
+    expect(normalizeFirmName("The Acme Venture Capital Partners, LLC")).toBe("acme");
+    expect(normalizeWebsiteDomain("https://www.example.com/contact")).toBe("example.com");
+  });
+
+  it("detects duplicate candidates only on firm or domain evidence", () => {
+    expect(
+      isDuplicateCandidate(
+        { id: "1", canonicalFirmName: "acme", websiteDomain: "acme.com", partnerName: null },
+        { id: "2", canonicalFirmName: "acme", websiteDomain: "acme.com", partnerName: null },
+      ),
+    ).toBe(true);
+    expect(
+      isDuplicateCandidate(
+        { id: "1", canonicalFirmName: "acme", websiteDomain: "acme.com", partnerName: "A Person" },
+        { id: "2", canonicalFirmName: "different", websiteDomain: "other.com", partnerName: "B Person" },
+      ),
+    ).toBe(false);
+  });
+
+  it("accepts source-backed email and rejects guessed email", () => {
+    const backed = assessContactConfidence({
+      websiteUrl: "https://fixture-investor.test",
+      sources: [{ id: "source-1", url: "https://fixture-investor.test/contact", title: "Test fixture contact", snippet: "Test fixture email test-contact@example.test" }],
+    });
+    expect(backed.emailStatus).toBe("source_backed");
+    expect(backed.email).toBe("test-contact@example.test");
+    const guessed = assessContactConfidence({
+      websiteUrl: "https://fixture-investor.test",
+      candidateEmail: "partner@fixture-investor.test",
+      sources: [{ id: "source-1", url: "https://fixture-investor.test", title: "Test fixture home", snippet: "No email here" }],
+    });
+    expect(guessed.email).toBeNull();
+    expect(guessed.riskFlags).toContain("email_inference_not_allowed");
   });
 });
 

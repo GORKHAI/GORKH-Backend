@@ -74,7 +74,9 @@ import { listTaskInbox, proposeTasksForCommitments, updateCommitmentStatus, upda
 import { generateWeeklyReview, getLatestWeeklyReview } from "./daily/weekly-review.js";
 import { createOutreachCampaign, getOwnedOutreachCampaign, listOutreachCampaigns } from "./outreach/campaign.js";
 import { listCampaignInvestors, researchInvestorsForCampaign, updateInvestorStatus } from "./outreach/investor-research.js";
+import { dismissDuplicateCandidate, mergeInvestorLeads } from "./outreach/lead-merge.js";
 import { createActionProposalForDraft, draftOutreachEmails, getOwnedOutreachDraft, listOutreachDrafts, updateOutreachDraftStatus } from "./outreach/outreach-draft.js";
+import { campaignQualitySummary, campaignReviewPack, latestDraftQualityReview, reviewDraftQuality, reviewInvestorQuality } from "./outreach/quality.js";
 import { createOutreachCampaignSchema, draftEmailsBodySchema, investorResearchInputSchema } from "./outreach/types.js";
 import { answerBrainQuery } from "./brain/orchestrator.js";
 import { logBrainAuditEvent } from "./brain/audit.js";
@@ -748,6 +750,33 @@ export async function buildServer() {
     return reply.send({ investor });
   });
 
+  app.post("/outreach/investors/:id/quality-review", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const review = await reviewInvestorQuality(userId, params.id);
+    if (!review) return reply.code(404).send({ error: "not found" });
+    return reply.send({ review });
+  });
+
+  app.post("/outreach/investors/:id/merge-into/:targetId", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid(), targetId: z.string().uuid() }).parse(request.params);
+    const result = await mergeInvestorLeads(userId, params.id, params.targetId);
+    if (!result) return reply.code(404).send({ error: "not found" });
+    return reply.send(result);
+  });
+
+  app.post("/outreach/investors/:id/dismiss-duplicate", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const investor = await dismissDuplicateCandidate(userId, params.id);
+    if (!investor) return reply.code(404).send({ error: "not found" });
+    return reply.send({ investor });
+  });
+
   app.post("/outreach/campaigns/:id/draft-emails", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -774,6 +803,24 @@ export async function buildServer() {
     const [investor] = await db.select().from(investorProfiles).where(and(eq(investorProfiles.userId, userId), eq(investorProfiles.id, draft.investorId))).limit(1);
     const sources = await db.select().from(investorSources).where(and(eq(investorSources.userId, userId), eq(investorSources.investorId, draft.investorId))).orderBy(desc(investorSources.createdAt));
     return reply.send({ draft, investor: investor ?? null, sources });
+  });
+
+  app.post("/outreach/drafts/:id/quality-review", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const review = await reviewDraftQuality(userId, params.id);
+    if (!review) return reply.code(404).send({ error: "not found" });
+    return reply.send({ review });
+  });
+
+  app.get("/outreach/drafts/:id/quality-review", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const draft = await getOwnedOutreachDraft(userId, params.id);
+    if (!draft) return reply.code(404).send({ error: "not found" });
+    return reply.send({ review: await latestDraftQualityReview(userId, params.id) });
   });
 
   app.post("/outreach/drafts/:id/create-action-proposal", async (request, reply) => {
@@ -810,6 +857,24 @@ export async function buildServer() {
     if (!(await getOwnedOutreachCampaign(userId, params.id))) return reply.code(404).send({ error: "not found" });
     const events = await db.select().from(outreachComplianceEvents).where(and(eq(outreachComplianceEvents.userId, userId), eq(outreachComplianceEvents.campaignId, params.id))).orderBy(desc(outreachComplianceEvents.createdAt)).limit(100);
     return reply.send({ events });
+  });
+
+  app.get("/outreach/campaigns/:id/quality-summary", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const summary = await campaignQualitySummary(userId, params.id);
+    if (!summary) return reply.code(404).send({ error: "not found" });
+    return reply.send(summary);
+  });
+
+  app.get("/outreach/campaigns/:id/review-pack", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const pack = await campaignReviewPack(userId, params.id);
+    if (!pack) return reply.code(404).send({ error: "not found" });
+    return reply.send(pack);
   });
 
   app.get("/connectors", async (request, reply) => {

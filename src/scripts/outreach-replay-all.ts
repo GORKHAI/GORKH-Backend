@@ -9,6 +9,12 @@ const scenarios = [
   "compliance-check",
   "action-proposal",
   "voice-investor-research",
+  "lead-dedupe",
+  "contact-confidence",
+  "draft-quality-review",
+  "campaign-quality-summary",
+  "review-pack",
+  "voice-campaign-review",
 ];
 
 for (const scenario of scenarios) {

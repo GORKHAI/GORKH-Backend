@@ -1,11 +1,13 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { investorProfiles, investorSources, outreachCampaigns, researchQueries, researchSources, type InvestorProfile } from "../db/schema.js";
 import { assertGovernorBudgetAvailable, GovernorBudgetExceededError, recordProviderUsage } from "../governor/budget.js";
 import { createSearchProvider, researchProviderStatus } from "../research/provider.js";
 import { ResearchProviderError, type SearchResult } from "../research/types.js";
 import { classifySource, scoreSource } from "../research/verifier.js";
+import { assessContactConfidence } from "./contact-confidence.js";
 import { scoreInvestorFit } from "./investor-scoring.js";
+import { duplicateGroupFor, normalizeFirmName, normalizeWebsiteDomain } from "./lead-dedupe.js";
 import { investorSourceTypeForUrl, safeDomain, sourceConfidenceFromType } from "./source-policy.js";
 import type { InvestorResearchInput } from "./types.js";
 
@@ -97,6 +99,10 @@ async function persistSourceBackedInvestors(userId: string, campaignId: string, 
     const sourceType = investorSourceTypeForUrl(result.url);
     const sourceConfidence = sourceConfidenceFromType(sourceType, result.credibilityScore);
     const firmName = inferFirmName(result);
+    const canonicalFirmName = normalizeFirmName(firmName);
+    const websiteDomain = normalizeWebsiteDomain(result.url);
+    const duplicateGroupId = duplicateGroupFor({ canonicalFirmName, websiteDomain });
+    const duplicateStatus = await detectDuplicateStatus(userId, campaignId, canonicalFirmName, websiteDomain);
     const preliminary = {
       firmName,
       stages: inferTags(result, [campaign.targetStage ?? ""]).filter(Boolean),
@@ -113,11 +119,17 @@ async function persistSourceBackedInvestors(userId: string, campaignId: string, 
         userId,
         campaignId,
         firmName,
+        canonicalFirmName,
         partnerName: null,
         roleTitle: null,
         websiteUrl: result.url,
+        websiteDomain,
+        contactUrl: null,
         linkedinUrl: result.url.includes("linkedin.com") ? result.url : null,
         email: null,
+        emailSourceId: null,
+        emailConfidence: null,
+        emailStatus: "unknown",
         location: campaign.targetGeography,
         checkSize: null,
         stages: preliminary.stages,
@@ -127,12 +139,16 @@ async function persistSourceBackedInvestors(userId: string, campaignId: string, 
         sourceConfidence,
         fitScore: fit.fitScore,
         fitReasons: fit.fitReasons,
-        riskFlags: fit.riskFlags,
+        riskFlags: duplicateStatus === "candidate_duplicate" ? [...fit.riskFlags, "candidate_duplicate_lead"] : fit.riskFlags,
         status: "discovered",
+        duplicateGroupId,
+        duplicateStatus,
+        mergedIntoInvestorId: null,
+        contactConfidence: null,
       })
       .returning();
     if (!investor) continue;
-    await db.insert(investorSources).values({
+    const [source] = await db.insert(investorSources).values({
       investorId: investor.id,
       userId,
       sourceType,
@@ -141,10 +157,38 @@ async function persistSourceBackedInvestors(userId: string, campaignId: string, 
       snippet: result.snippet ?? null,
       credibilityScore: sourceConfidence,
       fetchedAt: new Date(),
-    });
-    created.push(investor);
+    }).returning();
+    const contact = assessContactConfidence({ websiteUrl: investor.websiteUrl, sources: source ? [source] : [] });
+    const [updated] = await db
+      .update(investorProfiles)
+      .set({
+        email: contact.email,
+        emailSourceId: contact.emailSourceId,
+        emailConfidence: contact.emailConfidence,
+        emailStatus: contact.emailStatus,
+        contactUrl: contact.contactUrl,
+        contactConfidence: contact.contactConfidence,
+        riskFlags: [...(investor.riskFlags as string[]), ...contact.riskFlags],
+        updatedAt: new Date(),
+      })
+      .where(eq(investorProfiles.id, investor.id))
+      .returning();
+    created.push(updated ?? investor);
   }
   return created;
+}
+
+async function detectDuplicateStatus(userId: string, campaignId: string, canonicalFirmName: string, websiteDomain: string | null): Promise<"unique" | "candidate_duplicate"> {
+  if (!canonicalFirmName && !websiteDomain) return "unique";
+  const where = websiteDomain
+    ? or(eq(investorProfiles.websiteDomain, websiteDomain), eq(investorProfiles.canonicalFirmName, canonicalFirmName))
+    : eq(investorProfiles.canonicalFirmName, canonicalFirmName);
+  const [existing] = await db
+    .select({ id: investorProfiles.id })
+    .from(investorProfiles)
+    .where(and(eq(investorProfiles.userId, userId), eq(investorProfiles.campaignId, campaignId), eq(investorProfiles.duplicateStatus, "unique"), where))
+    .limit(1);
+  return existing ? "candidate_duplicate" : "unique";
 }
 
 function buildInvestorQuery(campaign: typeof outreachCampaigns.$inferSelect, input?: InvestorResearchInput): string {

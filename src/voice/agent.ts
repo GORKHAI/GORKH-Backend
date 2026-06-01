@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { db } from "../db/client.js";
-import { commitments, taskItems, type InternalType } from "../db/schema.js";
+import { commitments, investorProfiles, outreachCampaigns, taskItems, type InternalType } from "../db/schema.js";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { createActionProposal } from "../actions/proposal.js";
 import { buildDailyBriefDraft } from "../daily/daily-brief.js";
@@ -13,6 +13,7 @@ import { assertGovernorBudgetAvailable, GovernorBudgetExceededError, recordProvi
 import { routeWork } from "../governor/router.js";
 import { summarizeHumanContext } from "../human/profile.js";
 import { createOutreachCampaign } from "../outreach/campaign.js";
+import { campaignQualitySummary } from "../outreach/quality.js";
 import { adaptTextToUser } from "../personalization/adaptation.js";
 import { detectResearchNeed } from "../research/need-detector.js";
 import { getPlaybooks, safetyBoundariesFor } from "../situation/playbooks.js";
@@ -85,6 +86,31 @@ export async function answerVoiceUserText(input: {
       kind: "assistant_text",
       text: prepareAssistantTextForPolicy("No action proposal during live assist. Save the session, then review actions afterward.", input.policy),
     };
+  }
+
+  if (input.userId && isInvestorListReviewRequest(input.text)) {
+    const campaign = await latestOutreachCampaign(input.userId);
+    if (!campaign) return { kind: "assistant_text", text: prepareAssistantTextForPolicy("No investor outreach campaign is available yet.", input.policy) };
+    const summary = await campaignQualitySummary(input.userId, campaign.id);
+    const text = summary
+      ? `Investor list review: ${summary.leadCount} leads, ${summary.shortlistedCount} shortlisted, ${summary.duplicateCandidates} duplicate candidates, average fit ${summary.averageFitScore ?? "unknown"}, missing contacts ${summary.missingContactCount}. Next: ${summary.recommendedNextActions[0]}`
+      : "Investor quality summary is unavailable.";
+    return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(text, humanContext), input.policy) };
+  }
+
+  if (input.userId && isStrongestInvestorRequest(input.text)) {
+    const campaign = await latestOutreachCampaign(input.userId);
+    if (!campaign) return { kind: "assistant_text", text: prepareAssistantTextForPolicy("No investor outreach campaign is available yet.", input.policy) };
+    const rows = await db
+      .select()
+      .from(investorProfiles)
+      .where(and(eq(investorProfiles.userId, input.userId), eq(investorProfiles.campaignId, campaign.id), inArray(investorProfiles.duplicateStatus, ["unique", "candidate_duplicate"])))
+      .orderBy(desc(investorProfiles.fitScore), desc(investorProfiles.sourceConfidence))
+      .limit(3);
+    const text = rows.length
+      ? `Strongest investors by fit/source confidence: ${rows.map((row) => `${row.firmName} (${row.fitScore ?? "unscored"}): ${(row.fitReasons as string[]).slice(0, 2).join(", ")}`).join("; ")}. Review sources before outreach.`
+      : "No investor leads are available yet.";
+    return { kind: "assistant_text", text: prepareAssistantTextForPolicy(adaptTextToUser(text, humanContext), input.policy) };
   }
 
   if (input.policy === "whisper_copilot" && isInvestorOutreachRequest(input.text)) {
@@ -343,6 +369,19 @@ function isDailyBriefRequest(text: string): boolean {
 
 function isInvestorOutreachRequest(text: string): boolean {
   return /\b(find investors|draft investor emails|prepare outreach|investor outreach|who should i contact|fundraising outreach|find vcs|find venture capital|investor leads)\b/i.test(text);
+}
+
+function isInvestorListReviewRequest(text: string): boolean {
+  return /\b(review my investor list|campaign quality|outreach quality|investor list review)\b/i.test(text);
+}
+
+function isStrongestInvestorRequest(text: string): boolean {
+  return /\b(which investors are strongest|strongest investors|best investor leads|why this investor)\b/i.test(text);
+}
+
+async function latestOutreachCampaign(userId: string) {
+  const [campaign] = await db.select().from(outreachCampaigns).where(eq(outreachCampaigns.userId, userId)).orderBy(desc(outreachCampaigns.updatedAt), desc(outreachCampaigns.createdAt)).limit(1);
+  return campaign ?? null;
 }
 
 function inferOutreachSectors(text: string): string[] {

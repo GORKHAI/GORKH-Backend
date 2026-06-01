@@ -599,11 +599,17 @@ export async function runMigration(): Promise<void> {
         user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         campaign_id uuid REFERENCES outreach_campaigns(id) ON DELETE SET NULL,
         firm_name text NOT NULL,
+        canonical_firm_name text,
         partner_name text,
         role_title text,
         website_url text,
+        website_domain text,
+        contact_url text,
         linkedin_url text,
         email text,
+        email_source_id uuid,
+        email_confidence real,
+        email_status text NOT NULL DEFAULT 'unknown',
         location text,
         check_size text,
         stages jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -615,8 +621,23 @@ export async function runMigration(): Promise<void> {
         fit_reasons jsonb NOT NULL DEFAULT '[]'::jsonb,
         risk_flags jsonb NOT NULL DEFAULT '[]'::jsonb,
         status text NOT NULL,
+        duplicate_group_id text,
+        duplicate_status text NOT NULL DEFAULT 'unique',
+        merged_into_investor_id uuid,
+        contact_confidence real,
+        last_quality_review_at timestamptz,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS investor_quality_reviews (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        investor_id uuid NOT NULL REFERENCES investor_profiles(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        score real NOT NULL,
+        findings jsonb NOT NULL DEFAULT '[]'::jsonb,
+        warnings jsonb NOT NULL DEFAULT '[]'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
       );
 
       CREATE TABLE IF NOT EXISTS investor_sources (
@@ -892,6 +913,23 @@ export async function runMigration(): Promise<void> {
       ALTER TABLE commitments ADD COLUMN IF NOT EXISTS review_reason text;
       ALTER TABLE followup_suggestions ADD COLUMN IF NOT EXISTS due_at timestamptz;
       ALTER TABLE followup_suggestions ADD COLUMN IF NOT EXISTS channel text;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS canonical_firm_name text;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS website_domain text;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS contact_url text;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS email_source_id uuid;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS email_confidence real;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS email_status text NOT NULL DEFAULT 'unknown';
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS duplicate_group_id text;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS duplicate_status text NOT NULL DEFAULT 'unique';
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS merged_into_investor_id uuid;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS contact_confidence real;
+      ALTER TABLE investor_profiles ADD COLUMN IF NOT EXISTS last_quality_review_at timestamptz;
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS investor_profiles_by_duplicate_group ON investor_profiles(duplicate_group_id);
+      CREATE INDEX IF NOT EXISTS investor_quality_reviews_by_investor ON investor_quality_reviews(investor_id);
+      CREATE INDEX IF NOT EXISTS investor_quality_reviews_by_user ON investor_quality_reviews(user_id);
     `);
 
     await pool.query(`

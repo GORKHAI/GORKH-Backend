@@ -219,6 +219,7 @@
         <div class="grid two">
           <label>Campaign ID <input id="outreachCampaignId" placeholder="campaign uuid" /></label>
           <label>Investor ID <input id="outreachInvestorId" placeholder="investor uuid" /></label>
+          <label>Merge into investor ID <input id="outreachMergeTargetId" placeholder="target investor uuid" /></label>
           <label>Draft ID <input id="outreachDraftId" placeholder="draft uuid" /></label>
           <label>Campaign name <input id="outreachCampaignName" value="Nearmind seed outreach" /></label>
           <label>Startup summary <textarea id="outreachStartupSummary">Nearmind/GORKH is a real-time adaptive AI assistant for daily work, live voice support, and source-backed research.</textarea></label>
@@ -237,10 +238,17 @@
           <button data-action="outreachListInvestors" class="button">List Investors</button>
           <button data-action="outreachShortlistInvestor" class="button">Shortlist</button>
           <button data-action="outreachDismissInvestor" class="button danger">Dismiss</button>
+          <button data-action="outreachInvestorQuality" class="button">Investor Quality</button>
+          <button data-action="outreachMergeInvestor" class="button">Merge Duplicate</button>
+          <button data-action="outreachDismissDuplicate" class="button">Dismiss Duplicate</button>
           <button data-action="outreachDraftEmails" class="button">Generate Drafts</button>
           <button data-action="outreachListDrafts" class="button">List Drafts</button>
           <button data-action="outreachGetDraft" class="button">Load Draft</button>
+          <button data-action="outreachDraftQuality" class="button">Draft Quality</button>
+          <button data-action="outreachGetDraftQuality" class="button">Load Draft Quality</button>
           <button data-action="outreachCompliance" class="button">Compliance</button>
+          <button data-action="outreachQualitySummary" class="button">Quality Summary</button>
+          <button data-action="outreachReviewPack" class="button">Review Pack</button>
           <button data-action="outreachCreateActionProposal" class="button">Create Action Proposal</button>
           <button data-action="outreachApproveDraft" class="button">Approve Draft</button>
           <button data-action="outreachRejectDraft" class="button danger">Reject Draft</button>

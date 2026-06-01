@@ -26,9 +26,13 @@ export async function draftOutreachEmails(args: {
   for (const investor of investors) {
     const sources = await db.select().from(investorSources).where(and(eq(investorSources.userId, args.userId), eq(investorSources.investorId, investor.id))).orderBy(desc(investorSources.createdAt)).limit(5);
     if (sources.length === 0) continue;
-    const personalization = investor.fitReasons.length
-      ? investor.fitReasons.slice(0, 3)
-      : [`Source-backed relevance from ${sources[0]?.title ?? investor.firmName}.`];
+    const strongPersonalization = investor.sourceConfidence >= 0.5 && (investor.fitScore ?? 0) >= 0.55 && investor.fitReasons.length > 0;
+    const personalization = strongPersonalization
+      ? [`Personalization confidence: ${Math.round(investor.sourceConfidence * 100)}%.`, ...investor.fitReasons.slice(0, 3)]
+      : [
+          "Personalization confidence: low.",
+          `I found public source context for ${investor.firmName}, but the fit should be reviewed manually before sending elsewhere.`,
+        ];
     const subject = `Nearmind / GORKH intro for ${investor.firmName}`;
     const body = buildDraftBody({
       senderIdentity: args.input.senderIdentity,
@@ -36,6 +40,7 @@ export async function draftOutreachEmails(args: {
       startupSummary: String((await getCampaignSummary(args.campaignId)) ?? "Nearmind/GORKH is a real-time adaptive AI assistant."),
       ask: args.input.ask,
       personalization,
+      strongPersonalization,
     });
     const compliance = checkOutboundCompliance({ subject, body, hasSourceBackedPersonalization: sources.length > 0 });
     const [draft] = await db
@@ -48,7 +53,12 @@ export async function draftOutreachEmails(args: {
         body,
         personalizationNotes: personalization,
         sourceIds: sources.map((source) => source.id),
-        complianceNotes: [...compliance.notes, ...compliance.blockedReasons],
+        complianceNotes: [
+          ...compliance.notes,
+          ...compliance.blockedReasons,
+          strongPersonalization ? "Source-backed personalization is available." : "Weak personalization: keep draft generic and review manually.",
+          ...(investor.riskFlags as string[]),
+        ],
         status: compliance.ok ? "proposed" : "draft",
       })
       .returning();
@@ -107,13 +117,16 @@ async function getCampaignSummary(campaignId: string): Promise<string | null> {
   return campaign?.startupSummary ?? null;
 }
 
-function buildDraftBody(input: { senderIdentity: string; firmName: string; startupSummary: string; ask: string; personalization: string[] }): string {
+function buildDraftBody(input: { senderIdentity: string; firmName: string; startupSummary: string; ask: string; personalization: string[]; strongPersonalization: boolean }): string {
+  const reason = input.strongPersonalization
+    ? input.personalization.find((item) => !item.startsWith("Personalization confidence")) ?? "your published focus appears relevant"
+    : "I found some public context suggesting this may be relevant, but I would verify fit before assuming it is a match";
   return [
     `Hi ${input.firmName} team,`,
     "",
     `I’m ${input.senderIdentity}. ${input.startupSummary}`,
     "",
-    `I’m reaching out because ${input.personalization[0] ?? "your published investment focus appears relevant to what we are building"}`,
+    `I’m reaching out because ${reason}`,
     "",
     `${input.ask} I can share a short deck if useful.`,
     "",

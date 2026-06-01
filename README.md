@@ -865,6 +865,20 @@ GET  /outreach/campaigns/:id/compliance
 
 Boundaries: no fake investors, no fabricated partner names, no invented email addresses, no fake citations, no Gmail send, no contact forms, no hidden tracking, and no autonomous outreach. If no source-backed email is found, the lead email remains `null`. Scaled campaigns require separate legal/compliance review.
 
+Investor Outreach QA adds conservative duplicate detection, contact confidence, draft quality review, campaign quality summary, and a JSON review pack. Duplicate leads are reviewable and mergeable; sources are preserved on merge. Email guessing is rejected and recorded as `email_inference_not_allowed`.
+
+QA routes:
+
+```text
+POST /outreach/investors/:id/quality-review
+POST /outreach/investors/:id/merge-into/:targetId
+POST /outreach/investors/:id/dismiss-duplicate
+POST /outreach/drafts/:id/quality-review
+GET  /outreach/drafts/:id/quality-review
+GET  /outreach/campaigns/:id/quality-summary
+GET  /outreach/campaigns/:id/review-pack
+```
+
 Replay commands:
 
 ```bash
@@ -876,6 +890,12 @@ npm run outreach:replay -- draft-email
 npm run outreach:replay -- compliance-check
 npm run outreach:replay -- action-proposal
 npm run outreach:replay -- voice-investor-research
+npm run outreach:replay -- lead-dedupe
+npm run outreach:replay -- contact-confidence
+npm run outreach:replay -- draft-quality-review
+npm run outreach:replay -- campaign-quality-summary
+npm run outreach:replay -- review-pack
+npm run outreach:replay -- voice-campaign-review
 npm run outreach:replay:all
 ```
 
