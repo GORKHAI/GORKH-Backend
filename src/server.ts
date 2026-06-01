@@ -1,5 +1,5 @@
 import websocket from "@fastify/websocket";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
@@ -19,7 +19,12 @@ import {
   evaluationEvents,
   followupSuggestions,
   humanProfileFacts,
+  investorProfiles,
+  investorSources,
   meetingPacks,
+  outreachCampaigns,
+  outreachComplianceEvents,
+  outreachDrafts,
   providerUsageEvents,
   researchAnswers,
   researchQueries,
@@ -67,6 +72,10 @@ import { createPrepPack, createRecapPack, getOwnedMeetingPack } from "./daily/me
 import { explainTaskRanking } from "./daily/priority-ranker.js";
 import { listTaskInbox, proposeTasksForCommitments, updateCommitmentStatus, updateTaskStatus } from "./daily/task-inbox.js";
 import { generateWeeklyReview, getLatestWeeklyReview } from "./daily/weekly-review.js";
+import { createOutreachCampaign, getOwnedOutreachCampaign, listOutreachCampaigns } from "./outreach/campaign.js";
+import { listCampaignInvestors, researchInvestorsForCampaign, updateInvestorStatus } from "./outreach/investor-research.js";
+import { createActionProposalForDraft, draftOutreachEmails, getOwnedOutreachDraft, listOutreachDrafts, updateOutreachDraftStatus } from "./outreach/outreach-draft.js";
+import { createOutreachCampaignSchema, draftEmailsBodySchema, investorResearchInputSchema } from "./outreach/types.js";
 import { answerBrainQuery } from "./brain/orchestrator.js";
 import { logBrainAuditEvent } from "./brain/audit.js";
 import { selectedLlmStatus } from "./llm/provider.js";
@@ -664,6 +673,143 @@ export async function buildServer() {
     const proposal = await getOwnedActionProposal(userId, params.id);
     if (!proposal) return reply.code(404).send({ error: "not found" });
     return reply.send({ preview: previewActionProposal(proposal) });
+  });
+
+  app.post("/outreach/campaigns", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = createOutreachCampaignSchema.parse(request.body);
+    return reply.send({ campaign: await createOutreachCampaign(userId, body) });
+  });
+
+  app.get("/outreach/campaigns", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send({ campaigns: await listOutreachCampaigns(userId) });
+  });
+
+  app.get("/outreach/campaigns/:id", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const campaign = await getOwnedOutreachCampaign(userId, params.id);
+    if (!campaign) return reply.code(404).send({ error: "not found" });
+    return reply.send({ campaign });
+  });
+
+  app.post("/outreach/campaigns/:id/research-investors", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await getOwnedOutreachCampaign(userId, params.id))) return reply.code(404).send({ error: "not found" });
+    const body = investorResearchInputSchema.parse(request.body ?? {});
+    const result = await researchInvestorsForCampaign({ userId, campaignId: params.id, input: body });
+    if (result.skipped) {
+      return reply.send({
+        investors: [],
+        providerStatus: result.providerStatus,
+        error: { code: result.skipped, message: "Research provider is not configured. No investor leads were fabricated." },
+      });
+    }
+    return reply.send(result);
+  });
+
+  app.get("/outreach/campaigns/:id/investors", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await getOwnedOutreachCampaign(userId, params.id))) return reply.code(404).send({ error: "not found" });
+    const investors = await listCampaignInvestors(userId, params.id);
+    const sources = investors.length
+      ? await db
+          .select()
+          .from(investorSources)
+          .where(and(eq(investorSources.userId, userId), inArray(investorSources.investorId, investors.map((investor) => investor.id))))
+          .orderBy(desc(investorSources.createdAt))
+      : [];
+    return reply.send({ investors, sources });
+  });
+
+  app.post("/outreach/investors/:id/shortlist", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const investor = await updateInvestorStatus(userId, params.id, "shortlisted");
+    if (!investor) return reply.code(404).send({ error: "not found" });
+    return reply.send({ investor });
+  });
+
+  app.post("/outreach/investors/:id/dismiss", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const investor = await updateInvestorStatus(userId, params.id, "dismissed");
+    if (!investor) return reply.code(404).send({ error: "not found" });
+    return reply.send({ investor });
+  });
+
+  app.post("/outreach/campaigns/:id/draft-emails", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await getOwnedOutreachCampaign(userId, params.id))) return reply.code(404).send({ error: "not found" });
+    const body = draftEmailsBodySchema.parse(request.body ?? {});
+    return reply.send({ drafts: await draftOutreachEmails({ userId, campaignId: params.id, input: body }) });
+  });
+
+  app.get("/outreach/campaigns/:id/drafts", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await getOwnedOutreachCampaign(userId, params.id))) return reply.code(404).send({ error: "not found" });
+    return reply.send({ drafts: await listOutreachDrafts(userId, params.id) });
+  });
+
+  app.get("/outreach/drafts/:id", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const draft = await getOwnedOutreachDraft(userId, params.id);
+    if (!draft) return reply.code(404).send({ error: "not found" });
+    const [investor] = await db.select().from(investorProfiles).where(and(eq(investorProfiles.userId, userId), eq(investorProfiles.id, draft.investorId))).limit(1);
+    const sources = await db.select().from(investorSources).where(and(eq(investorSources.userId, userId), eq(investorSources.investorId, draft.investorId))).orderBy(desc(investorSources.createdAt));
+    return reply.send({ draft, investor: investor ?? null, sources });
+  });
+
+  app.post("/outreach/drafts/:id/create-action-proposal", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const result = await createActionProposalForDraft(userId, params.id);
+    if (!result) return reply.code(404).send({ error: "not found" });
+    return reply.send(result);
+  });
+
+  app.post("/outreach/drafts/:id/approve", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const draft = await updateOutreachDraftStatus(userId, params.id, "approved");
+    if (!draft) return reply.code(404).send({ error: "not found" });
+    return reply.send({ draft });
+  });
+
+  app.post("/outreach/drafts/:id/reject", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const draft = await updateOutreachDraftStatus(userId, params.id, "rejected");
+    if (!draft) return reply.code(404).send({ error: "not found" });
+    return reply.send({ draft });
+  });
+
+  app.get("/outreach/campaigns/:id/compliance", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await getOwnedOutreachCampaign(userId, params.id))) return reply.code(404).send({ error: "not found" });
+    const events = await db.select().from(outreachComplianceEvents).where(and(eq(outreachComplianceEvents.userId, userId), eq(outreachComplianceEvents.campaignId, params.id))).orderBy(desc(outreachComplianceEvents.createdAt)).limit(100);
+    return reply.send({ events });
   });
 
   app.get("/connectors", async (request, reply) => {

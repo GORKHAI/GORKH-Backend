@@ -12,11 +12,13 @@ import { LlmProviderError, type LlmProvider } from "../llm/types.js";
 import { assertGovernorBudgetAvailable, GovernorBudgetExceededError, recordProviderUsage } from "../governor/budget.js";
 import { routeWork } from "../governor/router.js";
 import { summarizeHumanContext } from "../human/profile.js";
+import { createOutreachCampaign } from "../outreach/campaign.js";
 import { adaptTextToUser } from "../personalization/adaptation.js";
 import { detectResearchNeed } from "../research/need-detector.js";
 import { getPlaybooks, safetyBoundariesFor } from "../situation/playbooks.js";
 import { isStressSupportRequest } from "../stress/detector.js";
 import { generateStressSupport } from "../stress/support.js";
+import { startSubagentTask } from "../subagents/orchestrator.js";
 import { prepareAssistantTextForPolicy } from "./policy.js";
 import type { VoicePolicy } from "./types.js";
 
@@ -82,6 +84,60 @@ export async function answerVoiceUserText(input: {
     return {
       kind: "assistant_text",
       text: prepareAssistantTextForPolicy("No action proposal during live assist. Save the session, then review actions afterward.", input.policy),
+    };
+  }
+
+  if (input.policy === "whisper_copilot" && isInvestorOutreachRequest(input.text)) {
+    return {
+      kind: "assistant_text",
+      text: prepareAssistantTextForPolicy("Investor outreach is screen-only after the session.", input.policy),
+    };
+  }
+
+  if (input.userId && isInvestorOutreachRequest(input.text)) {
+    const campaign = await createOutreachCampaign(input.userId, {
+      name: "Voice investor outreach",
+      startupSummary: input.text,
+      sectors: inferOutreachSectors(input.text),
+      targetStage: inferOutreachStage(input.text),
+      targetGeography: inferOutreachGeography(input.text),
+      raiseTarget: inferRaiseTarget(input.text),
+      complianceBasis: "Draft-only investor outreach. No email sending, form submission, or connector write action is enabled.",
+    });
+    const task = await startSubagentTask({
+      userId: input.userId,
+      input: {
+        kind: "investor_research",
+        trigger: "user_request",
+        priority: "normal",
+        sessionId: input.sessionId ?? null,
+        input: {
+          campaignId: campaign.id,
+          researchInput: {
+            startupSummary: campaign.startupSummary,
+            sector: campaign.sectors.join(" "),
+            geography: campaign.targetGeography ?? undefined,
+            stage: campaign.targetStage ?? undefined,
+            raiseTarget: campaign.raiseTarget ?? undefined,
+            targetInvestorType: "venture capital investors",
+          },
+        },
+        policy: {
+          allowResearch: true,
+          allowProfileContext: false,
+          allowMemory: false,
+          allowStressSupport: false,
+          allowUserFacingReport: true,
+          liveDelivery: "screen_only",
+        },
+      },
+    });
+    return {
+      kind: "assistant_text",
+      text: prepareAssistantTextForPolicy(
+        `I created a draft investor outreach campaign (${campaign.id}) and started source-backed research in the background (${task.id}). No emails will be sent.`,
+        input.policy,
+      ),
     };
   }
 
@@ -283,6 +339,32 @@ function unique(values: string[]): string[] {
 
 function isDailyBriefRequest(text: string): boolean {
   return /\b(what do i need to do today|daily brief|today'?s priorities|what'?s on my plate|what should i do today)\b/i.test(text);
+}
+
+function isInvestorOutreachRequest(text: string): boolean {
+  return /\b(find investors|draft investor emails|prepare outreach|investor outreach|who should i contact|fundraising outreach|find vcs|find venture capital|investor leads)\b/i.test(text);
+}
+
+function inferOutreachSectors(text: string): string[] {
+  const sectors = ["fintech", "ai", "health", "climate", "crypto", "blockchain", "payments", "developer tools", "consumer", "enterprise"].filter((term) =>
+    text.toLowerCase().includes(term),
+  );
+  return sectors.length ? sectors : ["startup"];
+}
+
+function inferOutreachStage(text: string): string | null {
+  const match = text.match(/\b(pre[- ]seed|seed|series a|series b|growth)\b/i);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
+function inferOutreachGeography(text: string): string | null {
+  const match = text.match(/\b(africa|morocco|europe|france|us|united states|mena|middle east)\b/i);
+  return match?.[1] ?? null;
+}
+
+function inferRaiseTarget(text: string): string | null {
+  const match = text.match(/\$?\b(\d+(?:\.\d+)?\s?(?:k|m|million|thousand))\b/i);
+  return match?.[0] ?? null;
 }
 
 function isOpenCommitmentsRequest(text: string): boolean {

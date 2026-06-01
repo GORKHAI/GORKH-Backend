@@ -1,7 +1,7 @@
 import type { SubagentTask } from "./types.js";
 
 export function evaluateSubagentPolicy(task: Pick<SubagentTask, "kind" | "policy" | "trigger">): { allowed: true } | { allowed: false; reason: string } {
-  if (task.kind === "research" || task.kind === "source_verifier") {
+  if (task.kind === "research" || task.kind === "source_verifier" || task.kind === "investor_research") {
     if (!task.policy.allowResearch) return { allowed: false, reason: "research_not_allowed" };
   }
   if ((task.kind === "memory_lookup" || task.kind === "profile_context") && !task.policy.allowMemory && !task.policy.allowProfileContext) {

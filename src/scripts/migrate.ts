@@ -579,6 +579,85 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS outreach_campaigns (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name text NOT NULL,
+        startup_summary text NOT NULL,
+        raise_target text,
+        target_stage text,
+        target_geography text,
+        sectors jsonb NOT NULL DEFAULT '[]'::jsonb,
+        status text NOT NULL,
+        compliance_basis text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS investor_profiles (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        campaign_id uuid REFERENCES outreach_campaigns(id) ON DELETE SET NULL,
+        firm_name text NOT NULL,
+        partner_name text,
+        role_title text,
+        website_url text,
+        linkedin_url text,
+        email text,
+        location text,
+        check_size text,
+        stages jsonb NOT NULL DEFAULT '[]'::jsonb,
+        sectors jsonb NOT NULL DEFAULT '[]'::jsonb,
+        geographies jsonb NOT NULL DEFAULT '[]'::jsonb,
+        thesis_summary text,
+        source_confidence real NOT NULL DEFAULT 0.5,
+        fit_score real,
+        fit_reasons jsonb NOT NULL DEFAULT '[]'::jsonb,
+        risk_flags jsonb NOT NULL DEFAULT '[]'::jsonb,
+        status text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS investor_sources (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        investor_id uuid NOT NULL REFERENCES investor_profiles(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source_type text NOT NULL,
+        title text,
+        url text NOT NULL,
+        snippet text,
+        credibility_score real,
+        fetched_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS outreach_drafts (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        campaign_id uuid NOT NULL REFERENCES outreach_campaigns(id) ON DELETE CASCADE,
+        investor_id uuid NOT NULL REFERENCES investor_profiles(id) ON DELETE CASCADE,
+        subject text NOT NULL,
+        body text NOT NULL,
+        personalization_notes jsonb NOT NULL DEFAULT '[]'::jsonb,
+        source_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+        compliance_notes jsonb NOT NULL DEFAULT '[]'::jsonb,
+        status text NOT NULL,
+        action_proposal_id uuid REFERENCES action_proposals(id) ON DELETE SET NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS outreach_compliance_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        campaign_id uuid REFERENCES outreach_campaigns(id) ON DELETE SET NULL,
+        draft_id uuid REFERENCES outreach_drafts(id) ON DELETE SET NULL,
+        event_type text NOT NULL,
+        payload jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS connector_accounts (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -760,6 +839,19 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS action_approvals_by_user ON action_approvals(user_id);
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_proposal ON action_execution_logs(proposal_id);
       CREATE INDEX IF NOT EXISTS action_execution_logs_by_user ON action_execution_logs(user_id);
+      CREATE INDEX IF NOT EXISTS outreach_campaigns_by_user ON outreach_campaigns(user_id);
+      CREATE INDEX IF NOT EXISTS outreach_campaigns_by_user_status ON outreach_campaigns(user_id, status);
+      CREATE INDEX IF NOT EXISTS investor_profiles_by_user ON investor_profiles(user_id);
+      CREATE INDEX IF NOT EXISTS investor_profiles_by_campaign ON investor_profiles(campaign_id);
+      CREATE INDEX IF NOT EXISTS investor_profiles_by_user_status ON investor_profiles(user_id, status);
+      CREATE INDEX IF NOT EXISTS investor_sources_by_investor ON investor_sources(investor_id);
+      CREATE INDEX IF NOT EXISTS investor_sources_by_user ON investor_sources(user_id);
+      CREATE INDEX IF NOT EXISTS outreach_drafts_by_user ON outreach_drafts(user_id);
+      CREATE INDEX IF NOT EXISTS outreach_drafts_by_campaign ON outreach_drafts(campaign_id);
+      CREATE INDEX IF NOT EXISTS outreach_drafts_by_investor ON outreach_drafts(investor_id);
+      CREATE INDEX IF NOT EXISTS outreach_compliance_events_by_user ON outreach_compliance_events(user_id);
+      CREATE INDEX IF NOT EXISTS outreach_compliance_events_by_campaign ON outreach_compliance_events(campaign_id);
+      CREATE INDEX IF NOT EXISTS outreach_compliance_events_by_draft ON outreach_compliance_events(draft_id);
       CREATE INDEX IF NOT EXISTS connector_accounts_by_user ON connector_accounts(user_id);
       CREATE INDEX IF NOT EXISTS connector_accounts_by_user_provider ON connector_accounts(user_id, provider);
       CREATE INDEX IF NOT EXISTS connector_token_vault_by_user ON connector_token_vault(user_id);

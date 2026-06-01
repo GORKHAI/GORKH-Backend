@@ -110,6 +110,20 @@ async function handleAction(action) {
     if (action === "actionReject") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/reject`, { reason: $("actionReason").value }));
     if (action === "actionPreview") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/preview`, {}));
     if (action === "actionExecute") return show("actionsOut", await post(`/actions/proposals/${actionProposalId()}/execute`, {}));
+    if (action === "outreachCreateCampaign") return createOutreachCampaign();
+    if (action === "outreachListCampaigns") return show("outreachOut", await get("/outreach/campaigns"));
+    if (action === "outreachGetCampaign") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}`));
+    if (action === "outreachResearchInvestors") return researchOutreachInvestors();
+    if (action === "outreachListInvestors") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/investors`));
+    if (action === "outreachShortlistInvestor") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/shortlist`, {}));
+    if (action === "outreachDismissInvestor") return show("outreachOut", await post(`/outreach/investors/${outreachInvestorId()}/dismiss`, {}));
+    if (action === "outreachDraftEmails") return draftOutreachEmails();
+    if (action === "outreachListDrafts") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/drafts`));
+    if (action === "outreachGetDraft") return show("outreachOut", await get(`/outreach/drafts/${outreachDraftId()}`));
+    if (action === "outreachCompliance") return show("outreachOut", await get(`/outreach/campaigns/${outreachCampaignId()}/compliance`));
+    if (action === "outreachCreateActionProposal") return createOutreachActionProposal();
+    if (action === "outreachApproveDraft") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/approve`, {}));
+    if (action === "outreachRejectDraft") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/reject`, {}));
     if (action === "connectorsList") return show("connectorsOut", await get("/connectors"));
     if (action === "connectorGet") return show("connectorsOut", await get(`/connectors/${connectorId()}`));
     if (action === "connectorPermissions") return show("connectorsOut", await get(`/connectors/${connectorId()}/permissions`));
@@ -161,6 +175,49 @@ async function importConnectorFixture() {
   show("connectorsOut", result);
 }
 
+async function createOutreachCampaign() {
+  const result = await post("/outreach/campaigns", {
+    name: $("outreachCampaignName").value.trim(),
+    startupSummary: $("outreachStartupSummary").value.trim(),
+    raiseTarget: $("outreachRaiseTarget").value.trim() || null,
+    targetStage: $("outreachStage").value.trim() || null,
+    targetGeography: $("outreachGeography").value.trim() || null,
+    sectors: $("outreachSectors").value.split(",").map((item) => item.trim()).filter(Boolean),
+    complianceBasis: "Draft-only investor outreach from Brain Console. No email sending is enabled.",
+  });
+  if (result.campaign?.id) $("outreachCampaignId").value = result.campaign.id;
+  show("outreachOut", result);
+}
+
+async function researchOutreachInvestors() {
+  const result = await post(`/outreach/campaigns/${outreachCampaignId()}/research-investors`, {
+    startupSummary: $("outreachStartupSummary").value.trim(),
+    sector: $("outreachSectors").value,
+    geography: $("outreachGeography").value.trim() || undefined,
+    stage: $("outreachStage").value.trim() || undefined,
+    raiseTarget: $("outreachRaiseTarget").value.trim() || undefined,
+    targetInvestorType: "venture capital investors",
+  });
+  if (result.investors?.[0]?.id) $("outreachInvestorId").value = result.investors[0].id;
+  show("outreachOut", result);
+}
+
+async function draftOutreachEmails() {
+  const result = await post(`/outreach/campaigns/${outreachCampaignId()}/draft-emails`, {
+    senderIdentity: $("outreachSenderIdentity").value.trim(),
+    ask: $("outreachAsk").value.trim(),
+    investorIds: $("outreachInvestorId").value.trim() ? [$("outreachInvestorId").value.trim()] : undefined,
+  });
+  if (result.drafts?.[0]?.id) $("outreachDraftId").value = result.drafts[0].id;
+  show("outreachOut", result);
+}
+
+async function createOutreachActionProposal() {
+  const result = await post(`/outreach/drafts/${outreachDraftId()}/create-action-proposal`, {});
+  if (result.proposal?.id) $("actionProposalId").value = result.proposal.id;
+  show("outreachOut", result);
+}
+
 function startSubagentStream() {
   if (!state.token) throw new Error("Create or paste a JWT first.");
   if (state.subagentStream) state.subagentStream.close();
@@ -181,14 +238,22 @@ async function createSubagentTask() {
       ? { situationDescription: text, internalType: "bank_loan" }
       : kind === "stress_support"
         ? { text, liveMode: false }
-        : { query: text, intent: "bank_loan", internalType: "bank_loan" };
+        : kind === "investor_research"
+          ? { campaignId: $("outreachCampaignId").value.trim(), researchInput: { startupSummary: $("outreachStartupSummary").value.trim(), sector: $("outreachSectors").value, geography: $("outreachGeography").value.trim(), stage: $("outreachStage").value.trim() } }
+          : kind === "investor_scoring"
+            ? { campaignId: $("outreachCampaignId").value.trim() }
+            : kind === "outreach_drafting"
+              ? { campaignId: $("outreachCampaignId").value.trim(), senderIdentity: $("outreachSenderIdentity").value.trim(), ask: $("outreachAsk").value.trim() }
+              : kind === "outreach_compliance"
+                ? { draftId: $("outreachDraftId").value.trim() }
+                : { query: text, intent: "bank_loan", internalType: "bank_loan" };
   const body = {
     kind,
     trigger: kind === "stress_support" ? "stress_support_request" : kind === "skill_matcher" ? "skill_match" : "user_request",
     priority: "normal",
     input,
     policy: {
-      allowResearch: kind === "research",
+      allowResearch: kind === "research" || kind === "investor_research",
       allowProfileContext: kind === "skill_matcher",
       allowMemory: false,
       allowStressSupport: kind === "stress_support",
@@ -341,6 +406,24 @@ function actionProposalId() {
   const id = $("actionProposalId").value.trim();
   if (!id) throw new Error("Proposal ID is required");
   return encodeURIComponent(id);
+}
+
+function outreachCampaignId() {
+  const id = $("outreachCampaignId").value.trim();
+  if (!id) throw new Error("Outreach campaign ID is required.");
+  return id;
+}
+
+function outreachInvestorId() {
+  const id = $("outreachInvestorId").value.trim();
+  if (!id) throw new Error("Investor ID is required.");
+  return id;
+}
+
+function outreachDraftId() {
+  const id = $("outreachDraftId").value.trim();
+  if (!id) throw new Error("Outreach draft ID is required.");
+  return id;
 }
 
 function connectorId() {

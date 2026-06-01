@@ -25,7 +25,7 @@ export function previewActionProposal(proposal: ActionProposal) {
 
 function connectorBlockReason(actionType: string): string {
   // The current milestone has no production token vault or external write executor.
-  if (actionType === "draft_email" || actionType === "draft_followup_message") return "draft_only_no_send";
+  if (actionType === "draft_email" || actionType === "draft_followup_message" || actionType === "outbound_email_review") return "draft_only_no_send";
   if (actionType === "propose_calendar_event") return "calendar_create_disabled_proposal_only";
   return "connector_not_configured";
 }

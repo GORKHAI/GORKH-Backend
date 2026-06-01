@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const actionTypeSchema = z.enum([
   "draft_email",
+  "outbound_email_review",
   "propose_calendar_event",
   "propose_reminder",
   "draft_followup_message",

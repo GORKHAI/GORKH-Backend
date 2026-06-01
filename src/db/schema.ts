@@ -79,7 +79,11 @@ export type SubagentKind =
   | "daily_prioritizer"
   | "commitment_review"
   | "followup_review"
-  | "weekly_review";
+  | "weekly_review"
+  | "investor_research"
+  | "investor_scoring"
+  | "outreach_drafting"
+  | "outreach_compliance";
 export type SubagentTaskStatus = "queued" | "running" | "completed" | "failed" | "canceled" | "expired" | "suppressed";
 export type SubagentTaskAttemptStatus = "started" | "completed" | "failed" | "retried" | "canceled" | "expired" | "suppressed";
 export type SubagentPriority = "low" | "normal" | "high" | "urgent";
@@ -102,6 +106,7 @@ export type WeeklyReviewStatus = "generated" | "stale" | "dismissed";
 export type ActionSourceType = "voice" | "brain" | "daily" | "manual" | "subagent" | "connector";
 export type ActionType =
   | "draft_email"
+  | "outbound_email_review"
   | "propose_calendar_event"
   | "propose_reminder"
   | "draft_followup_message"
@@ -120,6 +125,10 @@ export type ConnectorConsentStatus = "shown" | "accepted" | "revoked" | "denied"
 export type ConnectorSyncStatus = "previewed" | "completed" | "failed" | "skipped";
 export type ConnectorItemType = "calendar_event" | "email_thread" | "email_message" | "task" | "document";
 export type MobileNotificationPriority = "low" | "normal" | "high" | "urgent";
+export type InvestorStatus = "discovered" | "shortlisted" | "dismissed" | "contacted" | "replied" | "meeting_scheduled";
+export type InvestorSourceType = "website" | "news" | "database" | "article" | "social" | "manual" | "unknown";
+export type OutreachCampaignStatus = "draft" | "researching" | "ready_for_review" | "paused" | "completed";
+export type OutreachDraftStatus = "draft" | "proposed" | "approved" | "rejected" | "sent_elsewhere";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1036,6 +1045,139 @@ export const actionExecutionLogs = pgTable(
   }),
 );
 
+export const outreachCampaigns = pgTable(
+  "outreach_campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    startupSummary: text("startup_summary").notNull(),
+    raiseTarget: text("raise_target"),
+    targetStage: text("target_stage"),
+    targetGeography: text("target_geography"),
+    sectors: jsonb("sectors").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    status: text("status").$type<OutreachCampaignStatus>().notNull(),
+    complianceBasis: text("compliance_basis"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("outreach_campaigns_by_user").on(t.userId),
+    byUserStatus: index("outreach_campaigns_by_user_status").on(t.userId, t.status),
+  }),
+);
+
+export const investorProfiles = pgTable(
+  "investor_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    campaignId: uuid("campaign_id").references(() => outreachCampaigns.id, { onDelete: "set null" }),
+    firmName: text("firm_name").notNull(),
+    partnerName: text("partner_name"),
+    roleTitle: text("role_title"),
+    websiteUrl: text("website_url"),
+    linkedinUrl: text("linkedin_url"),
+    email: text("email"),
+    location: text("location"),
+    checkSize: text("check_size"),
+    stages: jsonb("stages").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    sectors: jsonb("sectors").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    geographies: jsonb("geographies").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    thesisSummary: text("thesis_summary"),
+    sourceConfidence: real("source_confidence").notNull().default(0.5),
+    fitScore: real("fit_score"),
+    fitReasons: jsonb("fit_reasons").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    riskFlags: jsonb("risk_flags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    status: text("status").$type<InvestorStatus>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("investor_profiles_by_user").on(t.userId),
+    byCampaign: index("investor_profiles_by_campaign").on(t.campaignId),
+    byUserStatus: index("investor_profiles_by_user_status").on(t.userId, t.status),
+  }),
+);
+
+export const investorSources = pgTable(
+  "investor_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    investorId: uuid("investor_id")
+      .notNull()
+      .references(() => investorProfiles.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").$type<InvestorSourceType>().notNull(),
+    title: text("title"),
+    url: text("url").notNull(),
+    snippet: text("snippet"),
+    credibilityScore: real("credibility_score"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byInvestor: index("investor_sources_by_investor").on(t.investorId),
+    byUser: index("investor_sources_by_user").on(t.userId),
+  }),
+);
+
+export const outreachDrafts = pgTable(
+  "outreach_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => outreachCampaigns.id, { onDelete: "cascade" }),
+    investorId: uuid("investor_id")
+      .notNull()
+      .references(() => investorProfiles.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    personalizationNotes: jsonb("personalization_notes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    sourceIds: jsonb("source_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    complianceNotes: jsonb("compliance_notes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    status: text("status").$type<OutreachDraftStatus>().notNull(),
+    actionProposalId: uuid("action_proposal_id").references(() => actionProposals.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("outreach_drafts_by_user").on(t.userId),
+    byCampaign: index("outreach_drafts_by_campaign").on(t.campaignId),
+    byInvestor: index("outreach_drafts_by_investor").on(t.investorId),
+  }),
+);
+
+export const outreachComplianceEvents = pgTable(
+  "outreach_compliance_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    campaignId: uuid("campaign_id").references(() => outreachCampaigns.id, { onDelete: "set null" }),
+    draftId: uuid("draft_id").references(() => outreachDrafts.id, { onDelete: "set null" }),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("outreach_compliance_events_by_user").on(t.userId),
+    byCampaign: index("outreach_compliance_events_by_campaign").on(t.campaignId),
+    byDraft: index("outreach_compliance_events_by_draft").on(t.draftId),
+  }),
+);
+
 export const connectorAccounts = pgTable(
   "connector_accounts",
   {
@@ -1264,6 +1406,11 @@ export type WeeklyReview = typeof weeklyReviews.$inferSelect;
 export type ActionProposal = typeof actionProposals.$inferSelect;
 export type ActionApproval = typeof actionApprovals.$inferSelect;
 export type ActionExecutionLog = typeof actionExecutionLogs.$inferSelect;
+export type OutreachCampaign = typeof outreachCampaigns.$inferSelect;
+export type InvestorProfile = typeof investorProfiles.$inferSelect;
+export type InvestorSource = typeof investorSources.$inferSelect;
+export type OutreachDraft = typeof outreachDrafts.$inferSelect;
+export type OutreachComplianceEvent = typeof outreachComplianceEvents.$inferSelect;
 export type ConnectorAccount = typeof connectorAccounts.$inferSelect;
 export type ConnectorTokenVaultRow = typeof connectorTokenVault.$inferSelect;
 export type ConnectorConsentEvent = typeof connectorConsentEvents.$inferSelect;

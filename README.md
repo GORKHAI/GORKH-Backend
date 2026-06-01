@@ -840,6 +840,45 @@ POST /actions/proposals/:id/execute
 
 All proposals require approval. Safe internal actions may execute after approval; external connector actions return `connector_not_configured` in v0. GORKH does not send emails, create meetings, submit forms, make payments, access browser logins, or invoke arbitrary MCP tools.
 
+### Investor Outreach
+
+Investor Outreach v0 helps create source-backed investor lead lists and review-only outreach drafts. It can create outreach campaigns, run research-provider backed investor discovery, store cited investor sources, score fit, generate concise cold-email drafts, run compliance checks, and create `outbound_email_review` action proposals.
+
+Routes:
+
+```text
+POST /outreach/campaigns
+GET  /outreach/campaigns
+GET  /outreach/campaigns/:id
+POST /outreach/campaigns/:id/research-investors
+GET  /outreach/campaigns/:id/investors
+POST /outreach/investors/:id/shortlist
+POST /outreach/investors/:id/dismiss
+POST /outreach/campaigns/:id/draft-emails
+GET  /outreach/campaigns/:id/drafts
+GET  /outreach/drafts/:id
+POST /outreach/drafts/:id/create-action-proposal
+POST /outreach/drafts/:id/approve
+POST /outreach/drafts/:id/reject
+GET  /outreach/campaigns/:id/compliance
+```
+
+Boundaries: no fake investors, no fabricated partner names, no invented email addresses, no fake citations, no Gmail send, no contact forms, no hidden tracking, and no autonomous outreach. If no source-backed email is found, the lead email remains `null`. Scaled campaigns require separate legal/compliance review.
+
+Replay commands:
+
+```bash
+npm run outreach:replay -- campaign-create
+npm run outreach:replay -- investor-research-no-provider
+npm run outreach:replay -- investor-research-live-if-configured
+npm run outreach:replay -- investor-scoring
+npm run outreach:replay -- draft-email
+npm run outreach:replay -- compliance-check
+npm run outreach:replay -- action-proposal
+npm run outreach:replay -- voice-investor-research
+npm run outreach:replay:all
+```
+
 Connector registry routes:
 
 ```text

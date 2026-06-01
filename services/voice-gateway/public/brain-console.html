@@ -150,6 +150,10 @@
               <option value="research">research</option>
               <option value="skill_matcher">skill_matcher</option>
               <option value="stress_support">stress_support</option>
+              <option value="investor_research">investor_research</option>
+              <option value="investor_scoring">investor_scoring</option>
+              <option value="outreach_drafting">outreach_drafting</option>
+              <option value="outreach_compliance">outreach_compliance</option>
             </select>
           </label>
           <label>Task ID <input id="subagentTaskId" placeholder="task uuid" /></label>
@@ -184,6 +188,7 @@
           <label>Action type
             <select id="actionType">
               <option value="draft_email">draft_email</option>
+              <option value="outbound_email_review">outbound_email_review</option>
               <option value="draft_followup_message">draft_followup_message</option>
               <option value="propose_calendar_event">propose_calendar_event</option>
               <option value="propose_reminder">propose_reminder</option>
@@ -207,6 +212,41 @@
         </div>
         <p class="hint">External connector actions remain disabled in v0. Drafts/proposals are review-only unless explicitly approved, and sending is disabled.</p>
         <pre id="actionsOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Investor Outreach</h2>
+        <div class="grid two">
+          <label>Campaign ID <input id="outreachCampaignId" placeholder="campaign uuid" /></label>
+          <label>Investor ID <input id="outreachInvestorId" placeholder="investor uuid" /></label>
+          <label>Draft ID <input id="outreachDraftId" placeholder="draft uuid" /></label>
+          <label>Campaign name <input id="outreachCampaignName" value="Nearmind seed outreach" /></label>
+          <label>Startup summary <textarea id="outreachStartupSummary">Nearmind/GORKH is a real-time adaptive AI assistant for daily work, live voice support, and source-backed research.</textarea></label>
+          <label>Sectors <input id="outreachSectors" value="ai, productivity, voice assistant" /></label>
+          <label>Target stage <input id="outreachStage" value="seed" /></label>
+          <label>Target geography <input id="outreachGeography" value="Europe, US" /></label>
+          <label>Raise target <input id="outreachRaiseTarget" value="$1M seed" /></label>
+          <label>Sender identity <input id="outreachSenderIdentity" value="the GORKH founder" /></label>
+          <label>Ask <textarea id="outreachAsk">Would you be open to a short introductory call next week?</textarea></label>
+        </div>
+        <div class="actions">
+          <button data-action="outreachCreateCampaign" class="button primary">Create Campaign</button>
+          <button data-action="outreachListCampaigns" class="button">List Campaigns</button>
+          <button data-action="outreachGetCampaign" class="button">Load Campaign</button>
+          <button data-action="outreachResearchInvestors" class="button">Research Investors</button>
+          <button data-action="outreachListInvestors" class="button">List Investors</button>
+          <button data-action="outreachShortlistInvestor" class="button">Shortlist</button>
+          <button data-action="outreachDismissInvestor" class="button danger">Dismiss</button>
+          <button data-action="outreachDraftEmails" class="button">Generate Drafts</button>
+          <button data-action="outreachListDrafts" class="button">List Drafts</button>
+          <button data-action="outreachGetDraft" class="button">Load Draft</button>
+          <button data-action="outreachCompliance" class="button">Compliance</button>
+          <button data-action="outreachCreateActionProposal" class="button">Create Action Proposal</button>
+          <button data-action="outreachApproveDraft" class="button">Approve Draft</button>
+          <button data-action="outreachRejectDraft" class="button danger">Reject Draft</button>
+        </div>
+        <p class="hint">Investor outreach is source-backed and draft-only. GORKH does not send email, submit forms, add tracking pixels, or invent investor facts.</p>
+        <pre id="outreachOut"></pre>
       </section>
 
       <section class="panel wide">

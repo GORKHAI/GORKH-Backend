@@ -3,8 +3,12 @@ import { runMemorySubagent } from "./workers/memory-subagent.js";
 import { runCommitmentSubagent } from "./workers/commitment-subagent.js";
 import { runDailyBriefSubagent } from "./workers/daily-brief-subagent.js";
 import { runFollowupSubagent } from "./workers/followup-subagent.js";
+import { runInvestorResearchSubagent } from "./workers/investor-research-subagent.js";
+import { runInvestorScoringSubagent } from "./workers/investor-scoring-subagent.js";
 import { runMeetingPackSubagent } from "./workers/meeting-pack-subagent.js";
 import { runProfileContextSubagent } from "./workers/profile-context-subagent.js";
+import { runOutreachComplianceSubagent } from "./workers/outreach-compliance-subagent.js";
+import { runOutreachDraftingSubagent } from "./workers/outreach-drafting-subagent.js";
 import { runResearchSubagent } from "./workers/research-subagent.js";
 import { runSkillSubagent } from "./workers/skill-subagent.js";
 import { runSourceVerifierSubagent } from "./workers/source-verifier-subagent.js";
@@ -26,6 +30,10 @@ const workers: Record<SubagentKind, SubagentWorker> = {
   commitment_review: runCommitmentSubagent,
   followup_review: runFollowupSubagent,
   weekly_review: runWeeklyReviewSubagent,
+  investor_research: runInvestorResearchSubagent,
+  investor_scoring: runInvestorScoringSubagent,
+  outreach_drafting: runOutreachDraftingSubagent,
+  outreach_compliance: runOutreachComplianceSubagent,
 };
 
 export function getSubagentWorker(kind: SubagentKind): SubagentWorker {
