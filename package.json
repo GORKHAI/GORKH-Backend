@@ -43,6 +43,8 @@
     "actions:replay:all": "tsx src/scripts/actions-replay-all.ts",
     "outreach:replay": "tsx src/scripts/outreach-replay.ts",
     "outreach:replay:all": "tsx src/scripts/outreach-replay-all.ts",
+    "rooms:replay": "tsx src/scripts/rooms-replay.ts",
+    "rooms:replay:all": "tsx src/scripts/rooms-replay-all.ts",
     "connectors:replay": "tsx src/scripts/connectors-replay.ts",
     "connectors:replay:all": "tsx src/scripts/connectors-replay-all.ts",
     "connectors:live": "tsx src/scripts/connectors-live.ts",

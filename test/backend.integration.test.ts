@@ -860,6 +860,79 @@ describe("integration action approval and connectors", () => {
   });
 });
 
+describe("integration Nearmind Rooms", () => {
+  it("creates rooms, guest links, consent-gated transcript, and draft-only summaries", async () => {
+    const user = await devUser("it-rooms@example.com");
+    const created = await app.inject({
+      method: "POST",
+      url: "/rooms",
+      headers: auth(user.token),
+      payload: { title: "Investor call", transcriptionEnabled: true, recordingEnabled: false, aiAgentEnabled: false },
+    });
+    expect(created.statusCode).toBe(200);
+    const roomId = (created.json() as { room: { id: string } }).room.id;
+    const tokenAttempt = await app.inject({ method: "POST", url: `/rooms/${roomId}/host-token`, headers: auth(user.token), payload: {} });
+    expect(tokenAttempt.statusCode).toBe(409);
+    expect(JSON.stringify(tokenAttempt.json())).toMatch(/rooms_disabled|rooms_not_configured/);
+    const link = await app.inject({ method: "POST", url: `/rooms/${roomId}/guest-link`, headers: auth(user.token), payload: { displayName: "Investor guest" } });
+    expect(link.statusCode).toBe(200);
+    const inviteToken = (link.json() as { inviteToken: string; guestLink: string }).inviteToken;
+    expect(inviteToken).toBeTruthy();
+    expect(JSON.stringify(link.json())).not.toContain("inviteTokenHash");
+    const guest = await app.inject({ method: "GET", url: `/rooms/guest/${inviteToken}` });
+    expect(guest.statusCode).toBe(200);
+    expect(JSON.stringify(guest.json())).not.toContain("outreachCampaignId");
+    const denied = await app.inject({
+      method: "POST",
+      url: `/rooms/${roomId}/transcript`,
+      headers: auth(user.token),
+      payload: { speakerLabel: "Investor", text: "What traction do you have?", isFinal: true },
+    });
+    expect(denied.statusCode).toBe(403);
+    await app.inject({ method: "POST", url: `/rooms/guest/${inviteToken}/consent`, payload: { consentStatus: "granted", displayName: "Investor guest" } });
+    const segment = await app.inject({
+      method: "POST",
+      url: `/rooms/${roomId}/transcript`,
+      headers: auth(user.token),
+      payload: { speakerLabel: "Founder", text: "We agreed that I will send the deck and follow up next week.", isFinal: true },
+    });
+    expect(segment.statusCode).toBe(200);
+    const summary = await app.inject({ method: "POST", url: `/rooms/${roomId}/generate-summary`, headers: auth(user.token), payload: {} });
+    expect(summary.statusCode).toBe(200);
+    expect(JSON.stringify(summary.json())).toContain("draft_followup_message");
+    expect(JSON.stringify(summary.json())).toContain("sendDisabled");
+  });
+
+  it("ties rooms to source-backed outreach investors and blocks guest access to private campaign data", async () => {
+    const user = await devUser("it-rooms-outreach@example.com");
+    const campaign = await app.inject({
+      method: "POST",
+      url: "/outreach/campaigns",
+      headers: auth(user.token),
+      payload: {
+        name: "Room campaign",
+        startupSummary: "AI assistant for real-time founder preparation and investor follow-up.",
+        sectors: ["ai"],
+        complianceBasis: "Draft-only.",
+      },
+    });
+    expect(campaign.statusCode).toBe(200);
+    const campaignId = (campaign.json() as { campaign: { id: string } }).campaign.id;
+    await modules.pool.query(
+      "INSERT INTO investor_profiles(user_id, campaign_id, firm_name, website_url, source_confidence, status) VALUES($1, $2, $3, $4, $5, $6)",
+      [user.user.id, campaignId, "Y Combinator", "https://www.ycombinator.com", 0.8, "shortlisted"],
+    );
+    const investors = await app.inject({ method: "GET", url: `/outreach/campaigns/${campaignId}/investors`, headers: auth(user.token) });
+    const investorId = (investors.json() as { investors: Array<{ id: string }> }).investors[0]?.id;
+    const room = await app.inject({ method: "POST", url: `/outreach/investors/${investorId}/create-room`, headers: auth(user.token), payload: {} });
+    expect(room.statusCode).toBe(200);
+    expect(JSON.stringify(room.json())).toContain("investor call");
+    const linked = await app.inject({ method: "GET", url: `/outreach/investors/${investorId}/rooms`, headers: auth(user.token) });
+    expect(linked.statusCode).toBe(200);
+    expect(JSON.stringify(linked.json())).toContain("livekit");
+  });
+});
+
 describe("integration subagent orchestration", () => {
   it("creates research task with provider_not_configured report and enforces ownership", async () => {
     const userA = await devUser("it-subagent-a@example.com");
@@ -1017,8 +1090,26 @@ async function assertInfra(): Promise<void> {
 }
 
 async function cleanData(): Promise<void> {
-  await modules.pool.query("TRUNCATE provider_usage_events, evaluation_events, connector_items, connector_sync_runs, connector_consent_events, connector_accounts, action_execution_logs, action_approvals, action_proposals, weekly_reviews, daily_brief_feedback, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE");
+  await withDeadlockRetry(() =>
+    modules.pool.query(
+      "TRUNCATE room_audit_events, room_summaries, room_transcript_segments, room_participants, rooms, provider_usage_events, evaluation_events, connector_items, connector_sync_runs, connector_consent_events, connector_accounts, action_execution_logs, action_approvals, action_proposals, weekly_reviews, daily_brief_feedback, meeting_packs, followup_suggestions, daily_briefs, task_items, commitments, brain_audit_events, subagent_notifications, subagent_task_attempts, subagent_events, subagent_reports, subagent_tasks, skill_versions, skills, tool_invocations, tool_manifests, research_answers, research_sources, research_queries, stress_events, brain_reflections, user_feedback_events, context_relationships, context_entities, human_profile_facts, human_profiles, consent_events, transcript_segments, suggestions, cue_events, agent_turns, voice_outputs, voice_sessions, memories, sessions, situation_briefs, users RESTART IDENTITY CASCADE",
+    ),
+  );
   await modules.clearAllRedisForTest();
+}
+
+async function withDeadlockRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if ((err as { code?: string }).code !== "40P01") break;
+      await delay(100 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 async function devUser(email: string) {

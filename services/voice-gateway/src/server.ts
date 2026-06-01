@@ -42,6 +42,11 @@ export async function buildGatewayServer() {
     };
   });
 
+  app.get("/rooms/ui/:roomId", async (_, reply) => sendPublicFile(reply, "room.html", "text/html; charset=utf-8"));
+  app.get("/r/:inviteToken", async (_, reply) => sendPublicFile(reply, "room.html", "text/html; charset=utf-8"));
+  app.get("/rooms/room.js", async (_, reply) => sendPublicFile(reply, "room.js", "text/javascript; charset=utf-8"));
+  app.get("/rooms/room.css", async (_, reply) => sendPublicFile(reply, "room.css", "text/css; charset=utf-8"));
+
   if (process.env.NODE_ENV !== "production") {
     app.get("/dev/live", async (_, reply) => sendPublicFile(reply, "live.html", "text/html; charset=utf-8"));
     app.get("/dev/live/live-client.js", async (_, reply) => sendPublicFile(reply, "live-client.js", "text/javascript; charset=utf-8"));

@@ -131,6 +131,21 @@ async function handleAction(action) {
     if (action === "outreachCreateActionProposal") return createOutreachActionProposal();
     if (action === "outreachApproveDraft") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/approve`, {}));
     if (action === "outreachRejectDraft") return show("outreachOut", await post(`/outreach/drafts/${outreachDraftId()}/reject`, {}));
+    if (action === "outreachCreateRoom") return createRoomForInvestor();
+    if (action === "outreachInvestorRooms") return show("outreachOut", await get(`/outreach/investors/${outreachInvestorId()}/rooms`));
+    if (action === "roomCreate") return createRoom();
+    if (action === "roomList") return show("roomsOut", await get("/rooms"));
+    if (action === "roomLoad") return show("roomsOut", await get(`/rooms/${roomId()}`));
+    if (action === "roomGuestLink") return createGuestLink();
+    if (action === "roomHostToken") return showRedacted("roomsOut", await post(`/rooms/${roomId()}/host-token`, {}));
+    if (action === "roomGuestConsent") return show("roomsOut", await post(`/rooms/guest/${roomInviteToken()}/consent`, { consentStatus: "granted", displayName: $("roomGuestName").value.trim(), email: optionalValue("roomGuestEmail") }));
+    if (action === "roomGuestToken") return showRedacted("roomsOut", await post(`/rooms/guest/${roomInviteToken()}/token`, { displayName: $("roomGuestName").value.trim() }));
+    if (action === "roomTranscript") return show("roomsOut", await post(`/rooms/${roomId()}/transcript`, { speakerLabel: $("roomSpeaker").value.trim(), text: $("roomTranscriptText").value.trim(), isFinal: true }));
+    if (action === "roomTranscriptLoad") return show("roomsOut", await get(`/rooms/${roomId()}/transcript`));
+    if (action === "roomSummary") return show("roomsOut", await post(`/rooms/${roomId()}/generate-summary`, {}));
+    if (action === "roomSummaryLoad") return show("roomsOut", await get(`/rooms/${roomId()}/summary`));
+    if (action === "roomAudit") return show("roomsOut", await get(`/rooms/${roomId()}/audit`));
+    if (action === "roomEnd") return show("roomsOut", await post(`/rooms/${roomId()}/end`, {}));
     if (action === "connectorsList") return show("connectorsOut", await get("/connectors"));
     if (action === "connectorGet") return show("connectorsOut", await get(`/connectors/${connectorId()}`));
     if (action === "connectorPermissions") return show("connectorsOut", await get(`/connectors/${connectorId()}/permissions`));
@@ -223,6 +238,31 @@ async function createOutreachActionProposal() {
   const result = await post(`/outreach/drafts/${outreachDraftId()}/create-action-proposal`, {});
   if (result.proposal?.id) $("actionProposalId").value = result.proposal.id;
   show("outreachOut", result);
+}
+
+async function createRoomForInvestor() {
+  const result = await post(`/outreach/investors/${outreachInvestorId()}/create-room`, {});
+  if (result.room?.id) $("roomId").value = result.room.id;
+  show("outreachOut", result);
+}
+
+async function createRoom() {
+  const result = await post("/rooms", {
+    title: $("roomTitle").value.trim(),
+    outreachCampaignId: optionalValue("outreachCampaignId"),
+    investorId: optionalValue("outreachInvestorId"),
+    transcriptionEnabled: true,
+    recordingEnabled: false,
+    aiAgentEnabled: false,
+  });
+  if (result.room?.id) $("roomId").value = result.room.id;
+  show("roomsOut", result);
+}
+
+async function createGuestLink() {
+  const result = await post(`/rooms/${roomId()}/guest-link`, { displayName: $("roomGuestName").value.trim(), email: optionalValue("roomGuestEmail") });
+  if (result.inviteToken) $("roomInviteToken").value = result.inviteToken;
+  show("roomsOut", result);
 }
 
 function startSubagentStream() {
@@ -439,6 +479,18 @@ function outreachDraftId() {
   return id;
 }
 
+function roomId() {
+  const id = $("roomId").value.trim();
+  if (!id) throw new Error("Room ID is required.");
+  return encodeURIComponent(id);
+}
+
+function roomInviteToken() {
+  const token = $("roomInviteToken").value.trim();
+  if (!token) throw new Error("Guest invite token is required.");
+  return encodeURIComponent(token);
+}
+
 function connectorId() {
   return encodeURIComponent($("connectorId").value);
 }
@@ -452,6 +504,11 @@ function connectorAccountId() {
 function optionalConnectorAccountId() {
   const id = $("connectorAccountId").value.trim();
   return id || null;
+}
+
+function optionalValue(id) {
+  const value = $(id).value.trim();
+  return value || undefined;
 }
 
 function backendBase() {
@@ -470,6 +527,11 @@ function updateAuthStatus(message) {
 function show(id, value) {
   $(id).textContent = JSON.stringify(value, null, 2);
   log(`${id}: loaded`);
+}
+
+function showRedacted(id, value) {
+  const safe = { ...value, token: value?.token ? "[redacted]" : value?.token };
+  show(id, safe);
 }
 
 function append(id, value) {

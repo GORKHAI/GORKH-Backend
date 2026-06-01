@@ -221,6 +221,8 @@
           <label>Investor ID <input id="outreachInvestorId" placeholder="investor uuid" /></label>
           <label>Merge into investor ID <input id="outreachMergeTargetId" placeholder="target investor uuid" /></label>
           <label>Draft ID <input id="outreachDraftId" placeholder="draft uuid" /></label>
+          <label>Room ID <input id="roomId" placeholder="room uuid" /></label>
+          <label>Guest invite token <input id="roomInviteToken" placeholder="opaque guest token" /></label>
           <label>Campaign name <input id="outreachCampaignName" value="Nearmind seed outreach" /></label>
           <label>Startup summary <textarea id="outreachStartupSummary">Nearmind/GORKH is a real-time adaptive AI assistant for daily work, live voice support, and source-backed research.</textarea></label>
           <label>Sectors <input id="outreachSectors" value="ai, productivity, voice assistant" /></label>
@@ -252,9 +254,39 @@
           <button data-action="outreachCreateActionProposal" class="button">Create Action Proposal</button>
           <button data-action="outreachApproveDraft" class="button">Approve Draft</button>
           <button data-action="outreachRejectDraft" class="button danger">Reject Draft</button>
+          <button data-action="outreachCreateRoom" class="button primary">Create Room For Investor</button>
+          <button data-action="outreachInvestorRooms" class="button">Investor Rooms</button>
         </div>
         <p class="hint">Investor outreach is source-backed and draft-only. GORKH does not send email, submit forms, add tracking pixels, or invent investor facts.</p>
         <pre id="outreachOut"></pre>
+      </section>
+
+      <section class="panel wide">
+        <h2>Nearmind Rooms</h2>
+        <div class="grid two">
+          <label>Room title <input id="roomTitle" value="Investor call" /></label>
+          <label>Guest display name <input id="roomGuestName" value="Investor guest" /></label>
+          <label>Guest email <input id="roomGuestEmail" placeholder="optional guest email" /></label>
+          <label>Transcript speaker <input id="roomSpeaker" value="Investor" /></label>
+          <label>Transcript line <textarea id="roomTranscriptText">We agreed that I will send the deck and follow up next week.</textarea></label>
+        </div>
+        <div class="actions">
+          <button data-action="roomCreate" class="button primary">Create Room</button>
+          <button data-action="roomList" class="button">List Rooms</button>
+          <button data-action="roomLoad" class="button">Load Room</button>
+          <button data-action="roomGuestLink" class="button">Create Guest Link</button>
+          <button data-action="roomHostToken" class="button">Host Token</button>
+          <button data-action="roomGuestConsent" class="button">Guest Consent</button>
+          <button data-action="roomGuestToken" class="button">Guest Token</button>
+          <button data-action="roomTranscript" class="button">Add Transcript Line</button>
+          <button data-action="roomTranscriptLoad" class="button">Load Transcript</button>
+          <button data-action="roomSummary" class="button">Generate Summary</button>
+          <button data-action="roomSummaryLoad" class="button">Load Summary</button>
+          <button data-action="roomAudit" class="button">Audit</button>
+          <button data-action="roomEnd" class="button danger">End Room</button>
+        </div>
+        <p class="hint">Rooms are consent-first. LiveKit secrets are never shown. If LiveKit is missing, token operations show rooms_not_configured instead of fake joining.</p>
+        <pre id="roomsOut"></pre>
       </section>
 
       <section class="panel wide">

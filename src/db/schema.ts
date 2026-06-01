@@ -131,6 +131,10 @@ export type InvestorDuplicateStatus = "unique" | "candidate_duplicate" | "merged
 export type InvestorEmailStatus = "unknown" | "source_backed" | "generic_contact" | "unavailable" | "rejected";
 export type OutreachCampaignStatus = "draft" | "researching" | "ready_for_review" | "paused" | "completed";
 export type OutreachDraftStatus = "draft" | "proposed" | "approved" | "rejected" | "sent_elsewhere";
+export type RoomProvider = "livekit";
+export type RoomStatus = "draft" | "scheduled" | "active" | "ended" | "canceled";
+export type RoomParticipantRole = "host" | "guest" | "ai_agent";
+export type RoomConsentStatus = "pending" | "granted" | "denied";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1326,6 +1330,113 @@ export const connectorItems = pgTable(
   }),
 );
 
+export const rooms = pgTable(
+  "rooms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    outreachCampaignId: uuid("outreach_campaign_id").references(() => outreachCampaigns.id, { onDelete: "set null" }),
+    investorId: uuid("investor_id").references(() => investorProfiles.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    provider: text("provider").$type<RoomProvider>().notNull(),
+    providerRoomName: text("provider_room_name"),
+    status: text("status").$type<RoomStatus>().notNull(),
+    aiAgentEnabled: boolean("ai_agent_enabled").notNull().default(false),
+    transcriptionEnabled: boolean("transcription_enabled").notNull().default(false),
+    recordingEnabled: boolean("recording_enabled").notNull().default(false),
+    consentRequired: boolean("consent_required").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("rooms_by_user").on(t.userId),
+    byStatus: index("rooms_by_status").on(t.status),
+    byInvestor: index("rooms_by_investor").on(t.investorId),
+  }),
+);
+
+export const roomParticipants = pgTable(
+  "room_participants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    role: text("role").$type<RoomParticipantRole>().notNull(),
+    displayName: text("display_name"),
+    email: text("email"),
+    tokenHash: text("token_hash"),
+    inviteTokenHash: text("invite_token_hash"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+    consentStatus: text("consent_status").$type<RoomConsentStatus>().notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byRoom: index("room_participants_by_room").on(t.roomId),
+    byInviteToken: index("room_participants_by_invite_token").on(t.inviteTokenHash),
+  }),
+);
+
+export const roomTranscriptSegments = pgTable(
+  "room_transcript_segments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    speakerLabel: text("speaker_label").notNull(),
+    text: text("text").notNull(),
+    offsetMs: integer("offset_ms"),
+    isFinal: boolean("is_final").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byRoom: index("room_transcript_segments_by_room").on(t.roomId),
+  }),
+);
+
+export const roomSummaries = pgTable(
+  "room_summaries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    summary: text("summary").notNull(),
+    decisions: jsonb("decisions").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    commitments: jsonb("commitments").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    followups: jsonb("followups").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    draftFollowup: text("draft_followup"),
+    actionProposalId: uuid("action_proposal_id").references(() => actionProposals.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byRoom: index("room_summaries_by_room").on(t.roomId),
+  }),
+);
+
+export const roomAuditEvents = pgTable(
+  "room_audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byRoom: index("room_audit_events_by_room").on(t.roomId),
+  }),
+);
+
 export const evaluationEvents = pgTable(
   "evaluation_events",
   {
@@ -1452,6 +1563,11 @@ export type ConnectorTokenVaultRow = typeof connectorTokenVault.$inferSelect;
 export type ConnectorConsentEvent = typeof connectorConsentEvents.$inferSelect;
 export type ConnectorSyncRun = typeof connectorSyncRuns.$inferSelect;
 export type ConnectorItem = typeof connectorItems.$inferSelect;
+export type Room = typeof rooms.$inferSelect;
+export type RoomParticipant = typeof roomParticipants.$inferSelect;
+export type RoomTranscriptSegment = typeof roomTranscriptSegments.$inferSelect;
+export type RoomSummary = typeof roomSummaries.$inferSelect;
+export type RoomAuditEvent = typeof roomAuditEvents.$inferSelect;
 export type EvaluationEvent = typeof evaluationEvents.$inferSelect;
 export type ProviderUsageEvent = typeof providerUsageEvents.$inferSelect;
 export type MobileNotification = typeof mobileNotifications.$inferSelect;

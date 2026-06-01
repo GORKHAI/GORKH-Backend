@@ -742,6 +742,70 @@ export async function runMigration(): Promise<void> {
         updated_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS rooms (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        outreach_campaign_id uuid REFERENCES outreach_campaigns(id) ON DELETE SET NULL,
+        investor_id uuid REFERENCES investor_profiles(id) ON DELETE SET NULL,
+        title text NOT NULL,
+        provider text NOT NULL,
+        provider_room_name text,
+        status text NOT NULL,
+        ai_agent_enabled boolean NOT NULL DEFAULT false,
+        transcription_enabled boolean NOT NULL DEFAULT false,
+        recording_enabled boolean NOT NULL DEFAULT false,
+        consent_required boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS room_participants (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        room_id uuid NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        role text NOT NULL,
+        display_name text,
+        email text,
+        token_hash text,
+        invite_token_hash text,
+        joined_at timestamptz,
+        left_at timestamptz,
+        consent_status text NOT NULL DEFAULT 'pending',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS room_transcript_segments (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        room_id uuid NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        speaker_label text NOT NULL,
+        text text NOT NULL,
+        offset_ms integer,
+        is_final boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS room_summaries (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        room_id uuid NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        summary text NOT NULL,
+        decisions jsonb NOT NULL DEFAULT '[]'::jsonb,
+        commitments jsonb NOT NULL DEFAULT '[]'::jsonb,
+        followups jsonb NOT NULL DEFAULT '[]'::jsonb,
+        draft_followup text,
+        action_proposal_id uuid REFERENCES action_proposals(id) ON DELETE SET NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS room_audit_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        room_id uuid NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+        event_type text NOT NULL,
+        payload jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS evaluation_events (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid REFERENCES users(id) ON DELETE CASCADE,
@@ -884,6 +948,14 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS connector_items_by_user ON connector_items(user_id);
       CREATE INDEX IF NOT EXISTS connector_items_by_account ON connector_items(connector_account_id);
       CREATE INDEX IF NOT EXISTS connector_items_by_user_type ON connector_items(user_id, item_type);
+      CREATE INDEX IF NOT EXISTS rooms_by_user ON rooms(user_id);
+      CREATE INDEX IF NOT EXISTS rooms_by_status ON rooms(status);
+      CREATE INDEX IF NOT EXISTS rooms_by_investor ON rooms(investor_id);
+      CREATE INDEX IF NOT EXISTS room_participants_by_room ON room_participants(room_id);
+      CREATE INDEX IF NOT EXISTS room_participants_by_invite_token ON room_participants(invite_token_hash);
+      CREATE INDEX IF NOT EXISTS room_transcript_segments_by_room ON room_transcript_segments(room_id);
+      CREATE INDEX IF NOT EXISTS room_summaries_by_room ON room_summaries(room_id);
+      CREATE INDEX IF NOT EXISTS room_audit_events_by_room ON room_audit_events(room_id);
       CREATE INDEX IF NOT EXISTS evaluation_events_by_user ON evaluation_events(user_id);
       CREATE INDEX IF NOT EXISTS evaluation_events_by_target ON evaluation_events(target_type, target_id);
       CREATE INDEX IF NOT EXISTS provider_usage_events_by_user ON provider_usage_events(user_id);

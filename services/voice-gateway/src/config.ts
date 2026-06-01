@@ -19,6 +19,7 @@ const gatewayEnvSchema = z.object({
   OPS_CONSOLE_ENABLED: z.coerce.boolean().default(false),
   OPS_CONSOLE_ADMIN_TOKEN: emptyToUndefined(z.string().min(16).optional()),
   OPS_CONSOLE_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  ROOMS_PUBLIC_BASE_URL: emptyToUndefined(z.string().url().optional()),
   VOICE_LABS_ENABLED: z.coerce.boolean().default(false),
   VIBEVOICE_LAB_ENABLED: z.coerce.boolean().default(false),
   VIBEVOICE_ASR_LAB_ENABLED: z.coerce.boolean().default(false),

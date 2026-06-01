@@ -26,9 +26,12 @@ import {
   outreachComplianceEvents,
   outreachDrafts,
   providerUsageEvents,
+  roomAuditEvents,
   researchAnswers,
   researchQueries,
   researchSources,
+  roomParticipants,
+  rooms,
   sessions,
   situationBriefs,
   skills,
@@ -78,6 +81,15 @@ import { dismissDuplicateCandidate, mergeInvestorLeads } from "./outreach/lead-m
 import { createActionProposalForDraft, draftOutreachEmails, getOwnedOutreachDraft, listOutreachDrafts, updateOutreachDraftStatus } from "./outreach/outreach-draft.js";
 import { campaignQualitySummary, campaignReviewPack, latestDraftQualityReview, reviewDraftQuality, reviewInvestorQuality } from "./outreach/quality.js";
 import { createOutreachCampaignSchema, draftEmailsBodySchema, investorResearchInputSchema } from "./outreach/types.js";
+import { setGuestConsent } from "./rooms/consent.js";
+import { hashInviteToken } from "./rooms/invite.js";
+import { createRoomForInvestor, roomsForInvestor } from "./rooms/outreach.js";
+import { roomConfigStatus, RoomsPolicyError } from "./rooms/policy.js";
+import { createGuestLink, createRoom, endRoom, listRooms, roomWithParticipants } from "./rooms/room-service.js";
+import { generateRoomSummary, latestRoomSummary } from "./rooms/summary.js";
+import { guestTokenForInvite, hostTokenForRoom, publicParticipant, publicRoom } from "./rooms/token-service.js";
+import { addRoomTranscriptSegment, listRoomTranscript } from "./rooms/transcript.js";
+import { createRoomBodySchema, guestConsentBodySchema, guestTokenBodySchema, transcriptSegmentBodySchema } from "./rooms/types.js";
 import { answerBrainQuery } from "./brain/orchestrator.js";
 import { logBrainAuditEvent } from "./brain/audit.js";
 import { selectedLlmStatus } from "./llm/provider.js";
@@ -875,6 +887,160 @@ export async function buildServer() {
     const pack = await campaignReviewPack(userId, params.id);
     if (!pack) return reply.code(404).send({ error: "not found" });
     return reply.send(pack);
+  });
+
+  app.post("/rooms", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = createRoomBodySchema.parse(request.body);
+    const room = await createRoom(userId, body);
+    if (!room) return reply.code(404).send({ error: "not found" });
+    return reply.send({ room, providerStatus: roomConfigStatus() });
+  });
+
+  app.get("/rooms", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    return reply.send({ rooms: await listRooms(userId), providerStatus: roomConfigStatus() });
+  });
+
+  app.get("/rooms/:id", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const detail = await roomWithParticipants(userId, params.id);
+    if (!detail) return reply.code(404).send({ error: "not found" });
+    return reply.send({ ...detail, providerStatus: roomConfigStatus() });
+  });
+
+  app.post("/rooms/:id/host-token", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    try {
+      const result = await hostTokenForRoom(userId, params.id);
+      if (!result) return reply.code(404).send({ error: "not found" });
+      return reply.send(result);
+    } catch (err) {
+      return sendRoomError(reply, err);
+    }
+  });
+
+  app.post("/rooms/:id/guest-link", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const body = z.object({ displayName: z.string().max(120).optional(), email: z.string().email().optional() }).parse(request.body ?? {});
+    const result = await createGuestLink(userId, params.id, body);
+    if (!result) return reply.code(404).send({ error: "not found" });
+    return reply.send(result);
+  });
+
+  app.post("/rooms/:id/end", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const room = await endRoom(userId, params.id);
+    if (!room) return reply.code(404).send({ error: "not found" });
+    return reply.send({ room });
+  });
+
+  app.post("/rooms/:id/transcript", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const body = transcriptSegmentBodySchema.parse(request.body);
+    try {
+      const segment = await addRoomTranscriptSegment(userId, params.id, body);
+      if (!segment) return reply.code(404).send({ error: "not found" });
+      return reply.send({ segment });
+    } catch (err) {
+      return sendRoomError(reply, err);
+    }
+  });
+
+  app.get("/rooms/:id/transcript", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const transcript = await listRoomTranscript(userId, params.id);
+    if (!transcript) return reply.code(404).send({ error: "not found" });
+    return reply.send({ transcript });
+  });
+
+  app.post("/rooms/:id/generate-summary", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const result = await generateRoomSummary(userId, params.id);
+    if (!result) return reply.code(404).send({ error: "not found" });
+    return reply.send(result);
+  });
+
+  app.get("/rooms/:id/summary", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const summary = await latestRoomSummary(userId, params.id);
+    if (!summary) return reply.code(404).send({ error: "not found" });
+    return reply.send({ summary });
+  });
+
+  app.get("/rooms/:id/audit", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    if (!(await roomWithParticipants(userId, params.id))) return reply.code(404).send({ error: "not found" });
+    const events = await db.select().from(roomAuditEvents).where(eq(roomAuditEvents.roomId, params.id)).orderBy(desc(roomAuditEvents.createdAt)).limit(100);
+    return reply.send({ events });
+  });
+
+  app.get("/rooms/guest/:inviteToken", async (request, reply) => {
+    const params = z.object({ inviteToken: z.string().min(16) }).parse(request.params);
+    const tokenHash = hashInviteToken(params.inviteToken);
+    const [participant] = await db.select().from(roomParticipants).where(eq(roomParticipants.inviteTokenHash, tokenHash)).limit(1);
+    if (!participant || participant.role !== "guest") return reply.code(404).send({ error: "not found" });
+    const [room] = await db.select().from(rooms).where(eq(rooms.id, participant.roomId)).limit(1);
+    if (!room) return reply.code(404).send({ error: "not found" });
+    return reply.send({ room: publicRoom(room), participant: publicParticipant(participant), providerStatus: roomConfigStatus() });
+  });
+
+  app.post("/rooms/guest/:inviteToken/consent", async (request, reply) => {
+    const params = z.object({ inviteToken: z.string().min(16) }).parse(request.params);
+    const body = guestConsentBodySchema.parse(request.body ?? {});
+    const participant = await setGuestConsent(params.inviteToken, body);
+    if (!participant) return reply.code(404).send({ error: "not found" });
+    return reply.send({ participant: publicParticipant(participant) });
+  });
+
+  app.post("/rooms/guest/:inviteToken/token", async (request, reply) => {
+    const params = z.object({ inviteToken: z.string().min(16) }).parse(request.params);
+    const body = guestTokenBodySchema.parse(request.body ?? {});
+    try {
+      const result = await guestTokenForInvite(params.inviteToken, body.displayName);
+      if (!result) return reply.code(404).send({ error: "not found" });
+      return reply.send(result);
+    } catch (err) {
+      return sendRoomError(reply, err);
+    }
+  });
+
+  app.post("/outreach/investors/:id/create-room", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const result = await createRoomForInvestor(userId, params.id);
+    if (!result?.room) return reply.code(404).send({ error: "not found" });
+    return reply.send(result);
+  });
+
+  app.get("/outreach/investors/:id/rooms", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const rows = await roomsForInvestor(userId, params.id);
+    if (!rows) return reply.code(404).send({ error: "not found" });
+    return reply.send({ rooms: rows });
   });
 
   app.get("/connectors", async (request, reply) => {
@@ -1830,6 +1996,14 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promis
     reply.code(401).send({ error: "invalid bearer token" });
     return null;
   }
+}
+
+function sendRoomError(reply: FastifyReply, err: unknown) {
+  if (err instanceof RoomsPolicyError) {
+    const status = err.code === "rooms_disabled" || err.code === "rooms_not_configured" ? 409 : err.code === "consent_required" ? 403 : 400;
+    return reply.code(status).send({ error: { code: err.code, message: err.message, retryable: false } });
+  }
+  return reply.code(500).send({ error: { code: "internal_error", message: "Room operation failed.", retryable: false } });
 }
 
 function tokenFromRequest(request: FastifyRequest): string | null {

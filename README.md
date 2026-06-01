@@ -899,6 +899,49 @@ npm run outreach:replay -- voice-campaign-review
 npm run outreach:replay:all
 ```
 
+### Nearmind Rooms
+
+Nearmind Rooms v0 adds reviewable investor-call room infrastructure around outreach leads. It creates host-owned room records, opaque guest links, consent-gated transcript ingestion, deterministic post-call summaries, and draft follow-up action proposals. LiveKit is the room/token provider when configured; if LiveKit is missing, real room/token operations return `rooms_not_configured` rather than faking a room.
+
+Routes:
+
+```text
+POST /rooms
+GET  /rooms
+GET  /rooms/:id
+POST /rooms/:id/host-token
+POST /rooms/:id/guest-link
+POST /rooms/:id/end
+POST /rooms/:id/transcript
+GET  /rooms/:id/transcript
+POST /rooms/:id/generate-summary
+GET  /rooms/:id/summary
+GET  /rooms/:id/audit
+
+GET  /rooms/guest/:inviteToken
+POST /rooms/guest/:inviteToken/consent
+POST /rooms/guest/:inviteToken/token
+
+POST /outreach/investors/:id/create-room
+GET  /outreach/investors/:id/rooms
+```
+
+Boundaries: no hidden recording, no transcript before consent, no guest access to campaign/private outreach data, no LiveKit API secret exposed to clients, no AI speaking to investors by default, no email sending, no calendar writes, and no fake LiveKit room, transcript, or summary. The lightweight web prototype is served by the voice gateway at `/rooms/ui/:roomId` for hosts and `/r/:inviteToken` for guests.
+
+Rooms replay commands:
+
+```bash
+npm run rooms:replay -- not-configured
+npm run rooms:replay -- create-room
+npm run rooms:replay -- guest-link
+npm run rooms:replay -- consent-required
+npm run rooms:replay -- transcript-ingest
+npm run rooms:replay -- summary
+npm run rooms:replay -- outreach-room
+npm run rooms:replay -- guest-permissions
+npm run rooms:replay:all
+```
+
 Connector registry routes:
 
 ```text

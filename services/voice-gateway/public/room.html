@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nearmind Room</title>
+    <link rel="stylesheet" href="/rooms/room.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div>
+          <p class="eyebrow">Nearmind Rooms v0</p>
+          <h1>Investor Call Room</h1>
+        </div>
+        <span id="modeChip" class="chip">loading</span>
+      </header>
+
+      <section class="panel warning">
+        <strong>Consent first.</strong>
+        <span>No transcription or recording is allowed before consent. AI is observer-only and does not speak to guests in v0.</span>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>Connection</h2>
+          <label>Backend URL <input id="backendUrl" value="https://api.gorkh.com" /></label>
+          <label>JWT for host only <input id="jwt" placeholder="Paste host JWT" /></label>
+          <label>Display name <input id="displayName" value="Guest" /></label>
+          <label class="check"><input id="consent" type="checkbox" /> I consent to join this room and understand transcription requires consent.</label>
+          <div class="row">
+            <button id="loadRoom">Load Room</button>
+            <button id="grantConsent">Grant Guest Consent</button>
+            <button id="fetchToken">Fetch Token</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Room Status</h2>
+          <pre id="status">Waiting.</pre>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Video Prototype</h2>
+        <div class="video-grid">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div id="remotePlaceholder">Remote participants will appear when a LiveKit browser client is bundled in a future UI build.</div>
+        </div>
+        <div class="row">
+          <button id="previewMedia">Start Local Preview</button>
+          <button id="stopMedia">Stop Media</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Event Log</h2>
+        <pre id="log"></pre>
+      </section>
+    </main>
+    <script type="module" src="/rooms/room.js"></script>
+  </body>
+</html>
