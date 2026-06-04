@@ -6,6 +6,7 @@ import { detectResearchNeed } from "../src/research/need-detector.js";
 import { isPrivateHost } from "../src/research/fetch/fetcher.js";
 import { classifySource, scoreSource } from "../src/research/verifier.js";
 import { validateSourceBackedAnswer } from "../src/research/composer.js";
+import { buildResearchReportPack } from "../src/research/report-pack.js";
 import { noneSearchProvider } from "../src/research/none.js";
 import { ResearchProviderError } from "../src/research/types.js";
 import { proposeSkillFromReflection, validateSkillManifest } from "../src/skills/learner.js";
@@ -104,6 +105,51 @@ describe("research and fetch policy", () => {
         [{ title: "Real", url: "https://official.example/source", snippet: "Real source." }],
       ),
     ).toThrow(/source_backed_citations/);
+  });
+
+  it("builds report packs only with stored citation mappings", () => {
+    const pack = buildResearchReportPack({
+      query: { id: "query-1", query: "official SDK documentation", intent: "source_verification", provider: "tavily", requiresFreshness: false },
+      sources: [
+        {
+          id: "source-1",
+          url: "https://docs.example.com/sdk",
+          title: "SDK documentation",
+          sourceType: "official",
+          snippet: "The SDK supports token-based authentication.",
+          publishedAt: null,
+          fetchedAt: new Date("2026-06-01T00:00:00.000Z"),
+          credibilityScore: 0.9,
+        },
+      ],
+      answer: {
+        id: "answer-1",
+        answer: "Sources indicate the SDK supports token-based authentication.",
+        citations: [{ url: "https://docs.example.com/sdk", title: "SDK documentation" }],
+        confidence: 0.8,
+        limitations: "Limited to available docs.",
+      },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+    });
+    expect(pack.schemaVersion).toBe("nearmind.research_report_pack.v1");
+    expect(pack.citations[0]).toMatchObject({ sourceId: "source-1" });
+    expect(pack.freshness.newestSourceAt).toBe("2026-06-01T00:00:00.000Z");
+  });
+
+  it("rejects report packs with unmapped citations", () => {
+    expect(() =>
+      buildResearchReportPack({
+        query: { id: "query-1", query: "official APR explanation consumer loan", intent: "source_verification", provider: "tavily", requiresFreshness: false },
+        sources: [{ id: "source-1", url: "https://real.example/source", title: "Real", sourceType: "official", snippet: "Real source." }],
+        answer: {
+          id: "answer-1",
+          answer: "Bad answer.",
+          citations: [{ url: "https://fake.example/source", title: "Fake" }],
+          confidence: 0.5,
+          limitations: "Limited.",
+        },
+      }),
+    ).toThrow(/citation_not_source_backed|source_backed/);
   });
 
   it("scores official sources above forums", () => {

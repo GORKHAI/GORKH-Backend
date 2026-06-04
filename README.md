@@ -1092,6 +1092,24 @@ Profile mutation defaults to explicit-only. Ordinary chat does not write profile
 
 See `docs/mobile/mobile-protocol-v1.md`, `docs/mobile/voice-gateway-contract-v1.md`, `docs/mobile/mobile-sync-contract-v1.md`, `docs/mobile/mobile-error-codes.md`, `docs/mobile/mobile-privacy-contract.md`, and `docs/mobile/mobile-readiness-checklist.md`.
 
+### Odysseus-Inspired Polish
+
+The uploaded Odysseus reference was used only for small pre-mobile patterns, not as a workspace architecture replacement. Nearmind now has Research Report Pack v1, owner-only Memory/Skills Export/Import v0, reminder intent fields for task inbox items, and a conservative pre-mobile security check.
+
+New checks:
+
+```bash
+npm run reference:replay -- odysseus-small-patterns
+npm run brain:replay -- research-report-pack
+npm run brain:replay -- memory-export-import
+npm run daily:replay -- reminder-channel-model
+npm run security:pre-mobile-check
+```
+
+Rejected Odysseus-style additions for this stage include shell tools, file tools, IMAP/SMTP sending, CalDAV sync, unrestricted MCP, local model serving, and document editing.
+
+See `docs/reference/odysseus-small-patterns-for-nearmind.md`, `docs/brain/research-report-pack-v1.md`, `docs/brain/memory-skills-portability.md`, `docs/brain/reminder-channel-model.md`, and `docs/security/pre-mobile-security-checklist.md`.
+
 ### Voice Labs
 
 Voice Labs are disabled-by-default provider experiments. The current production voice path remains Deepgram live ASR plus client-side/native TTS instructions. VibeVoice is documented as a reference implementation only; the repository does not install VibeVoice, download model weights, run demos, or enable server-side synthetic voice.

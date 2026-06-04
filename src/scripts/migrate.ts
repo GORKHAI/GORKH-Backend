@@ -971,6 +971,9 @@ export async function runMigration(): Promise<void> {
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS context text;
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS blocked_by text;
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS next_step text;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS remind_at timestamptz;
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS reminder_channel text NOT NULL DEFAULT 'none';
+      ALTER TABLE task_items ADD COLUMN IF NOT EXISTS reminder_status text NOT NULL DEFAULT 'none';
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS dedupe_key text;
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS why_suggested text;
       ALTER TABLE task_items ADD COLUMN IF NOT EXISTS source_quote text;

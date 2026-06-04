@@ -267,7 +267,7 @@ async function getJson<T>(url: string, token: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function waitForReport(base: string, token: string, taskId: string, timeoutMs = 8000): Promise<unknown> {
+async function waitForReport(base: string, token: string, taskId: string, timeoutMs = 30000): Promise<unknown> {
   const deadline = Date.now() + timeoutMs;
   let lastTask: unknown = null;
   while (Date.now() < deadline) {

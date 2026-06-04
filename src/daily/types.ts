@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CommitmentSourceType, Sensitivity, TaskPriority } from "../db/schema.js";
+import type { CommitmentSourceType, ReminderChannel, ReminderStatus, Sensitivity, TaskPriority } from "../db/schema.js";
 
 export const proposedCommitmentSchema = z.object({
   sourceType: z.enum(["transcript", "user_text", "assistant_text", "document", "manual", "subagent_report"]),
@@ -39,6 +39,9 @@ export interface TaskProposal {
   context?: string | null;
   blockedBy?: string | null;
   nextStep?: string | null;
+  remindAt?: Date | null;
+  reminderChannel?: ReminderChannel;
+  reminderStatus?: ReminderStatus;
   dedupeKey?: string | null;
   whySuggested?: string | null;
   sourceQuote?: string | null;

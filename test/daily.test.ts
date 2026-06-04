@@ -3,6 +3,7 @@ import { extractCommitmentsFromText } from "../src/daily/commitment-extractor.js
 import { detectFollowupSuggestion } from "../src/daily/followup-detector.js";
 import { buildPrepPackDraftFromContext } from "../src/daily/meeting-pack.js";
 import { explainTaskRanking, priorityForCommitment, rankTasks } from "../src/daily/priority-ranker.js";
+import { proposeTaskFromCommitment } from "../src/daily/task-inbox.js";
 
 describe("daily commitment extraction", () => {
   it("extracts explicit commitments as proposed candidates", () => {
@@ -76,6 +77,34 @@ describe("daily task ranking", () => {
     }, new Date("2026-05-26T00:00:00.000Z"));
     expect(explanation.totalScore).toBeGreaterThan(0);
     expect(explanation.dependencyScore).toBeLessThan(0);
+  });
+
+  it("keeps reminder channel explicit and disabled by default", () => {
+    const proposal = proposeTaskFromCommitment({
+      id: "commitment-1",
+      userId: "user-1",
+      sessionId: null,
+      sourceType: "manual",
+      sourceId: null,
+      owner: "me",
+      counterparty: "bank",
+      title: "Send bank documents",
+      detail: "Send the bank documents by Friday.",
+      dueAt: new Date("2026-06-05T00:00:00.000Z"),
+      status: "proposed",
+      confidence: 0.8,
+      sensitivity: "medium",
+      dedupeKey: "commitment|send-bank-docs",
+      whySuggested: "Detected phrase: I need to send the bank documents by Friday.",
+      sourceQuote: "I need to send the bank documents by Friday.",
+      extractionConfidence: 0.8,
+      duplicateOfId: null,
+      reviewReason: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    expect(proposal.reminderChannel ?? "none").toBe("none");
+    expect(proposal.reminderStatus ?? "none").toBe("none");
   });
 });
 

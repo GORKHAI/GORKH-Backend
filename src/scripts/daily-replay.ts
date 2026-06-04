@@ -15,7 +15,8 @@ type Scenario =
   | "followup-review"
   | "weekly-review"
   | "feedback-loop"
-  | "voice-top-priorities";
+  | "voice-top-priorities"
+  | "reminder-channel-model";
 
 interface DevUserResponse {
   user: { id: string; email: string };
@@ -38,6 +39,7 @@ const allowed: Scenario[] = [
   "weekly-review",
   "feedback-loop",
   "voice-top-priorities",
+  "reminder-channel-model",
 ];
 if (!allowed.includes(scenario)) throw new Error(`unknown daily replay "${scenario}"`);
 
@@ -143,6 +145,21 @@ if (scenario === "voice-top-priorities") {
   const events = await runVoiceQuestion(dev.token, "What should I do today?");
   console.log(`voice-top-priorities: ${JSON.stringify(events)}`);
   assertIncludes(JSON.stringify(events), "Top");
+}
+
+if (scenario === "reminder-channel-model") {
+  await postJson(`${base}/daily/commitments/propose`, { text: "I need to send the bank documents by Friday.", sourceType: "manual" }, dev.token);
+  const tasks = await getJson<{ tasks: Array<{ id: string }> }>(`${base}/daily/tasks`, dev.token);
+  const task = tasks.tasks[0];
+  if (!task) throw new Error("expected proposed task");
+  const reminder = await postJson(`${base}/daily/tasks/${task.id}/reminder`, {
+    remindAt: "2026-06-05T09:00:00.000Z",
+    reminderChannel: "in_app",
+  }, dev.token);
+  const sync = await getJson(`${base}/mobile/sync`, dev.token);
+  console.log(`reminder-channel-model: ${JSON.stringify({ reminder, sync })}`);
+  assertIncludes(JSON.stringify(reminder), "in_app");
+  assertIncludes(JSON.stringify(sync), "reminderChannel");
 }
 
 async function runVoiceSession(token: string, save: boolean, transcript: string): Promise<string> {

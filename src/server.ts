@@ -73,7 +73,7 @@ import { generateDailyBrief, getTodayBrief, recordDailyBriefFeedback } from "./d
 import { proposeFollowup } from "./daily/followup-detector.js";
 import { createPrepPack, createRecapPack, getOwnedMeetingPack } from "./daily/meeting-pack.js";
 import { explainTaskRanking } from "./daily/priority-ranker.js";
-import { listTaskInbox, proposeTasksForCommitments, updateCommitmentStatus, updateTaskStatus } from "./daily/task-inbox.js";
+import { listTaskInbox, proposeTasksForCommitments, updateCommitmentStatus, updateTaskReminder, updateTaskStatus } from "./daily/task-inbox.js";
 import { generateWeeklyReview, getLatestWeeklyReview } from "./daily/weekly-review.js";
 import { createOutreachCampaign, getOwnedOutreachCampaign, listOutreachCampaigns } from "./outreach/campaign.js";
 import { listCampaignInvestors, researchInvestorsForCampaign, updateInvestorStatus } from "./outreach/investor-research.js";
@@ -92,6 +92,7 @@ import { addRoomTranscriptSegment, listRoomTranscript } from "./rooms/transcript
 import { createRoomBodySchema, guestConsentBodySchema, guestTokenBodySchema, transcriptSegmentBodySchema } from "./rooms/types.js";
 import { answerBrainQuery } from "./brain/orchestrator.js";
 import { logBrainAuditEvent } from "./brain/audit.js";
+import { exportMemorySkills, importMemorySkills } from "./brain/memory-skills-portability.js";
 import { selectedLlmStatus } from "./llm/provider.js";
 import { recordFeedback } from "./personalization/feedback.js";
 import { checkRedis } from "./redis.js";
@@ -101,6 +102,7 @@ import { createSearchProvider } from "./research/provider.js";
 import { ResearchProviderError } from "./research/types.js";
 import { classifySource, scoreSource } from "./research/verifier.js";
 import { composeResearchAnswer } from "./research/composer.js";
+import { buildResearchReportPack } from "./research/report-pack.js";
 import { evaluateResearchAnswerQuality, persistEvaluation } from "./evaluation/research-quality.js";
 import { evaluateCueQuality } from "./evaluation/cue-quality.js";
 import { planResearchQuery } from "./research/query-planner.js";
@@ -194,6 +196,23 @@ const dailyBriefFeedbackBody = z.object({
   rating: z.number().int().min(1).max(5).nullable().optional(),
   feedback: z.string().nullable().optional(),
   action: z.enum(["accepted", "dismissed", "helpful", "not_helpful", "too_long", "too_short"]).nullable().optional(),
+});
+
+const taskReminderBody = z.object({
+  remindAt: z.string().datetime().nullable().optional(),
+  reminderChannel: z.enum(["none", "in_app", "mobile_push_future", "email_future"]),
+  reminderStatus: z.enum(["none", "scheduled", "ready", "dismissed"]).optional(),
+});
+
+const memoryExportQuery = z.object({
+  includeProposed: z.coerce.boolean().optional(),
+  includeRejected: z.coerce.boolean().optional(),
+  includeSensitive: z.coerce.boolean().optional(),
+});
+
+const memoryImportBody = z.object({
+  payload: z.unknown(),
+  allowSensitiveImport: z.boolean().optional(),
 });
 
 const meetingPrepBody = z.object({
@@ -1296,6 +1315,8 @@ export async function buildServer() {
     ]);
     const sourceUrls = new Set(sources.map((source) => source.url));
     const citations = ((answers[0]?.citations ?? []) as Array<{ title?: string; url?: string; sourceId?: string }>).filter((citation) => citation.url && sourceUrls.has(citation.url));
+    const [query] = await db.select().from(researchQueries).where(eq(researchQueries.id, report.researchQueryId)).limit(1);
+    const reportPack = query ? buildResearchReportPack({ query, sources, answer: answers[0] ?? null }) : null;
     return reply.send({
       providerStatus: report.providerStatus ?? null,
       researchQueryId: report.researchQueryId,
@@ -1303,6 +1324,7 @@ export async function buildServer() {
       citationQualityScore: report.citationQualityScore ?? null,
       sources,
       citations,
+      reportPack,
     });
   });
 
@@ -1503,6 +1525,23 @@ export async function buildServer() {
     return reply.send({ query, sources, answers });
   });
 
+  app.get("/research/query/:id/report-pack", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const [query] = await db.select().from(researchQueries).where(and(eq(researchQueries.id, params.id), eq(researchQueries.userId, userId))).limit(1);
+    if (!query) return reply.code(404).send({ error: "not found" });
+    const [sources, answers] = await Promise.all([
+      db.select().from(researchSources).where(eq(researchSources.queryId, query.id)).orderBy(asc(researchSources.createdAt)),
+      db.select().from(researchAnswers).where(eq(researchAnswers.queryId, query.id)).orderBy(desc(researchAnswers.createdAt)).limit(1),
+    ]);
+    try {
+      return reply.send({ reportPack: buildResearchReportPack({ query, sources, answer: answers[0] ?? null }) });
+    } catch (err) {
+      return reply.code(422).send({ error: { code: "citation_not_source_backed", message: (err as Error).message } });
+    }
+  });
+
   app.get("/research/query/:id/sources", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -1683,6 +1722,24 @@ export async function buildServer() {
     return reply.send({ skills: await listUserSkills(userId) });
   });
 
+  app.get("/brain/memory-skills/export", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const query = memoryExportQuery.parse(request.query);
+    return reply.send({ export: await exportMemorySkills(userId, query) });
+  });
+
+  app.post("/brain/memory-skills/import", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const body = memoryImportBody.parse(request.body);
+    try {
+      return reply.send({ result: await importMemorySkills({ userId, payload: body.payload, allowSensitiveImport: body.allowSensitiveImport }) });
+    } catch (err) {
+      return reply.code(400).send({ error: { code: "invalid_import_payload", message: (err as Error).message } });
+    }
+  });
+
   app.post("/skills/match", async (request, reply) => {
     const userId = await requireAuth(request, reply);
     if (!userId) return;
@@ -1828,6 +1885,20 @@ export async function buildServer() {
     if (!userId) return;
     const tasks = await listTaskInbox(userId);
     return reply.send({ tasks, ranking: tasks.map((task) => ({ taskId: task.id, explanation: explainTaskRanking(task) })) });
+  });
+
+  app.post("/daily/tasks/:id/reminder", async (request, reply) => {
+    const userId = await requireAuth(request, reply);
+    if (!userId) return;
+    const params = z.object({ id: z.string().uuid() }).parse(request.params);
+    const body = taskReminderBody.parse(request.body);
+    const task = await updateTaskReminder(userId, params.id, {
+      remindAt: body.remindAt ? new Date(body.remindAt) : null,
+      reminderChannel: body.reminderChannel,
+      reminderStatus: body.reminderStatus,
+    });
+    if (!task) return reply.code(404).send({ error: "not found" });
+    return reply.send({ task });
   });
 
   app.post("/daily/tasks/:id/accept", async (request, reply) => {

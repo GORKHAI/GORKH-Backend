@@ -22,6 +22,8 @@ type ReplayName =
   | "console-smoke"
   | "research-check"
   | "research-live-if-configured"
+  | "research-report-pack"
+  | "memory-export-import"
   | "profile-control-surface"
   | "skill-control-surface"
   | "stress-control-surface"
@@ -54,6 +56,8 @@ async function main(): Promise<void> {
     "console-smoke",
     "research-check",
     "research-live-if-configured",
+    "research-report-pack",
+    "memory-export-import",
     "profile-control-surface",
     "skill-control-surface",
     "stress-control-surface",
@@ -229,6 +233,37 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (name === "research-report-pack") {
+    const research = await postJson<{ query: { id: string }; error?: { code: string } }>(`${base}/research/query`, { text: "official APR explanation consumer loan" }, dev.token);
+    const pack = await getJson(`${base}/research/query/${research.query.id}/report-pack`, dev.token);
+    console.log(`research-report-pack: ${JSON.stringify(pack)}`);
+    assertIncludes(JSON.stringify(pack), "nearmind.research_report_pack.v1");
+    assertIncludes(JSON.stringify(pack), "sourceSummary");
+    if (research.error?.code === "provider_not_configured" && JSON.stringify(pack).includes("fake")) throw new Error("report pack contained fake data");
+    return;
+  }
+
+  if (name === "memory-export-import") {
+    await postJson(`${base}/brain/query`, { text: "Remember that I prefer concise investor updates.", allowResearch: false, allowProfileMutation: true, rememberMode: "always_propose_low_risk" }, dev.token);
+    await postJson(`${base}/brain/query`, { text: "I keep preparing for bank loan meetings about mortgage APR and repayment terms.", allowResearch: false }, dev.token);
+    const listed = await getJson<{ skills: Array<{ id: string; status: string }> }>(`${base}/skills`, dev.token);
+    const proposed = listed.skills.find((skill) => skill.status === "proposed");
+    if (proposed) {
+      await postJson(`${base}/skills/${proposed.id}/approve`, {}, dev.token);
+      await postJson(`${base}/skills/${proposed.id}/enable`, {}, dev.token);
+    }
+    const exported = await getJson<{ export: unknown }>(`${base}/brain/memory-skills/export?includeProposed=true`, dev.token);
+    const importedUser = await postJson<DevUserResponse>(`${base}/dev/users`, { email: `brain-${name}-import@example.com`, displayName: "Brain Import" });
+    const imported = await postJson(`${base}/brain/memory-skills/import`, { payload: exported.export }, importedUser.token);
+    const review = await getJson(`${base}/human/profile/review`, importedUser.token);
+    const skills = await getJson(`${base}/skills`, importedUser.token);
+    console.log(`memory-export-import: ${JSON.stringify({ exported, imported, review, skills })}`);
+    assertIncludes(JSON.stringify(imported), "importedFacts");
+    assertIncludes(JSON.stringify(review), "proposedFacts");
+    if (JSON.stringify(skills).includes('"status":"enabled"')) throw new Error("imported skills must not auto-enable");
+    return;
+  }
+
   if (name === "skill-proposal") {
     await postJson(`${base}/brain/query`, { text: "I keep preparing for bank loan meetings about mortgage APR and repayment terms.", allowResearch: false }, dev.token);
     const skills = await getJson(`${base}/skills`, dev.token);
@@ -378,6 +413,10 @@ async function waitFor(events: any[], type: string, timeoutMs = 5000): Promise<a
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function assertIncludes(text: string, expected: string): void {
+  if (!text.includes(expected)) throw new Error(`expected output to include ${expected}: ${text}`);
 }
 
 main().catch((err) => {

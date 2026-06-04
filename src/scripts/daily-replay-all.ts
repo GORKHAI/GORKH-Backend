@@ -15,6 +15,7 @@ const scenarios = [
   "weekly-review",
   "feedback-loop",
   "voice-top-priorities",
+  "reminder-channel-model",
 ];
 
 for (const scenario of scenarios) {

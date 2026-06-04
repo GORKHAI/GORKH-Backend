@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { commitments, taskItems, type Commitment, type TaskItem, type TaskStatus } from "../db/schema.js";
+import { commitments, taskItems, type Commitment, type ReminderChannel, type ReminderStatus, type TaskItem, type TaskStatus } from "../db/schema.js";
 import { priorityForCommitment, rankTasks as rankTaskRows } from "./priority-ranker.js";
 import type { TaskProposal } from "./types.js";
 
@@ -50,6 +50,9 @@ export async function createTaskFromCommitment(commitment: Commitment): Promise<
       context: proposal.context ?? null,
       blockedBy: proposal.blockedBy ?? null,
       nextStep: proposal.nextStep ?? null,
+      remindAt: proposal.remindAt ?? null,
+      reminderChannel: proposal.reminderChannel ?? "none",
+      reminderStatus: proposal.reminderStatus ?? "none",
       dedupeKey: proposal.dedupeKey ?? null,
       whySuggested: proposal.whySuggested ?? null,
       sourceQuote: proposal.sourceQuote ?? null,
@@ -86,6 +89,26 @@ export async function updateTaskStatus(userId: string, taskId: string, status: E
       acceptedAt: status === "accepted" ? now : undefined,
       completedAt: status === "done" ? now : undefined,
       updatedAt: now,
+    })
+    .where(and(eq(taskItems.id, taskId), eq(taskItems.userId, userId)))
+    .returning();
+  return row ?? null;
+}
+
+export async function updateTaskReminder(
+  userId: string,
+  taskId: string,
+  reminder: { remindAt?: Date | null; reminderChannel: ReminderChannel; reminderStatus?: ReminderStatus },
+): Promise<TaskItem | null> {
+  const channel = reminder.reminderChannel;
+  const status = reminder.reminderStatus ?? (channel === "none" || !reminder.remindAt ? "none" : "scheduled");
+  const [row] = await db
+    .update(taskItems)
+    .set({
+      remindAt: reminder.remindAt ?? null,
+      reminderChannel: channel,
+      reminderStatus: status,
+      updatedAt: new Date(),
     })
     .where(and(eq(taskItems.id, taskId), eq(taskItems.userId, userId)))
     .returning();

@@ -18,6 +18,8 @@ const replays = [
   "console-smoke",
   "research-check",
   "research-live-if-configured",
+  "research-report-pack",
+  "memory-export-import",
   "profile-control-surface",
   "skill-control-surface",
   "stress-control-surface",

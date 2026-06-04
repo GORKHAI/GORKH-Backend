@@ -99,6 +99,8 @@ export type CommitmentSourceType = "transcript" | "user_text" | "assistant_text"
 export type CommitmentStatus = "proposed" | "confirmed" | "done" | "dismissed" | "overdue";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 export type TaskStatus = "proposed" | "accepted" | "scheduled" | "blocked" | "waiting" | "done" | "dismissed" | "expired";
+export type ReminderChannel = "none" | "in_app" | "mobile_push_future" | "email_future";
+export type ReminderStatus = "none" | "scheduled" | "ready" | "dismissed";
 export type DailyBriefStatus = "generated" | "stale" | "dismissed";
 export type FollowupStatus = "proposed" | "accepted" | "dismissed" | "sent_elsewhere";
 export type MeetingPackType = "prep" | "recap";
@@ -855,6 +857,9 @@ export const taskItems = pgTable(
     context: text("context"),
     blockedBy: text("blocked_by"),
     nextStep: text("next_step"),
+    remindAt: timestamp("remind_at", { withTimezone: true }),
+    reminderChannel: text("reminder_channel").$type<ReminderChannel>().notNull().default("none"),
+    reminderStatus: text("reminder_status").$type<ReminderStatus>().notNull().default("none"),
     dedupeKey: text("dedupe_key"),
     whySuggested: text("why_suggested"),
     sourceQuote: text("source_quote"),
