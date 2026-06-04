@@ -2000,7 +2000,7 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promis
 
 function sendRoomError(reply: FastifyReply, err: unknown) {
   if (err instanceof RoomsPolicyError) {
-    const status = err.code === "rooms_disabled" || err.code === "rooms_not_configured" ? 409 : err.code === "consent_required" ? 403 : 400;
+    const status = err.code === "rooms_disabled" || err.code === "rooms_not_configured" ? 409 : err.code === "consent_required" || err.code === "consent_denied" ? 403 : 400;
     return reply.code(status).send({ error: { code: err.code, message: err.message, retryable: false } });
   }
   return reply.code(500).send({ error: { code: "internal_error", message: "Room operation failed.", retryable: false } });

@@ -35,7 +35,7 @@ export function canTranscriptAfterConsent(consentRequired: boolean, participants
 
 export class RoomsPolicyError extends Error {
   constructor(
-    public readonly code: "rooms_disabled" | "rooms_not_configured" | "consent_required" | "guest_forbidden" | "room_not_found" | "room_ended",
+    public readonly code: "rooms_disabled" | "rooms_not_configured" | "consent_required" | "consent_denied" | "guest_forbidden" | "room_not_found" | "room_ended",
     message: string,
   ) {
     super(message);

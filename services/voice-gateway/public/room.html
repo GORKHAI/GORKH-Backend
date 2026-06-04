@@ -10,15 +10,15 @@
     <main class="shell">
       <header>
         <div>
-          <p class="eyebrow">Nearmind Rooms v0</p>
-          <h1>Investor Call Room</h1>
+          <p class="eyebrow">Nearmind Rooms v1</p>
+          <h1 id="roomTitle">Investor Call Room</h1>
         </div>
         <span id="modeChip" class="chip">loading</span>
       </header>
 
       <section class="panel warning">
         <strong>Consent first.</strong>
-        <span>No transcription or recording is allowed before consent. AI is observer-only and does not speak to guests in v0.</span>
+        <span>No transcription before consent. Recording is disabled. AI is observer-only and does not speak to guests in v1.</span>
       </section>
 
       <section class="grid">
@@ -27,30 +27,62 @@
           <label>Backend URL <input id="backendUrl" value="https://api.gorkh.com" /></label>
           <label>JWT for host only <input id="jwt" placeholder="Paste host JWT" /></label>
           <label>Display name <input id="displayName" value="Guest" /></label>
+          <label>Email for guest consent <input id="email" placeholder="optional guest email" /></label>
           <label class="check"><input id="consent" type="checkbox" /> I consent to join this room and understand transcription requires consent.</label>
           <div class="row">
             <button id="loadRoom">Load Room</button>
             <button id="grantConsent">Grant Guest Consent</button>
-            <button id="fetchToken">Fetch Token</button>
+            <button id="denyConsent" class="secondary">Deny Guest Consent</button>
+          </div>
+          <div class="row">
+            <button id="joinRoom">Join LiveKit Room</button>
+            <button id="leaveRoom" class="secondary">Leave</button>
           </div>
         </div>
 
         <div class="panel">
           <h2>Room Status</h2>
+          <p id="consentStatus" class="hint">Consent status: unknown</p>
           <pre id="status">Waiting.</pre>
         </div>
       </section>
 
       <section class="panel">
-        <h2>Video Prototype</h2>
+        <h2>Live Media</h2>
         <div class="video-grid">
-          <video id="localVideo" autoplay playsinline muted></video>
-          <div id="remotePlaceholder">Remote participants will appear when a LiveKit browser client is bundled in a future UI build.</div>
+          <div>
+            <h3>Local</h3>
+            <div id="localMedia" class="media-box empty">Local camera appears after Join.</div>
+          </div>
+          <div>
+            <h3>Remote</h3>
+            <div id="remoteMedia" class="media-box empty">Remote participants appear after they join.</div>
+          </div>
+        </div>
+        <div class="panel nested">
+          <h3>Participants</h3>
+          <ul id="participantList" class="participant-list"></ul>
+        </div>
+      </section>
+
+      <section id="hostOnly" class="panel">
+        <h2>Host Tools</h2>
+        <div class="grid">
+          <label>Speaker <input id="transcriptSpeaker" value="Investor" /></label>
+          <label>Transcript text <textarea id="transcriptText">We agreed that I will send the deck and follow up next week.</textarea></label>
         </div>
         <div class="row">
-          <button id="previewMedia">Start Local Preview</button>
-          <button id="stopMedia">Stop Media</button>
+          <button id="addTranscript">Add Transcript Line</button>
+          <button id="generateSummary">Generate Summary</button>
+          <button id="loadSummary" class="secondary">Load Summary</button>
+          <button id="endRoom" class="secondary">End Room</button>
         </div>
+        <pre id="summary">No summary loaded.</pre>
+      </section>
+
+      <section id="guestOnly" class="panel">
+        <h2>Guest Boundary</h2>
+        <p class="hint">Guests can join this room only. They cannot view outreach campaign data, summaries, private transcripts, or host controls.</p>
       </section>
 
       <section class="panel">

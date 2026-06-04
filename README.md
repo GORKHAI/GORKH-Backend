@@ -901,7 +901,7 @@ npm run outreach:replay:all
 
 ### Nearmind Rooms
 
-Nearmind Rooms v0 adds reviewable investor-call room infrastructure around outreach leads. It creates host-owned room records, opaque guest links, consent-gated transcript ingestion, deterministic post-call summaries, and draft follow-up action proposals. LiveKit is the room/token provider when configured; if LiveKit is missing, real room/token operations return `rooms_not_configured` rather than faking a room.
+Nearmind Rooms v1 adds browser-usable LiveKit staging rooms around outreach leads. It creates host-owned room records, opaque guest links, consent-gated transcript ingestion, deterministic post-call summaries, and draft follow-up action proposals. The voice gateway serves a bundled `livekit-client` browser page at `/rooms/ui/:roomId` for hosts and `/r/:inviteToken` for guests. If LiveKit is missing, real room/token operations return `rooms_not_configured` rather than faking a room.
 
 Routes:
 
@@ -926,7 +926,18 @@ POST /outreach/investors/:id/create-room
 GET  /outreach/investors/:id/rooms
 ```
 
-Boundaries: no hidden recording, no transcript before consent, no guest access to campaign/private outreach data, no LiveKit API secret exposed to clients, no AI speaking to investors by default, no email sending, no calendar writes, and no fake LiveKit room, transcript, or summary. The lightweight web prototype is served by the voice gateway at `/rooms/ui/:roomId` for hosts and `/r/:inviteToken` for guests.
+Token responses include only the LiveKit participant token, `livekitUrl`, public room ids, participant role, expiry, and publish/subscribe permissions. They never include `LIVEKIT_API_KEY` or `LIVEKIT_API_SECRET`.
+
+Boundaries: no hidden recording, no transcript before consent, no guest access to campaign/private outreach data, no LiveKit API secret exposed to clients, no AI speaking to investors by default, no email sending, no calendar writes, and no fake LiveKit room, transcript, or summary. Browser media join must be verified manually with `npm run rooms:live:browser-checklist`; scripts do not claim camera/audio success.
+
+Room web build and live checks:
+
+```bash
+npm run rooms:web:build
+npm run rooms:live:check
+npm run rooms:live:token-check
+npm run rooms:live:browser-checklist
+```
 
 Rooms replay commands:
 
@@ -939,6 +950,11 @@ npm run rooms:replay -- transcript-ingest
 npm run rooms:replay -- summary
 npm run rooms:replay -- outreach-room
 npm run rooms:replay -- guest-permissions
+npm run rooms:replay -- livekit-token-shape
+npm run rooms:replay -- host-guest-token-flow
+npm run rooms:replay -- consent-token-gate
+npm run rooms:replay -- room-ui-static
+npm run rooms:replay -- no-secret-token-response
 npm run rooms:replay:all
 ```
 

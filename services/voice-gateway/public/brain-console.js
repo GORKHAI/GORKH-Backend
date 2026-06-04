@@ -140,6 +140,8 @@ async function handleAction(action) {
     if (action === "roomHostToken") return showRedacted("roomsOut", await post(`/rooms/${roomId()}/host-token`, {}));
     if (action === "roomGuestConsent") return show("roomsOut", await post(`/rooms/guest/${roomInviteToken()}/consent`, { consentStatus: "granted", displayName: $("roomGuestName").value.trim(), email: optionalValue("roomGuestEmail") }));
     if (action === "roomGuestToken") return showRedacted("roomsOut", await post(`/rooms/guest/${roomInviteToken()}/token`, { displayName: $("roomGuestName").value.trim() }));
+    if (action === "roomOpenHost") return openRoomPage("host");
+    if (action === "roomOpenGuest") return openRoomPage("guest");
     if (action === "roomTranscript") return show("roomsOut", await post(`/rooms/${roomId()}/transcript`, { speakerLabel: $("roomSpeaker").value.trim(), text: $("roomTranscriptText").value.trim(), isFinal: true }));
     if (action === "roomTranscriptLoad") return show("roomsOut", await get(`/rooms/${roomId()}/transcript`));
     if (action === "roomSummary") return show("roomsOut", await post(`/rooms/${roomId()}/generate-summary`, {}));
@@ -263,6 +265,15 @@ async function createGuestLink() {
   const result = await post(`/rooms/${roomId()}/guest-link`, { displayName: $("roomGuestName").value.trim(), email: optionalValue("roomGuestEmail") });
   if (result.inviteToken) $("roomInviteToken").value = result.inviteToken;
   show("roomsOut", result);
+}
+
+function openRoomPage(mode) {
+  const url =
+    mode === "guest"
+      ? `${gatewayBase()}/r/${encodeURIComponent(roomInviteToken())}`
+      : `${gatewayBase()}/rooms/ui/${encodeURIComponent(roomId())}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+  append("roomsOut", `Opened ${mode} room page: ${url}`);
 }
 
 function startSubagentStream() {

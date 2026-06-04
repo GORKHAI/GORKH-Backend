@@ -7,6 +7,12 @@ export function liveKitRoomName(roomId: string): string {
   return `nearmind-${roomId}`;
 }
 
+export function liveKitPermissionsForRole(role: LiveKitRole): { canPublish: boolean; canSubscribe: boolean; canPublishData: boolean } {
+  if (role === "ai_agent") return { canPublish: false, canSubscribe: true, canPublishData: false };
+  if (role === "admin") return { canPublish: false, canSubscribe: false, canPublishData: false };
+  return { canPublish: true, canSubscribe: true, canPublishData: true };
+}
+
 export async function createLiveKitAccessToken(input: { identity: string; displayName?: string | null; roomName: string; role: LiveKitRole }): Promise<string> {
   assertLiveKitReady();
   const now = Math.floor(Date.now() / 1000);

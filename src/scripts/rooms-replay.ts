@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { investorProfiles, outreachCampaigns } from "../db/schema.js";
+import { readFile } from "node:fs/promises";
 
 type Scenario =
   | "not-configured"
@@ -10,10 +11,29 @@ type Scenario =
   | "transcript-ingest"
   | "summary"
   | "outreach-room"
-  | "guest-permissions";
+  | "guest-permissions"
+  | "livekit-token-shape"
+  | "host-guest-token-flow"
+  | "consent-token-gate"
+  | "room-ui-static"
+  | "no-secret-token-response";
 
 const scenario = (process.argv[2] ?? "not-configured") as Scenario;
-const allowed: Scenario[] = ["not-configured", "create-room", "guest-link", "consent-required", "transcript-ingest", "summary", "outreach-room", "guest-permissions"];
+const allowed: Scenario[] = [
+  "not-configured",
+  "create-room",
+  "guest-link",
+  "consent-required",
+  "transcript-ingest",
+  "summary",
+  "outreach-room",
+  "guest-permissions",
+  "livekit-token-shape",
+  "host-guest-token-flow",
+  "consent-token-gate",
+  "room-ui-static",
+  "no-secret-token-response",
+];
 if (!allowed.includes(scenario)) throw new Error(`unknown rooms replay "${scenario}"`);
 
 const base = `http://${config.HOST === "0.0.0.0" ? "127.0.0.1" : config.HOST}:${config.PORT}`;
@@ -90,6 +110,69 @@ if (scenario === "guest-permissions") {
   assertIncludes(JSON.stringify(blocked), "missing bearer token");
 }
 
+if (scenario === "livekit-token-shape") {
+  const room = await createRoom();
+  const response = await postJsonAllowError(`${base}/rooms/${room.id}/host-token`, {}, dev.token);
+  console.log(`livekit-token-shape: ${JSON.stringify(redactTokenFields(response))}`);
+  if (isRoomNotConfigured(response)) {
+    assertIncludes(JSON.stringify(response), config.ROOMS_ENABLED ? "rooms_not_configured" : "rooms_disabled");
+  } else {
+    assertTokenShape(response, "host");
+  }
+}
+
+if (scenario === "host-guest-token-flow") {
+  const room = await createRoom();
+  const link = await createGuestLink(room.id);
+  await postJson(`${base}/rooms/guest/${link.inviteToken}/consent`, { consentStatus: "granted", displayName: "Investor guest" });
+  const host = await postJsonAllowError(`${base}/rooms/${room.id}/host-token`, {}, dev.token);
+  const guest = await postJsonAllowError(`${base}/rooms/guest/${link.inviteToken}/token`, { displayName: "Investor guest" });
+  console.log(`host-guest-token-flow: ${JSON.stringify({ host: redactTokenFields(host), guest: redactTokenFields(guest) })}`);
+  if (isRoomNotConfigured(host) || isRoomNotConfigured(guest)) {
+    assertIncludes(JSON.stringify(host), config.ROOMS_ENABLED ? "rooms_not_configured" : "rooms_disabled");
+  } else {
+    assertTokenShape(host, "host");
+    assertTokenShape(guest, "guest");
+  }
+}
+
+if (scenario === "consent-token-gate") {
+  const room = await createRoom();
+  const link = await createGuestLink(room.id);
+  const pending = await postJsonAllowError(`${base}/rooms/guest/${link.inviteToken}/token`, { displayName: "Investor guest" });
+  await postJson(`${base}/rooms/guest/${link.inviteToken}/consent`, { consentStatus: "denied", displayName: "Investor guest" });
+  const denied = await postJsonAllowError(`${base}/rooms/guest/${link.inviteToken}/token`, { displayName: "Investor guest" });
+  console.log(`consent-token-gate: ${JSON.stringify({ pending, denied })}`);
+  assertIncludes(JSON.stringify(pending), "consent_required");
+  assertIncludes(JSON.stringify(denied), "consent_denied");
+}
+
+if (scenario === "room-ui-static") {
+  const [html, js, css] = await Promise.all([
+    readFile("services/voice-gateway/public/room.html", "utf8"),
+    readFile("services/voice-gateway/public/room.js", "utf8"),
+    readFile("services/voice-gateway/public/room.css", "utf8"),
+  ]);
+  console.log(`room-ui-static: ${JSON.stringify({ html: html.length, js: js.length, css: css.length })}`);
+  assertIncludes(html, "Join LiveKit Room");
+  assertIncludes(html, "No transcription before consent");
+  assertIncludes(js, "participant_connected");
+  assertIncludes(js, "track_subscribed");
+  assertIncludes(css, "media-track");
+}
+
+if (scenario === "no-secret-token-response") {
+  const room = await createRoom();
+  const response = await postJsonAllowError(`${base}/rooms/${room.id}/host-token`, {}, dev.token);
+  const text = JSON.stringify(response);
+  console.log(`no-secret-token-response: ${JSON.stringify(redactTokenFields(response))}`);
+  for (const marker of ["LIVEKIT_API_SECRET", "LIVEKIT_API_KEY", "apiSecret", "apiKey"]) {
+    if (text.includes(marker)) throw new Error(`token response exposed secret marker ${marker}`);
+  }
+  if (config.LIVEKIT_API_SECRET && text.includes(config.LIVEKIT_API_SECRET)) throw new Error("token response exposed LiveKit API secret value");
+  if (config.LIVEKIT_API_KEY && text.includes(config.LIVEKIT_API_KEY)) throw new Error("token response exposed LiveKit API key value");
+}
+
 async function createRoom() {
   const result = await postJson<{ room: { id: string } }>(
     `${base}/rooms`,
@@ -135,6 +218,30 @@ async function createInvestorFixture() {
 
 function assertIncludes(text: string, expected: string): void {
   if (!text.includes(expected)) throw new Error(`expected output to include ${expected}: ${text}`);
+}
+
+function isRoomNotConfigured(response: any): boolean {
+  const text = JSON.stringify(response);
+  return text.includes("rooms_disabled") || text.includes("rooms_not_configured");
+}
+
+function assertTokenShape(response: any, role: "host" | "guest"): void {
+  if (typeof response.token !== "string" || response.token.length < 32) throw new Error(`${role} token missing`);
+  if (typeof response.livekitUrl !== "string" || !response.livekitUrl) throw new Error(`${role} livekitUrl missing`);
+  if (response.participantRole !== role) throw new Error(`${role} role mismatch`);
+  if (!response.providerRoomName || !response.roomId || !response.expiresAt) throw new Error(`${role} room metadata missing`);
+  if (response.permissions?.canPublish !== true || response.permissions?.canSubscribe !== true || response.permissions?.canPublishData !== true) {
+    throw new Error(`${role} permissions invalid`);
+  }
+}
+
+function redactTokenFields(value: any): any {
+  return JSON.parse(
+    JSON.stringify(value, (key, item) => {
+      if (/token/i.test(key) && typeof item === "string") return "[redacted]";
+      return item;
+    }),
+  );
 }
 
 async function postJson<T = any>(url: string, body: unknown, token?: string): Promise<T> {

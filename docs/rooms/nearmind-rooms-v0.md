@@ -22,3 +22,12 @@ Nearmind Rooms v0 adds a backend-controlled investor video-call workflow around 
 - No hidden AI participant.
 
 If `ROOMS_ENABLED=false`, LiveKit token operations return `rooms_disabled`. If LiveKit env is missing, real token operations return `rooms_not_configured`. Room review records may still be created for control-plane testing.
+
+## Staging Room Join v1
+
+The v1 staging browser client bundles `livekit-client` and is served by the voice gateway:
+
+- Host: `/rooms/ui/:roomId`
+- Guest: `/r/:inviteToken`
+
+The browser joins only after an explicit Join click and browser permission grant. It attaches local/remote media tracks, logs participant and track events, and stops local tracks on leave/disconnect/page unload. Browser media success is never claimed by scripts; run `npm run rooms:live:browser-checklist` and verify host/guest audio/video manually.

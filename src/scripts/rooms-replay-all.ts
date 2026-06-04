@@ -9,6 +9,11 @@ const scenarios = [
   "summary",
   "outreach-room",
   "guest-permissions",
+  "livekit-token-shape",
+  "host-guest-token-flow",
+  "consent-token-gate",
+  "room-ui-static",
+  "no-secret-token-response",
 ];
 
 for (const scenario of scenarios) {

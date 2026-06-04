@@ -19,4 +19,33 @@ Never expose `LIVEKIT_API_SECRET` to the browser. The frontend receives only sho
 - Guest: room join, publish audio/video, subscribe, no admin privileges.
 - AI agent: disabled by default; observer/listener only if enabled.
 
-The current lightweight web room page fetches backend tokens and redacts them in the UI. A future dedicated frontend bundle can include the LiveKit browser SDK.
+The staging web room page now bundles `livekit-client` from `services/voice-gateway/src/room-client/room-client.ts`.
+
+Build it with:
+
+```bash
+npm run rooms:web:build
+```
+
+## Token Response Shape
+
+Host and guest token endpoints return only:
+
+- participant token;
+- `livekitUrl`;
+- room identifiers;
+- `participantRole`;
+- `expiresAt`;
+- publish/subscribe permissions.
+
+They must not return `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, campaign data, or private outreach data to guests.
+
+## Live Checks
+
+```bash
+npm run rooms:live:check
+npm run rooms:live:token-check
+npm run rooms:live:browser-checklist
+```
+
+The first two commands validate configuration and token generation. The browser checklist is required for real camera/audio join validation.

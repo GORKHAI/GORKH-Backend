@@ -2,17 +2,21 @@ import { and, eq } from "drizzle-orm";
 import { config } from "../config.js";
 import { db } from "../db/client.js";
 import { roomParticipants, rooms } from "../db/schema.js";
-import { createLiveKitAccessToken } from "./livekit-client.js";
+import { createLiveKitAccessToken, liveKitPermissionsForRole } from "./livekit-client.js";
 import { hashInviteToken } from "./invite.js";
 import { RoomsPolicyError } from "./policy.js";
 import { logRoomAuditEvent } from "./audit.js";
+import type { LiveKitRole } from "./types.js";
+
+const liveKitTokenTtlMs = 60 * 60 * 1000;
 
 export async function hostTokenForRoom(userId: string, roomId: string) {
   const [room] = await db.select().from(rooms).where(and(eq(rooms.userId, userId), eq(rooms.id, roomId))).limit(1);
   if (!room) return null;
-  const token = await createLiveKitAccessToken({ identity: `host-${userId}`, displayName: "Host", roomName: room.providerRoomName ?? room.id, role: "host" });
+  const role = "host";
+  const token = await createLiveKitAccessToken({ identity: `host-${userId}`, displayName: "Host", roomName: room.providerRoomName ?? room.id, role });
   await logRoomAuditEvent({ roomId, userId, eventType: "host_token_issued", payload: { role: "host" } }).catch(() => null);
-  return { token, livekitUrl: room.provider === "livekit" ? config.LIVEKIT_URL ?? null : null, room };
+  return liveKitTokenResponse({ token, room, role });
 }
 
 export async function guestTokenForInvite(inviteToken: string, displayName?: string) {
@@ -21,11 +25,13 @@ export async function guestTokenForInvite(inviteToken: string, displayName?: str
   if (!participant || participant.role !== "guest") return null;
   const [room] = await db.select().from(rooms).where(eq(rooms.id, participant.roomId)).limit(1);
   if (!room) return null;
+  if (participant.consentStatus === "denied") throw new RoomsPolicyError("consent_denied", "Guest consent was denied for this room.");
   if (participant.consentStatus !== "granted") throw new RoomsPolicyError("consent_required", "Guest consent is required before joining with transcription enabled.");
-  const token = await createLiveKitAccessToken({ identity: `guest-${participant.id}`, displayName: displayName ?? participant.displayName ?? "Guest", roomName: room.providerRoomName ?? room.id, role: "guest" });
+  const role = "guest";
+  const token = await createLiveKitAccessToken({ identity: `guest-${participant.id}`, displayName: displayName ?? participant.displayName ?? "Guest", roomName: room.providerRoomName ?? room.id, role });
   await db.update(roomParticipants).set({ joinedAt: participant.joinedAt ?? new Date(), updatedAt: new Date() }).where(eq(roomParticipants.id, participant.id));
   await logRoomAuditEvent({ roomId: room.id, userId: null, eventType: "guest_token_issued", payload: { participantId: participant.id, role: "guest" } }).catch(() => null);
-  return { token, livekitUrl: config.LIVEKIT_URL ?? null, room: publicRoom(room), participant: publicParticipant(participant) };
+  return { ...liveKitTokenResponse({ token, room, role }), room: publicRoom(room), participant: publicParticipant(participant) };
 }
 
 export function publicRoom(room: typeof rooms.$inferSelect) {
@@ -47,5 +53,17 @@ export function publicParticipant(participant: typeof roomParticipants.$inferSel
     role: participant.role,
     displayName: participant.displayName,
     consentStatus: participant.consentStatus,
+  };
+}
+
+export function liveKitTokenResponse(input: { token: string; room: typeof rooms.$inferSelect; role: Exclude<LiveKitRole, "admin"> }) {
+  return {
+    token: input.token,
+    livekitUrl: input.room.provider === "livekit" ? config.LIVEKIT_URL ?? null : null,
+    roomId: input.room.id,
+    providerRoomName: input.room.providerRoomName,
+    participantRole: input.role,
+    expiresAt: new Date(Date.now() + liveKitTokenTtlMs).toISOString(),
+    permissions: liveKitPermissionsForRole(input.role),
   };
 }
