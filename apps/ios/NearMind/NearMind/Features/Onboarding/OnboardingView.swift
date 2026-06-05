@@ -31,34 +31,40 @@ struct OnboardingView: View {
     private let pages = OnboardingPage.defaults
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer(minLength: 28)
+        ZStack {
+            NearMindTheme.background.ignoresSafeArea()
 
-            NearMindLogoMark(size: 54)
+            VStack(spacing: 0) {
+                NearMindLogoMark(size: 64)
+                    .padding(.top, 28)
+                    .padding(.bottom, 18)
 
-            TabView(selection: $selection) {
-                ForEach(pages) { page in
-                    OnboardingPageView(page: page)
-                        .tag(page.id)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .frame(minHeight: 300)
-
-            PrimaryButton(selection == pages.count - 1 ? "Get Started" : "Continue", systemImage: "arrow.right") {
-                if selection < pages.count - 1 {
-                    withAnimation(.easeInOut) {
-                        selection += 1
+                TabView(selection: $selection) {
+                    ForEach(pages) { page in
+                        OnboardingPageView(page: page)
+                            .tag(page.id)
                     }
-                } else {
-                    appState.completeOnboarding()
                 }
+                .tabViewStyle(.page(indexDisplayMode: .always))
             }
-            .padding(.horizontal, NearMindTheme.pagePadding)
-            .padding(.bottom, 24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(NearMindTheme.background.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                PrimaryButton(selection == pages.count - 1 ? "Get Started" : "Continue", systemImage: "arrow.right") {
+                    if selection < pages.count - 1 {
+                        withAnimation(.easeInOut) {
+                            selection += 1
+                        }
+                    } else {
+                        appState.completeOnboarding()
+                    }
+                }
+                .padding(.horizontal, NearMindTheme.pagePadding)
+                .padding(.top, 10)
+                .padding(.bottom, 12)
+            }
+            .background(NearMindTheme.background)
+        }
     }
 }
 
@@ -82,5 +88,6 @@ private struct OnboardingPageView: View {
             .padding(.horizontal, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, 84)
     }
 }
