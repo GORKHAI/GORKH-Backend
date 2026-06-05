@@ -4,26 +4,22 @@ struct OnboardingPage: Identifiable, Equatable {
     let id: Int
     let title: String
     let message: String
-    let systemImage: String
 
     static let defaults: [OnboardingPage] = [
         OnboardingPage(
             id: 0,
             title: "NearMind",
-            message: "Your private AI right hand for real-life moments.",
-            systemImage: "sparkles"
+            message: "Your private AI right hand for real-life moments."
         ),
         OnboardingPage(
             id: 1,
             title: "Consent-first",
-            message: "Live Assist starts only when you choose. No hidden recording.",
-            systemImage: "hand.raised"
+            message: "Live Assist starts only when you choose. No hidden recording."
         ),
         OnboardingPage(
             id: 2,
             title: "Control",
-            message: "Stop, save, or discard sessions. Tokens stay in Keychain.",
-            systemImage: "checkmark.shield"
+            message: "Stop, save, or discard sessions. Tokens stay in Keychain."
         )
     ]
 }
@@ -70,13 +66,7 @@ private struct OnboardingPageView: View {
     let page: OnboardingPage
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: page.systemImage)
-                .font(.system(size: 38, weight: .semibold))
-                .foregroundStyle(NearMindTheme.accentMint)
-                .frame(width: 74, height: 74)
-                .background(NearMindTheme.secondaryCTA, in: Circle())
-
+        VStack(spacing: 16) {
             VStack(spacing: 10) {
                 Text(page.title)
                     .font(.largeTitle.weight(.semibold))
