@@ -6,7 +6,7 @@ NearMind is the native SwiftUI consumer iOS app scaffold for the GORKH Brain bac
 
 ```text
 NearMind/
-  Audio/            Microphone permission, PCM16 streaming, native TTS
+  Audio/            Microphone permission, route monitoring, PCM16 streaming, native TTS
   App/              App state, environment, production config
   Features/         Onboarding, Home, Live Assist, Live Smoke, Settings, Debug
   Networking/       API client, endpoint routing, WebSocket gateway client
@@ -88,7 +88,7 @@ It does not include `userId`; identity is derived from the Bearer token.
 
 ## Audio Capture
 
-Live Assist uses `AVAudioSession` and `AVAudioEngine` only after the user taps Start Voice Session and grants microphone permission. The sequence is:
+Live Assist uses `AVAudioSession` and `AVAudioEngine` only after the user taps Start Voice Session and grants microphone permission. Microphone permission uses the iOS 17+ `AVAudioApplication` APIs. The sequence is:
 
 1. Verify JWT status is stored.
 2. Verify the consent checkbox is enabled.
@@ -102,6 +102,12 @@ Live Assist uses `AVAudioSession` and `AVAudioEngine` only after the user taps S
 
 If conversion fails, NearMind stops the microphone and reports the error. The microphone also stops on stop, disconnect, Live Assist close, and app background.
 
+## Audio Route Handling
+
+`AudioSessionManager` configures `.playAndRecord` with `.voiceChat`, Bluetooth options, and default speaker output. It exposes the current route as a small `AudioRouteInfo` model so Live Assist can show built-in mic, speaker, headphones, Bluetooth, or other routes. Route changes are observed while Live Assist is configured. If an active microphone session loses its input route, NearMind stops capture and reports the route failure instead of continuing silently.
+
+Native TTS routes through the current system output. Earbuds are supported, but real meeting tests should compare the phone microphone against earbud microphones because phone placement often captures room audio more reliably.
+
 ## Native TTS
 
 `SpeechOutputManager` uses `AVSpeechSynthesizer` for local iOS speech. The gateway does not need to send server-side TTS audio. NearMind speaks short `gateway_client_tts_instruction` messages and short voice cues when unmuted. It ignores `screen_only` delivery and long reports.
@@ -110,7 +116,13 @@ If conversion fails, NearMind stops the microphone and reports the error. The mi
 
 ## Consent And Lifecycle
 
-NearMind v0.2 has no hidden recording and no background always-listening. Microphone capture starts only after explicit consent, microphone permission, gateway connection, and `gateway_ack`. When the app enters background during a voice session, NearMind stops the microphone and sends `stop save=false`; the user must manually restart after returning.
+NearMind v0.3 has no hidden recording and no background always-listening. Microphone capture starts only after explicit consent, microphone permission, gateway connection, and `gateway_ack`. When the app enters background during a voice session, NearMind stops the microphone and sends `stop save=false`; the user must manually restart after returning.
+
+## Real Device Smoke And Latency
+
+Live Assist includes a local Real Device Smoke checklist for physical iPhone testing. The checklist records token, permission, gateway, ASR, assistant, TTS, whisper cue, barge-in, discard stop, session state, latency, and manual log privacy checks.
+
+Local latency is approximate and uses device timestamps for mic start, first ASR final, first cue, first TTS instruction, and local TTS start. Backend latency is fetched from `GET /sessions/:id/latency-summary` and displayed only when the backend provides metrics such as `transcriptToAssistantTextMs`, `asrToCueMs`, `cueToGatewayInstructionMs`, `subagentDurationMs`, or warnings. The app does not fabricate missing backend metrics.
 
 ## Implemented in v0
 
@@ -124,6 +136,7 @@ NearMind v0.2 has no hidden recording and no background always-listening. Microp
 - Stable mobile error decoding
 - Unit tests for protocol and token-store behavior
 - v0.2 branding, logo asset, consent-gated PCM16 microphone streaming, native TTS, barge-in, and lifecycle stop behavior
+- v0.3 AppIcon generation, real-device scripts, audio route UI, real-device smoke checklist, and latency display
 
 ## Intentionally Not Implemented Yet
 
@@ -135,8 +148,8 @@ NearMind v0.2 has no hidden recording and no background always-listening. Microp
 
 ## App Icon
 
-`NearMindLogo.imageset` uses `near-mind-logo.png` copied from Downloads for in-app branding. AppIcon remains unchanged in v0.2 because a proper app icon should be generated as a complete size set from a reviewed icon design rather than faking missing variants from a single source image.
+`NearMindLogo.imageset` uses `near-mind-logo.png` copied from Downloads for in-app branding. v0.3 generates `AppIcon.appiconset` from that square source using `Scripts/generate-app-icon.sh`. The original logo image set remains available for in-app branding.
 
 ## Next Milestone
 
-The next recommended milestone is production UX polish and TestFlight preparation: app icon generation, accessibility pass, privacy review, TestFlight signing, and manual production voice smoke evidence.
+The next recommended milestone is TestFlight preparation: real-device evidence capture, accessibility pass, signing team configuration, privacy labels, and beta release notes.

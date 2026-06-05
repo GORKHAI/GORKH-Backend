@@ -35,7 +35,7 @@ protocol PCM16AudioStreaming: AnyObject {
 
 final class PCM16AudioStreamer: PCM16AudioStreaming {
     private let engine = AVAudioEngine()
-    private let audioSessionManager: AudioSessionManager
+    private let audioSessionManager: AudioSessionManaging
     private let outputFormat = AVAudioFormat(
         commonFormat: .pcmFormatInt16,
         sampleRate: 16_000,
@@ -45,7 +45,7 @@ final class PCM16AudioStreamer: PCM16AudioStreaming {
     private var converter: AVAudioConverter?
     private(set) var isRunning = false
 
-    init(audioSessionManager: AudioSessionManager = AudioSessionManager()) {
+    init(audioSessionManager: AudioSessionManaging = AudioSessionManager()) {
         self.audioSessionManager = audioSessionManager
     }
 

@@ -12,6 +12,8 @@ struct LiveAssistView: View {
                 sessionSection
                 audioSection
                 controlsSection
+                realDeviceSmokeSection
+                latencySection
                 logsSection
             }
             .padding(16)
@@ -110,6 +112,11 @@ struct LiveAssistView: View {
 
                 AudioLevelBar(level: viewModel.micLevel)
 
+                Label(viewModel.audioRouteText, systemImage: "airpodspro")
+                    .font(.caption)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 HStack {
                     Label(viewModel.ttsStatus, systemImage: "speaker.wave.2")
                     Spacer()
@@ -157,6 +164,45 @@ struct LiveAssistView: View {
                     viewModel.fetchLatencySummary()
                 }
             }
+
+            controlButton("Mark Log Privacy Verified", "eye.slash") {
+                viewModel.markLogPrivacyVerified()
+            }
+        }
+    }
+
+    private var realDeviceSmokeSection: some View {
+        SectionCard(title: "Real Device Smoke") {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(viewModel.realDeviceChecks) { check in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: iconName(for: check.status))
+                            .foregroundStyle(color(for: check.status))
+                            .frame(width: 18)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(check.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(NearMindTheme.textPrimary)
+                            if !check.detail.isEmpty {
+                                Text(check.detail)
+                                    .font(.caption2)
+                                    .foregroundStyle(NearMindTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+            }
+        }
+    }
+
+    private var latencySection: some View {
+        SectionCard(title: "Latency") {
+            VStack(alignment: .leading, spacing: 12) {
+                LatencyLane(title: "Local timestamps", rows: viewModel.localLatencyRows)
+                LatencyLane(title: "Backend summary", rows: viewModel.backendLatencyRows)
+            }
         }
     }
 
@@ -185,6 +231,34 @@ struct LiveAssistView: View {
         .buttonStyle(.borderedProminent)
         .tint(role == .destructive ? NearMindTheme.error : NearMindTheme.primaryDarkGreen)
         .disabled(viewModel.isBusy)
+    }
+
+    private func iconName(for status: RealDeviceSmokeCheckStatus) -> String {
+        switch status {
+        case .pending:
+            return "circle"
+        case .running:
+            return "clock"
+        case .passed:
+            return "checkmark.circle.fill"
+        case .failed:
+            return "xmark.circle.fill"
+        case .skipped:
+            return "minus.circle"
+        }
+    }
+
+    private func color(for status: RealDeviceSmokeCheckStatus) -> Color {
+        switch status {
+        case .pending, .skipped:
+            return NearMindTheme.textSecondary
+        case .running:
+            return NearMindTheme.warning
+        case .passed:
+            return NearMindTheme.success
+        case .failed:
+            return NearMindTheme.error
+        }
     }
 }
 
@@ -218,6 +292,32 @@ private struct LogLane: View {
                 .foregroundStyle(NearMindTheme.textPrimary)
             if rows.isEmpty {
                 Text("No events yet.")
+                    .font(.caption)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+            } else {
+                ForEach(rows.indices, id: \.self) { index in
+                    Text(rows[index])
+                        .font(.caption)
+                        .foregroundStyle(NearMindTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct LatencyLane: View {
+    let title: String
+    let rows: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NearMindTheme.textPrimary)
+            if rows.isEmpty {
+                Text("No metrics yet.")
                     .font(.caption)
                     .foregroundStyle(NearMindTheme.textSecondary)
             } else {

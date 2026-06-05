@@ -6,9 +6,14 @@ enum MicrophonePermissionStatus: String {
     case denied
 }
 
+protocol MicrophonePermissionProviding {
+    func currentStatus() -> MicrophonePermissionStatus
+    func request() async -> MicrophonePermissionStatus
+}
+
 enum MicrophonePermission {
-    static func currentStatus() -> MicrophonePermissionStatus {
-        switch AVAudioSession.sharedInstance().recordPermission {
+    static func from(_ permission: AVAudioApplication.recordPermission) -> MicrophonePermissionStatus {
+        switch permission {
         case .granted:
             return .granted
         case .denied:
@@ -20,11 +25,25 @@ enum MicrophonePermission {
         }
     }
 
+    static func currentStatus() -> MicrophonePermissionStatus {
+        from(AVAudioApplication.shared.recordPermission)
+    }
+
     static func request() async -> MicrophonePermissionStatus {
         await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+            AVAudioApplication.requestRecordPermission { granted in
                 continuation.resume(returning: granted ? .granted : .denied)
             }
         }
+    }
+}
+
+struct SystemMicrophonePermissionProvider: MicrophonePermissionProviding {
+    func currentStatus() -> MicrophonePermissionStatus {
+        MicrophonePermission.currentStatus()
+    }
+
+    func request() async -> MicrophonePermissionStatus {
+        await MicrophonePermission.request()
     }
 }

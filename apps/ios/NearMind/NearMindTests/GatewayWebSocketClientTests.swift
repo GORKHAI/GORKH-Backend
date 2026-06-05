@@ -12,6 +12,17 @@ final class GatewayWebSocketClientTests: XCTestCase {
     }
 
     @MainActor
+    func testTokenRedactionDoesNotExposeJWTRegression() {
+        let token = "eyJ.test.signature"
+        let raw = "Authorization: Bearer \(token)"
+
+        let redacted = GatewayWebSocketClient.redactedForLog(raw, token: token)
+
+        XCTAssertFalse(redacted.contains(token))
+        XCTAssertTrue(redacted.contains("[redacted]"))
+    }
+
+    @MainActor
     func testSendAudioFrameFailsSafelyWhenSocketInactive() async throws {
         let client = GatewayWebSocketClient(
             config: .production,

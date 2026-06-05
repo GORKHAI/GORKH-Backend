@@ -35,22 +35,23 @@ final class SpeechOutputManager: ObservableObject {
         }
     }
 
-    func speak(text: String, speechId: String?, deliveryTarget: String?) {
+    @discardableResult
+    func speak(text: String, speechId: String?, deliveryTarget: String?) -> Bool {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanText.isEmpty else { return }
+        guard !cleanText.isEmpty else { return false }
         guard !isMuted else {
             status = "TTS muted"
-            return
+            return false
         }
         guard cleanText.count <= maxSpokenCharacters else {
             status = "Skipped long TTS report"
-            return
+            return false
         }
 
         let target = deliveryTarget ?? "local"
         guard target != "screen_only" else {
             status = "Skipped screen-only report"
-            return
+            return false
         }
 
         currentSpeechId = speechId
@@ -61,6 +62,7 @@ final class SpeechOutputManager: ObservableObject {
         synthesizer.speak(utterance)
         isSpeaking = true
         status = "Speaking"
+        return true
     }
 
     func cancel(speechId: String? = nil) {

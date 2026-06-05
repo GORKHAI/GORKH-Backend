@@ -88,11 +88,33 @@ The APR is 9.4 percent and there is also an arrangement fee.
 
 Privacy checks:
 
-1. Start a voice session, then background the app. Confirm the microphone stops and the app shows the v0.2 background warning.
+1. Start a voice session, then background the app. Confirm the microphone stops and the app shows the v0.3 background warning.
 2. Start another voice session, then tap Disconnect. Confirm the microphone and TTS stop.
 3. Open Debug Log and confirm no token appears.
 4. Confirm raw audio frames are not logged.
 5. Confirm `stop save=false` is available and used for discard tests.
+
+## Real Device Voice Smoke v0.3
+
+Use `IOS_REAL_DEVICE_SMOKE.md` for the full physical iPhone checklist. The Live Assist screen includes a Real Device Smoke section with local checklist state for:
+
+1. Token stored.
+2. Microphone permission granted.
+3. Gateway connected.
+4. `conversation_agent` started.
+5. ASR final received.
+6. Assistant text received.
+7. TTS spoken.
+8. `whisper_copilot` started.
+9. Cue received.
+10. Barge-in tested.
+11. Stop save=false tested.
+12. Mic stopped.
+13. TTS stopped.
+14. Session state fetched.
+15. Latency summary fetched.
+16. No token in logs.
+17. No raw audio in logs.
 
 ## Manual Typed Gateway Smoke
 

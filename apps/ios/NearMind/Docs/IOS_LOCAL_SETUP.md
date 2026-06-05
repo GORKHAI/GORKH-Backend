@@ -17,8 +17,11 @@ brew install xcodegen
 ```bash
 cd apps/ios/NearMind
 ./Scripts/list-simulators.sh
+./Scripts/list-devices.sh
+./Scripts/generate-app-icon.sh
 ./Scripts/build-simulator.sh
 ./Scripts/test-simulator.sh
+./Scripts/build-device-debug.sh
 ```
 
 If no simulator runtime/device is installed, `test-simulator.sh` fails clearly and lists available destinations. Use:
@@ -60,7 +63,12 @@ The in-app logo asset lives in:
 NearMind/Resources/Assets.xcassets/NearMindLogo.imageset/
 ```
 
-It was copied from `~/Downloads/near-mind-logo.png`. The Downloads file is not part of the repo. AppIcon is unchanged in v0.2; generate a full icon size set from a reviewed final icon before TestFlight.
+It was copied from `~/Downloads/near-mind-logo.png`. The Downloads file is not part of the repo. v0.3 uses the copied square logo to generate `AppIcon.appiconset` locally:
+
+```bash
+cd apps/ios/NearMind
+./Scripts/generate-app-icon.sh
+```
 
 ## Live Smoke Scope
 
@@ -77,7 +85,7 @@ It intentionally does not start microphone streaming or native TTS. Live Smoke r
 
 ## Voice Session Scope
 
-The v0.2 Live Assist screen verifies:
+The v0.3 Live Assist screen verifies:
 
 - Consent-gated microphone permission.
 - PCM16 16 kHz mono binary audio frames over `/gateway/voice`.
@@ -85,5 +93,8 @@ The v0.2 Live Assist screen verifies:
 - Button-based barge-in using `speech_started`.
 - `stop save=false` discard behavior.
 - Foreground-only microphone capture.
+- Physical-device readiness checklist.
+- Audio route display and route-change handling.
+- Local approximate latency plus backend latency summary display.
 
 It intentionally does not implement push notifications, Calendar/Gmail UI, full Brain Console UI, provider key storage, API secret storage, hidden/background recording, or client-sent `userId`.

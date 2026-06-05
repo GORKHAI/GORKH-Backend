@@ -74,11 +74,14 @@ The native SwiftUI iOS scaffold for NearMind lives at `apps/ios/NearMind`.
 ```bash
 cd apps/ios/NearMind
 ./Scripts/list-simulators.sh
+./Scripts/list-devices.sh
+./Scripts/generate-app-icon.sh
 ./Scripts/build-simulator.sh
 ./Scripts/test-simulator.sh
+./Scripts/build-device-debug.sh
 ```
 
-NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The v0.2 Live Assist screen adds consent-gated microphone capture, PCM16 gateway streaming, and native iOS TTS; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
+NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The v0.3 Live Assist screen adds real-device smoke readiness, AppIcon generation, consent-gated microphone capture, PCM16 gateway streaming, audio route display, local/native iOS TTS, and latency summary display; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
 
 ## Providers
 

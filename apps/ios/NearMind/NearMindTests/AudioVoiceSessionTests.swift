@@ -33,6 +33,28 @@ final class AudioVoiceSessionTests: XCTestCase {
         }
     }
 
+    func testAppIconAssetExistsAfterGeneration() {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let appRoot = testFile.deletingLastPathComponent().deletingLastPathComponent()
+        let iconSet = appRoot.appendingPathComponent("NearMind/Resources/Assets.xcassets/AppIcon.appiconset")
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: iconSet.appendingPathComponent("Contents.json").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: iconSet.appendingPathComponent("Icon-1024.png").path))
+    }
+
+    func testMicrophonePermissionStateMapping() {
+        XCTAssertEqual(MicrophonePermission.from(.granted), .granted)
+        XCTAssertEqual(MicrophonePermission.from(.denied), .denied)
+        XCTAssertEqual(MicrophonePermission.from(.undetermined), .unknown)
+    }
+
+    func testAudioSessionRouteModelClassifiesCommonPorts() {
+        XCTAssertEqual(AudioRouteInfo.kind(for: AVAudioSession.Port.builtInMic.rawValue), .builtInMic)
+        XCTAssertEqual(AudioRouteInfo.kind(for: AVAudioSession.Port.builtInSpeaker.rawValue), .speaker)
+        XCTAssertEqual(AudioRouteInfo.kind(for: AVAudioSession.Port.headphones.rawValue), .headphones)
+        XCTAssertEqual(AudioRouteInfo.kind(for: AVAudioSession.Port.bluetoothHFP.rawValue), .bluetooth)
+    }
+
     @MainActor
     func testTTSManagerHandlesSpeakRequest() {
         let synth = MockSpeechSynthesizer()
@@ -90,7 +112,9 @@ final class AudioVoiceSessionTests: XCTestCase {
         let viewModel = LiveAssistViewModel(
             gatewayClient: MockGatewayVoiceClient(),
             audioStreamer: MockAudioStreamer(),
-            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer())
+            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer()),
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
         )
 
         viewModel.configure(environment: environment, appState: appState)
@@ -106,7 +130,9 @@ final class AudioVoiceSessionTests: XCTestCase {
         let viewModel = LiveAssistViewModel(
             gatewayClient: MockGatewayVoiceClient(),
             audioStreamer: MockAudioStreamer(),
-            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer())
+            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer()),
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
         )
 
         viewModel.configure(environment: environment, appState: appState)
@@ -123,7 +149,9 @@ final class AudioVoiceSessionTests: XCTestCase {
         let viewModel = LiveAssistViewModel(
             gatewayClient: gateway,
             audioStreamer: audio,
-            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer())
+            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer()),
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
         )
         let environment = makeEnvironment(token: "test.jwt")
         viewModel.configure(environment: environment, appState: AppState(environment: environment))
@@ -143,7 +171,9 @@ final class AudioVoiceSessionTests: XCTestCase {
         let viewModel = LiveAssistViewModel(
             gatewayClient: gateway,
             audioStreamer: audio,
-            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer())
+            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer()),
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
         )
         let environment = makeEnvironment(token: "test.jwt")
         viewModel.configure(environment: environment, appState: AppState(environment: environment))
@@ -164,7 +194,9 @@ final class AudioVoiceSessionTests: XCTestCase {
         let viewModel = LiveAssistViewModel(
             gatewayClient: gateway,
             audioStreamer: MockAudioStreamer(),
-            speechOutput: speech
+            speechOutput: speech,
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
         )
         let environment = makeEnvironment(token: "test.jwt")
         viewModel.configure(environment: environment, appState: AppState(environment: environment))
@@ -174,6 +206,83 @@ final class AudioVoiceSessionTests: XCTestCase {
 
         XCTAssertTrue(gateway.didSendSpeechStarted)
         XCTAssertEqual(synth.stopCount, 1)
+    }
+
+    @MainActor
+    func testFailedStartClearsAudioActiveState() async throws {
+        let gateway = MockGatewayVoiceClient()
+        let audio = MockAudioStreamer()
+        audio.startError = AudioStreamingError.conversionFailed
+        let viewModel = LiveAssistViewModel(
+            gatewayClient: gateway,
+            audioStreamer: audio,
+            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer()),
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
+        )
+        let environment = makeEnvironment(token: "test.jwt")
+        viewModel.configure(environment: environment, appState: AppState(environment: environment))
+        viewModel.hasConsent = true
+
+        viewModel.startVoiceSession()
+        try await Task.sleep(nanoseconds: 150_000_000)
+
+        XCTAssertTrue(audio.didStop)
+        XCTAssertFalse(viewModel.isMicrophoneRunning)
+    }
+
+    @MainActor
+    func testBackgroundEventClearsMicAndTTSState() async throws {
+        let gateway = MockGatewayVoiceClient()
+        let audio = MockAudioStreamer()
+        let synth = MockSpeechSynthesizer()
+        let speech = SpeechOutputManager(synthesizer: synth)
+        speech.speak(text: "Speaking now", speechId: "speech-4", deliveryTarget: "local")
+        let viewModel = LiveAssistViewModel(
+            gatewayClient: gateway,
+            audioStreamer: audio,
+            speechOutput: speech,
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
+        )
+        let environment = makeEnvironment(token: "test.jwt")
+        viewModel.configure(environment: environment, appState: AppState(environment: environment))
+        viewModel.hasConsent = true
+
+        viewModel.startVoiceSession()
+        try await Task.sleep(nanoseconds: 500_000_000)
+        viewModel.stopForBackground()
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        XCTAssertTrue(audio.didStop)
+        XCTAssertFalse(viewModel.isMicrophoneRunning)
+        XCTAssertEqual(synth.stopCount, 1)
+    }
+
+    func testLocalTelemetryRecordsFirstEventsOnly() {
+        var telemetry = VoiceSessionTelemetry()
+        let base = Date(timeIntervalSince1970: 10)
+        telemetry.recordMicStarted(at: base)
+        telemetry.recordFirstASRFinal(at: base.addingTimeInterval(0.25))
+        telemetry.recordFirstASRFinal(at: base.addingTimeInterval(3.0))
+        telemetry.recordFirstCue(at: base.addingTimeInterval(0.5))
+        telemetry.recordFirstTTSInstruction(at: base.addingTimeInterval(0.5))
+        telemetry.recordLocalTTSStarted(at: base.addingTimeInterval(0.625))
+
+        XCTAssertEqual(telemetry.rows(), [
+            "Mic start -> first ASR final: 250 ms",
+            "Mic start -> first cue: 500 ms",
+            "TTS instruction -> local TTS start: 125 ms"
+        ])
+    }
+
+    func testRealDeviceChecklistStateTransitions() {
+        var checklist = RealDeviceSmokeChecklist()
+        checklist.mark(.tokenStored, status: .passed, detail: "stored")
+
+        let check = checklist.check(.tokenStored)
+        XCTAssertEqual(check?.status, .passed)
+        XCTAssertEqual(check?.detail, "stored")
     }
 
     private func makeEnvironment(token: String?) -> AppEnvironment {
@@ -249,6 +358,7 @@ private final class MockGatewayVoiceClient: GatewayVoiceClientProtocol {
 
 private final class MockAudioStreamer: PCM16AudioStreaming {
     var isRunning = false
+    var startError: Error?
     private(set) var didStop = false
 
     func start(
@@ -260,6 +370,9 @@ private final class MockAudioStreamer: PCM16AudioStreaming {
     ) throws {
         guard consentGranted else { throw AudioStreamingError.consentRequired }
         guard sessionActive else { throw AudioStreamingError.sessionNotActive }
+        if let startError {
+            throw startError
+        }
         isRunning = true
     }
 
@@ -267,6 +380,37 @@ private final class MockAudioStreamer: PCM16AudioStreaming {
         didStop = true
         isRunning = false
     }
+}
+
+private struct MockMicrophonePermissionProvider: MicrophonePermissionProviding {
+    let status: MicrophonePermissionStatus
+
+    func currentStatus() -> MicrophonePermissionStatus {
+        status
+    }
+
+    func request() async -> MicrophonePermissionStatus {
+        status
+    }
+}
+
+private final class MockAudioSessionManager: AudioSessionManaging {
+    var currentRouteInfo = AudioRouteInfo(
+        inputKind: .builtInMic,
+        inputName: "Mock mic",
+        outputKind: .speaker,
+        outputName: "Mock speaker",
+        hasInput: true
+    )
+
+    func configureForVoiceSession() throws {}
+    func deactivate() {}
+
+    func observeRouteChanges(_ handler: @escaping @MainActor (AudioRouteChange) -> Void) -> NSObjectProtocol {
+        NSObject()
+    }
+
+    func removeRouteObserver(_ token: NSObjectProtocol) {}
 }
 
 private final class VoiceTestTokenStore: TokenStoreProtocol {

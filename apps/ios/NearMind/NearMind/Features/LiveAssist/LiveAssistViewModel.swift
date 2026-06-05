@@ -39,8 +39,9 @@ final class LiveAssistViewModel: ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var isSessionActive = false
     @Published private(set) var isMicrophoneRunning = false
-    @Published private(set) var microphonePermissionStatus = MicrophonePermission.currentStatus()
+    @Published private(set) var microphonePermissionStatus: MicrophonePermissionStatus
     @Published private(set) var micLevel = 0.0
+    @Published private(set) var audioRouteText: String
     @Published private(set) var asrLog: [String] = []
     @Published private(set) var assistantLog: [String] = []
     @Published private(set) var cueLog: [String] = []
@@ -50,14 +51,22 @@ final class LiveAssistViewModel: ObservableObject {
     @Published private(set) var hasStoredToken = false
     @Published private(set) var isBusy = false
     @Published private(set) var lifecycleWarning: String?
+    @Published private(set) var realDeviceChecks: [RealDeviceSmokeCheck]
+    @Published private(set) var localLatencyRows: [String] = []
+    @Published private(set) var backendLatencyRows: [String] = []
 
     private var client: GatewayVoiceClientProtocol?
     private var apiClient: APIClient?
     private let audioStreamer: PCM16AudioStreaming
+    private let audioSessionManager: AudioSessionManaging
+    private let microphonePermissionProvider: MicrophonePermissionProviding
     private let speechOutput: SpeechOutputManager
     private let injectedClient: GatewayVoiceClientProtocol?
     private weak var appState: AppState?
     private var hasReportedAudioSendError = false
+    private var routeObserver: NSObjectProtocol?
+    private var realDeviceChecklist = RealDeviceSmokeChecklist()
+    private var telemetry = VoiceSessionTelemetry()
 
     var canStartVoiceSession: Bool {
         hasStoredToken && hasConsent && !isBusy
@@ -69,12 +78,25 @@ final class LiveAssistViewModel: ObservableObject {
 
     init(
         gatewayClient: GatewayVoiceClientProtocol? = nil,
-        audioStreamer: PCM16AudioStreaming = PCM16AudioStreamer(),
-        speechOutput: SpeechOutputManager? = nil
+        audioStreamer: PCM16AudioStreaming? = nil,
+        speechOutput: SpeechOutputManager? = nil,
+        microphonePermissionProvider: MicrophonePermissionProviding = SystemMicrophonePermissionProvider(),
+        audioSessionManager: AudioSessionManaging = AudioSessionManager()
     ) {
         self.injectedClient = gatewayClient
-        self.audioStreamer = audioStreamer
+        self.audioSessionManager = audioSessionManager
+        self.audioStreamer = audioStreamer ?? PCM16AudioStreamer(audioSessionManager: audioSessionManager)
         self.speechOutput = speechOutput ?? SpeechOutputManager()
+        self.microphonePermissionProvider = microphonePermissionProvider
+        self.microphonePermissionStatus = microphonePermissionProvider.currentStatus()
+        self.audioRouteText = audioSessionManager.currentRouteInfo.summary
+        self.realDeviceChecks = realDeviceChecklist.checks
+    }
+
+    deinit {
+        if let routeObserver {
+            audioSessionManager.removeRouteObserver(routeObserver)
+        }
     }
 
     func configure(environment: AppEnvironment, appState: AppState) {
@@ -88,12 +110,18 @@ final class LiveAssistViewModel: ObservableObject {
             config: environment.config,
             tokenStore: environment.tokenStore
         )
+        observeAudioRouteChanges()
         refreshTokenState()
     }
 
     func refreshTokenState() {
         appState?.refreshAuthStatus()
         hasStoredToken = appState?.tokenStatus == .stored
+        markSmoke(
+            .tokenStored,
+            status: hasStoredToken ? .passed : .failed,
+            detail: hasStoredToken ? "JWT is stored in Keychain." : "Paste a test JWT in Settings."
+        )
     }
 
     func connect() {
@@ -108,10 +136,16 @@ final class LiveAssistViewModel: ObservableObject {
             guard self.hasStoredToken else { throw VoiceSessionError.missingToken }
             guard self.hasConsent else { throw VoiceSessionError.missingConsent }
 
-            self.microphonePermissionStatus = await MicrophonePermission.request()
+            self.telemetry.reset()
+            self.updateLocalLatencyRows()
+            self.backendLatencyRows = []
+
+            self.microphonePermissionStatus = await self.microphonePermissionProvider.request()
             guard self.microphonePermissionStatus == .granted else {
+                self.markSmoke(.microphonePermissionGranted, status: .failed, detail: "Permission denied or unavailable.")
                 throw VoiceSessionError.microphoneDenied
             }
+            self.markSmoke(.microphonePermissionGranted, status: .passed, detail: "Permission granted.")
 
             if self.client?.isConnected != true {
                 try await self.connectGatewayClient()
@@ -130,7 +164,17 @@ final class LiveAssistViewModel: ObservableObject {
             }
 
             self.isSessionActive = self.client?.sessionActive == true
-            try self.startMicrophoneAfterAck()
+            do {
+                try self.startMicrophoneAfterAck()
+            } catch {
+                self.stopLocalAudio(reason: "Failed to start microphone")
+                throw error
+            }
+            if self.policy == .conversationAgent {
+                self.markSmoke(.conversationStarted, status: .passed, detail: self.lastSessionId ?? "gateway_ack")
+            } else {
+                self.markSmoke(.whisperStarted, status: .passed, detail: self.lastSessionId ?? "gateway_ack")
+            }
             self.status = "Voice session active"
             self.appState?.appendLocal(message: "Started PCM16 voice session")
         }
@@ -156,6 +200,7 @@ final class LiveAssistViewModel: ObservableObject {
     func simulateBargeIn() {
         speechOutput.cancel()
         updateTTSState()
+        markSmoke(.bargeInTested, status: .passed, detail: "Sent speech_started and stopped local TTS.")
         send {
             try await self.client?.sendSpeechStarted()
             self.appState?.appendLocal(message: "Sent speech_started for barge-in")
@@ -173,6 +218,7 @@ final class LiveAssistViewModel: ObservableObject {
             }
             let response = try await self.apiClient?.getMobileSessionState(sessionID: sessionId)
             self.appState?.appendRaw(title: "GET /mobile/sessions/:id/state", rawJSON: response?.rawJSON ?? "{}")
+            self.markSmoke(.sessionStateFetched, status: .passed, detail: sessionId)
             self.status = "Fetched session state"
         }
     }
@@ -185,14 +231,18 @@ final class LiveAssistViewModel: ObservableObject {
             }
             let response = try await self.apiClient?.getSessionLatencySummary(sessionID: sessionId)
             self.appState?.appendRaw(title: "GET /sessions/:id/latency-summary", rawJSON: response?.rawJSON ?? "{}")
+            if let response {
+                self.backendLatencyRows = self.formatBackendLatency(response.decoded?.latencySummary ?? response.raw)
+            }
+            self.markSmoke(.latencySummaryFetched, status: .passed, detail: sessionId)
             self.status = "Fetched latency summary"
         }
     }
 
     func stopForBackground() {
         guard isMicrophoneRunning || isSessionActive else { return }
-        stopLocalAudio(reason: "App entered background; microphone stopped for v0.2.")
-        lifecycleWarning = "App entered background; microphone stopped for v0.2."
+        stopLocalAudio(reason: "App entered background; microphone stopped for v0.3.")
+        lifecycleWarning = "App entered background; microphone stopped for v0.3."
         send {
             try await self.client?.sendStop(save: false)
             self.isSessionActive = false
@@ -251,6 +301,9 @@ final class LiveAssistViewModel: ObservableObject {
             try await self.client?.sendStop(save: save)
             self.isSessionActive = false
             self.status = save ? "Stopped save=true" : "Stopped save=false"
+            if !save {
+                self.markSmoke(.stopDiscarded, status: .passed, detail: "Sent stop save=false.")
+            }
             self.appState?.appendLocal(message: save ? "Sent stop save=true" : "Sent stop save=false")
         }
     }
@@ -270,6 +323,7 @@ final class LiveAssistViewModel: ObservableObject {
         }
         isConnected = true
         status = "Connected"
+        markSmoke(.gatewayConnected, status: .passed, detail: "Gateway WebSocket connected.")
         appState?.appendLocal(message: "Gateway connected")
     }
 
@@ -297,6 +351,9 @@ final class LiveAssistViewModel: ObservableObject {
         )
         isMicrophoneRunning = true
         micLevel = 0
+        audioRouteText = audioSessionManager.currentRouteInfo.summary
+        telemetry.recordMicStarted()
+        updateLocalLatencyRows()
     }
 
     private func sendAudioFrame(_ frame: Data) async {
@@ -315,6 +372,8 @@ final class LiveAssistViewModel: ObservableObject {
         micLevel = 0
         speechOutput.cancel()
         updateTTSState()
+        markSmoke(.micStopped, status: .passed, detail: reason)
+        markSmoke(.ttsStopped, status: .passed, detail: "Local TTS stopped.")
         status = reason
     }
 
@@ -333,12 +392,29 @@ final class LiveAssistViewModel: ObservableObject {
             append(payloadText(payload), to: \.asrLog, prefix: "partial")
         case .gatewayASRFinal(let payload), .voiceSegment(let payload):
             append(payloadText(payload), to: \.asrLog, prefix: "final")
+            telemetry.recordFirstASRFinal()
+            updateLocalLatencyRows()
+            markSmoke(.asrFinalReceived, status: .passed, detail: payloadText(payload))
         case .voiceAssistantText(let payload), .voiceSpeakRequest(let payload):
             append(payloadText(payload), to: \.assistantLog, prefix: "assistant")
+            markSmoke(.assistantTextReceived, status: .passed, detail: payloadText(payload))
+        case .gatewayClientTTSInstruction(let payload):
+            telemetry.recordFirstTTSInstruction()
+            if speechOutput.status == "Speaking" {
+                telemetry.recordLocalTTSStarted()
+                markSmoke(.ttsSpoken, status: .passed, detail: payloadText(payload))
+            }
+            updateLocalLatencyRows()
         case .voiceCue(let payload):
             let text = payloadText(payload)
             append(text, to: \.cueLog, prefix: "cue")
-            speechOutput.speak(text: text, speechId: payload["speechId"]?.stringValue, deliveryTarget: "local")
+            telemetry.recordFirstCue()
+            if speechOutput.speak(text: text, speechId: payload["speechId"]?.stringValue, deliveryTarget: "local") {
+                telemetry.recordLocalTTSStarted()
+                markSmoke(.ttsSpoken, status: .passed, detail: text)
+            }
+            updateLocalLatencyRows()
+            markSmoke(.cueReceived, status: .passed, detail: text)
         case .voiceSubagentReport(let payload):
             append(payloadText(payload), to: \.subagentLog, prefix: payload["deliveryTarget"]?.stringValue ?? "report")
         case .voiceCancelSpeech:
@@ -354,6 +430,11 @@ final class LiveAssistViewModel: ObservableObject {
         }
         isSessionActive = client?.sessionActive == true
         updateTTSState()
+    }
+
+    func markLogPrivacyVerified() {
+        markSmoke(.noTokenInLogs, status: .passed, detail: "Manual debug log check passed.")
+        markSmoke(.noRawAudioInLogs, status: .passed, detail: "Manual debug log check passed.")
     }
 
     private func payloadText(_ payload: [String: JSONValue]) -> String {
@@ -377,6 +458,55 @@ final class LiveAssistViewModel: ObservableObject {
         ttsDeliveryTarget = speechOutput.deliveryTarget
     }
 
+    private func updateLocalLatencyRows() {
+        localLatencyRows = telemetry.rows()
+    }
+
+    private func observeAudioRouteChanges() {
+        guard routeObserver == nil else { return }
+        audioRouteText = audioSessionManager.currentRouteInfo.summary
+        routeObserver = audioSessionManager.observeRouteChanges { [weak self] change in
+            self?.handleAudioRouteChange(change)
+        }
+    }
+
+    private func handleAudioRouteChange(_ change: AudioRouteChange) {
+        audioRouteText = change.route.summary
+        appState?.appendLocal(message: "Audio route changed: \(change.reason.rawValue) \(change.route.summary)")
+        guard isMicrophoneRunning, !change.route.hasInput else { return }
+        handleAudioError(AudioSessionRouteError.inputUnavailable)
+    }
+
+    private func markSmoke(_ id: RealDeviceSmokeCheckID, status: RealDeviceSmokeCheckStatus, detail: String = "") {
+        realDeviceChecklist.mark(id, status: status, detail: detail)
+        realDeviceChecks = realDeviceChecklist.checks
+    }
+
+    private func formatBackendLatency(_ summary: [String: JSONValue]) -> [String] {
+        let fields: [(String, String)] = [
+            ("transcriptToAssistantTextMs", "Transcript -> assistant text"),
+            ("asrToCueMs", "ASR -> cue"),
+            ("cueToGatewayInstructionMs", "Cue -> gateway instruction"),
+            ("subagentDurationMs", "Subagent duration")
+        ]
+        var rows = fields.compactMap { key, label -> String? in
+            guard let value = summary[key]?.numberValue else { return nil }
+            return "\(label): \(Int(value)) ms"
+        }
+        if let warnings = summary["warnings"]?.arrayValue {
+            let joined = warnings.compactMap(\.stringValue).joined(separator: ", ")
+            if !joined.isEmpty {
+                rows.append("Warnings: \(joined)")
+            }
+        } else if let warning = summary["warnings"]?.stringValue, !warning.isEmpty {
+            rows.append("Warnings: \(warning)")
+        }
+        if rows.isEmpty {
+            rows.append("No backend latency metrics available yet.")
+        }
+        return rows
+    }
+
     private func handleAuthCode(_ code: String?) {
         guard code == "auth_missing" || code == "auth_invalid" else { return }
         appState?.markTokenInvalid()
@@ -392,6 +522,7 @@ final class LiveAssistViewModel: ObservableObject {
                 try await operation()
             } catch {
                 status = error.localizedDescription
+                stopLocalAudio(reason: "Operation failed")
                 appState?.appendLocal(message: status)
             }
         }

@@ -57,7 +57,7 @@ struct HomeView: View {
             NavigationLink {
                 LiveAssistView()
             } label: {
-                CardRow(title: "Live Assist", subtitle: "Typed WebSocket session prototype", systemImage: "message")
+                CardRow(title: "Live Assist", subtitle: "Real-device voice and TTS smoke", systemImage: "message")
             }
 
             NavigationLink {

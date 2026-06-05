@@ -49,6 +49,20 @@ struct JSONValue: Codable, Hashable {
         value?.base as? Bool
     }
 
+    var numberValue: Double? {
+        if let double = value?.base as? Double {
+            return double
+        }
+        if let int = value?.base as? Int {
+            return Double(int)
+        }
+        return nil
+    }
+
+    var arrayValue: [JSONValue]? {
+        value?.base as? [JSONValue]
+    }
+
     var dictionaryValue: [String: JSONValue]? {
         value?.base as? [String: JSONValue]
     }

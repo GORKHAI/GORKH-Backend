@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		028F69F04D17D3523315081C /* VoiceSessionTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ECF4CEBF00FE0C7467B28F3 /* VoiceSessionTelemetry.swift */; };
 		04029A81D95C943E526C9A50 /* APIEndpointTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA1F698C67782B7B8B1381D /* APIEndpointTests.swift */; };
 		05F4F3706E1B69BCF8A9AD6C /* LiveSmokeChecklistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B559028E59BCC34AB8BB9BA /* LiveSmokeChecklistTests.swift */; };
 		06954C38EB693971DB5112A6 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 204F70D53F9116EA5B033BDE /* HomeView.swift */; };
@@ -51,6 +52,7 @@
 		F24E5837991557AF41C8BE26 /* GatewayWebSocketClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90148E4F2555322D929A10AC /* GatewayWebSocketClientTests.swift */; };
 		F2E8EB23ADDAB2B7C2B496C9 /* ProtocolDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF089CE65B24778C5CD58A2 /* ProtocolDecodingTests.swift */; };
 		F9A5C0A70E3756338295A550 /* VoiceEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D7AC3C8D473EB6623C92967 /* VoiceEvents.swift */; };
+		FF5B3F14EB4BA474F22E8161 /* RealDeviceSmokeCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = D35BAF0B44548D7AAB877F12 /* RealDeviceSmokeCheck.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +88,7 @@
 		7B559028E59BCC34AB8BB9BA /* LiveSmokeChecklistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeChecklistTests.swift; sourceTree = "<group>"; };
 		8CB78D50CAF920BC45043327 /* LiveSmokeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeView.swift; sourceTree = "<group>"; };
 		8EBDEC324A886FD68242313C /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
+		8ECF4CEBF00FE0C7467B28F3 /* VoiceSessionTelemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionTelemetry.swift; sourceTree = "<group>"; };
 		90148E4F2555322D929A10AC /* GatewayWebSocketClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayWebSocketClientTests.swift; sourceTree = "<group>"; };
 		9981CFBD150C48360607EB42 /* NearMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearMindApp.swift; sourceTree = "<group>"; };
 		999F8513036555CAA5B9FB8B /* TokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStoreTests.swift; sourceTree = "<group>"; };
@@ -103,6 +106,7 @@
 		BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		C9512DCEB3E5D1CCAC65EFE3 /* AudioVoiceSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVoiceSessionTests.swift; sourceTree = "<group>"; };
 		D258112F1D63FB401ACF7E8C /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		D35BAF0B44548D7AAB877F12 /* RealDeviceSmokeCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealDeviceSmokeCheck.swift; sourceTree = "<group>"; };
 		D441E5E909D5717679D099F1 /* GatewayEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayEvents.swift; sourceTree = "<group>"; };
 		DDFF32394AA90954F09D4871 /* SpeechOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechOutputManager.swift; sourceTree = "<group>"; };
 		DFE75564CFD5B1181C953179 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -162,6 +166,8 @@
 			children = (
 				3B72B765D06D89BC0FD25FB4 /* LiveAssistView.swift */,
 				5DD1546113C21AFC271D28A7 /* LiveAssistViewModel.swift */,
+				D35BAF0B44548D7AAB877F12 /* RealDeviceSmokeCheck.swift */,
+				8ECF4CEBF00FE0C7467B28F3 /* VoiceSessionTelemetry.swift */,
 			);
 			path = LiveAssist;
 			sourceTree = "<group>";
@@ -440,6 +446,7 @@
 				165D7CF378A0BEF871667C90 /* OnboardingView.swift in Sources */,
 				74CDDC57102B2B114FE1B86D /* PCM16AudioStreamer.swift in Sources */,
 				9BF7FD6892B134D45A6235E0 /* PrimaryButton.swift in Sources */,
+				FF5B3F14EB4BA474F22E8161 /* RealDeviceSmokeCheck.swift in Sources */,
 				F056E0B8AA7D1FE11E364307 /* SectionCard.swift in Sources */,
 				B43994262FEDF677367FBB75 /* SettingsView.swift in Sources */,
 				58F521C24C4540279A1EAD34 /* SpeechOutputManager.swift in Sources */,
@@ -447,6 +454,7 @@
 				7B9416642BE82594AE27F322 /* StatusPill.swift in Sources */,
 				39C24007A64E1A70EECFC8FC /* TokenStore.swift in Sources */,
 				F9A5C0A70E3756338295A550 /* VoiceEvents.swift in Sources */,
+				028F69F04D17D3523315081C /* VoiceSessionTelemetry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -555,7 +563,7 @@
 		73DAA7A7897A94197AD13A93 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = NearMind/Resources/Info.plist;
@@ -590,7 +598,7 @@
 		C1119D0D217526511A3CD0B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = NearMind/Resources/Info.plist;
