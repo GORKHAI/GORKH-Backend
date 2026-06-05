@@ -99,6 +99,7 @@ Docs:
 - [Privacy And Approval Model](docs/relay/privacy-and-approval-model.md)
 - [Professional Use Cases](docs/relay/professional-use-cases.md)
 - [Future A2A Compatibility](docs/relay/future-a2a-compatibility.md)
+- [Relay Local Validation](docs/relay/relay-local-validation.md)
 
 ## Providers
 

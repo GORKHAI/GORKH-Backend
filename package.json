@@ -48,6 +48,7 @@
     "rooms:replay:all": "tsx src/scripts/rooms-replay-all.ts",
     "relay:replay": "tsx src/scripts/relay-replay.ts",
     "relay:replay:all": "tsx src/scripts/relay-replay-all.ts",
+    "relay:live:verify": "tsx src/scripts/relay-live-verify.ts",
     "rooms:web:build": "esbuild services/voice-gateway/src/room-client/room-client.ts --bundle --format=esm --target=es2022 --minify --outfile=services/voice-gateway/public/room.js",
     "rooms:live:check": "tsx src/scripts/rooms-live-check.ts",
     "rooms:live:token-check": "tsx src/scripts/rooms-live-token-check.ts",

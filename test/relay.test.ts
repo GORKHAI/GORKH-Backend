@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { detectRelayIntent } from "../src/relay/chat-intent.js";
 import { RelayPolicyError, assertNoMassBroadcast, assertNoPrivateDataSharing } from "../src/relay/policy-core.js";
 import { relayDraftBodySchema } from "../src/relay/types.js";
+import { relayLiveConfigFromEnv, validateRelayLiveConfig } from "../src/scripts/relay-live-verify.js";
 
 describe("NearMind Relay policy", () => {
   it("rejects mass broadcast language", () => {
@@ -38,5 +39,21 @@ describe("NearMind Relay policy", () => {
     const intent = detectRelayIntent("Ask my team for blockers before tomorrow.");
     expect(intent?.teamOrBroadcast).toBe(true);
     expect(intent?.requestType).toBe("team_update_request");
+  });
+
+  it("live verifier reports missing credentials without printing tokens", () => {
+    const cfg = relayLiveConfigFromEnv({
+      LIVE_API_URL: "https://api.example.test",
+      LIVE_TEST_JWT_A: "secret.jwt.a",
+    });
+    expect(validateRelayLiveConfig(cfg)).toEqual(["LIVE_TEST_JWT_B", "LIVE_RELAY_TEST_EMAIL_B or LIVE_TEST_EMAIL_B"]);
+  });
+
+  it("live verifier allows explicit dev-user mode without JWTs", () => {
+    const cfg = relayLiveConfigFromEnv({
+      LIVE_API_URL: "https://api.example.test",
+      LIVE_RELAY_USE_DEV_USERS: "true",
+    });
+    expect(validateRelayLiveConfig(cfg)).toEqual([]);
   });
 });
