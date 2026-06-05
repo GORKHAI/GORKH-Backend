@@ -6,14 +6,14 @@ struct AppHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            NearMindLogoMark(size: 34)
+            NearMindLogoMark(size: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(NearMindTheme.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.subheadline)
+                        .font(.footnote)
                         .foregroundStyle(NearMindTheme.textSecondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -46,8 +46,7 @@ struct EmptyStateView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity)
-        .background(NearMindTheme.surface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
-        .overlay(RoundedRectangle(cornerRadius: NearMindTheme.radius).stroke(NearMindTheme.border, lineWidth: 1))
+        .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
     }
 }
 
@@ -76,7 +75,6 @@ struct NativeCard<Content: View>: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
-        .overlay(RoundedRectangle(cornerRadius: NearMindTheme.radius).stroke(NearMindTheme.border, lineWidth: 1))
     }
 }
 

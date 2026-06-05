@@ -5,34 +5,36 @@ struct SessionsView: View {
     @StateObject private var viewModel = SessionsViewModel()
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
-                AppHeader(
-                    title: "Sessions",
-                    subtitle: "Browse saved conversations, cues, and follow-ups."
-                )
-
-                if viewModel.content.isEmpty {
-                    EmptyStateView(
+        List {
+            if viewModel.content.isEmpty {
+                Section {
+                    NativeEmptyRow(
                         title: "No saved sessions",
-                        message: "Saved Live Assist sessions will appear here. Discarded sessions stay out of your history.",
-                        systemImage: "tray"
+                        subtitle: "Saved Live Assist sessions will appear here."
                     )
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(viewModel.content.sessions) { session in
-                            NavigationLink {
-                                SessionDetailView(session: session)
-                            } label: {
-                                SessionRow(item: session)
-                            }
-                            .buttonStyle(.plain)
+                } header: {
+                    AppHeader(title: "Sessions", subtitle: "Review saved conversations and cues.")
+                        .textCase(nil)
+                        .padding(.bottom, 8)
+                }
+            } else {
+                Section {
+                    ForEach(viewModel.content.sessions) { session in
+                        NavigationLink {
+                            SessionDetailView(session: session)
+                        } label: {
+                            SessionRow(item: session)
                         }
                     }
+                } header: {
+                    AppHeader(title: "Sessions", subtitle: "Review saved conversations and cues.")
+                        .textCase(nil)
+                        .padding(.bottom, 8)
                 }
             }
-            .padding(NearMindTheme.pagePadding)
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
         .navigationTitle("Sessions")
         .navigationBarTitleDisplayMode(.inline)
@@ -58,35 +60,33 @@ struct SessionRow: View {
     let item: SessionListItem
 
     var body: some View {
-        NativeCard {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: item.retentionStatus == .discarded ? "trash" : "waveform.circle")
-                    .font(.title3)
-                    .foregroundStyle(NearMindTheme.accentMint)
-                    .frame(width: 32)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: item.retentionStatus == .discarded ? "trash" : "waveform.circle")
+                .font(.title3)
+                .foregroundStyle(NearMindTheme.accentMint)
+                .frame(width: 30)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(item.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(NearMindTheme.textPrimary)
-                            .lineLimit(2)
-                        Spacer()
-                        MiniStatusBadge(
-                            text: item.retentionStatus.title,
-                            color: item.retentionStatus == .discarded ? NearMindTheme.warning : NearMindTheme.success
-                        )
-                    }
-                    Text(item.formattedDate)
-                        .font(.caption)
-                        .foregroundStyle(NearMindTheme.textSecondary)
-                    Text(item.preview)
-                        .font(.footnote)
-                        .foregroundStyle(NearMindTheme.textSecondary)
-                        .lineLimit(3)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(item.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(NearMindTheme.textPrimary)
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    Text(item.retentionStatus.title)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(item.retentionStatus == .discarded ? NearMindTheme.warning : NearMindTheme.success)
                 }
+                Text(item.formattedDate)
+                    .font(.caption)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                Text(item.preview)
+                    .font(.footnote)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                    .lineLimit(2)
             }
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -95,35 +95,34 @@ struct SessionDetailView: View {
     @State private var showDiagnostics = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
+        List {
+            Section {
+                Text(session.summary ?? session.preview)
+                    .foregroundStyle(NearMindTheme.textPrimary)
+            } header: {
                 AppHeader(title: session.title, subtitle: session.formattedDate)
-
-                NativeCard {
-                    Text(session.summary ?? session.preview)
-                        .font(.subheadline)
-                        .foregroundStyle(NearMindTheme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                DetailListSection(title: "Key Cues", rows: session.cues, emptyTitle: "No cues saved")
-                DetailListSection(title: "Follow-ups", rows: session.followUps, emptyTitle: "No follow-ups saved")
-                DetailListSection(title: "Transcript Snippets", rows: session.transcriptSnippets, emptyTitle: "No transcript snippets")
-
-                DisclosureGroup(isExpanded: $showDiagnostics) {
-                    DetailListSection(title: "Diagnostics", rows: session.diagnostics, emptyTitle: "No diagnostics available")
-                        .padding(.top, 8)
-                } label: {
-                    Text("Diagnostics")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NearMindTheme.textPrimary)
-                }
-                .padding(16)
-                .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
-                .overlay(RoundedRectangle(cornerRadius: NearMindTheme.radius).stroke(NearMindTheme.border, lineWidth: 1))
+                    .textCase(nil)
+                    .padding(.bottom, 8)
             }
-            .padding(NearMindTheme.pagePadding)
+
+            DetailListSection(title: "Key Cues", rows: session.cues, emptyTitle: "No cues saved")
+            DetailListSection(title: "Follow-ups", rows: session.followUps, emptyTitle: "No follow-ups saved")
+            DetailListSection(title: "Transcript Snippets", rows: session.transcriptSnippets, emptyTitle: "No transcript snippets")
+
+            Section("Diagnostics") {
+                if session.diagnostics.isEmpty {
+                    NativeEmptyRow(title: "No diagnostics available", subtitle: "Latency and technical details appear when available.")
+                } else {
+                    ForEach(session.diagnostics.indices, id: \.self) { index in
+                        Text(session.diagnostics[index])
+                            .font(.footnote)
+                            .foregroundStyle(NearMindTheme.textSecondary)
+                    }
+                }
+            }
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
         .navigationTitle("Session")
         .navigationBarTitleDisplayMode(.inline)
@@ -136,20 +135,15 @@ private struct DetailListSection: View {
     let emptyTitle: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ConsumerSectionHeader(title)
+        Section(title) {
             if rows.isEmpty {
-                EmptyStateView(title: emptyTitle, message: "Nothing has been saved for this section yet.", systemImage: "text.alignleft")
+                NativeEmptyRow(title: emptyTitle, subtitle: "Nothing has been saved for this section yet.")
             } else {
-                NativeCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(rows.indices, id: \.self) { index in
-                            Label(rows[index], systemImage: "checkmark.circle")
-                                .font(.footnote)
-                                .foregroundStyle(NearMindTheme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+                ForEach(rows.indices, id: \.self) { index in
+                    Label(rows[index], systemImage: "checkmark.circle")
+                        .font(.footnote)
+                        .foregroundStyle(NearMindTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

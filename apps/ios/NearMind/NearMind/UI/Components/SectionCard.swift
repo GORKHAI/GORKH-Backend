@@ -28,9 +28,5 @@ struct SectionCard<Content: View>: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
-        .overlay(
-            RoundedRectangle(cornerRadius: NearMindTheme.radius)
-                .stroke(NearMindTheme.border, lineWidth: 1)
-        )
     }
 }

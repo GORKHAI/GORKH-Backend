@@ -6,21 +6,72 @@ struct TodayView: View {
     let startAssist: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
-                AppHeader(
-                    title: "NearMind",
-                    subtitle: "A quiet overview before you step into the day."
-                )
-
-                primaryAction
-                briefSection
-                followUpSection
-                upcomingSection
-                recentSessionsSection
+        List {
+            Section {
+                Button {
+                    startAssist()
+                } label: {
+                    HStack(spacing: 14) {
+                        NearMindLogoMark(size: 42)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Start Live Assist")
+                                .font(.headline)
+                                .foregroundStyle(NearMindTheme.textPrimary)
+                            Text("Voice help when you choose.")
+                                .font(.subheadline)
+                                .foregroundStyle(NearMindTheme.textSecondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(NearMindTheme.textSecondary)
+                    }
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+            } header: {
+                AppHeader(title: "NearMind", subtitle: "Private help for real-life moments.")
+                    .textCase(nil)
+                    .padding(.bottom, 8)
             }
-            .padding(NearMindTheme.pagePadding)
+
+            Section("Today Brief") {
+                if let brief = viewModel.content.briefText {
+                    Text(brief)
+                        .foregroundStyle(NearMindTheme.textPrimary)
+                } else {
+                    NativeEmptyRow(title: "No brief yet", subtitle: "Start your first Live Assist session.")
+                }
+            }
+
+            Section("Follow-ups") {
+                NativeInfoRow(
+                    systemImage: "checklist",
+                    title: viewModel.content.hasTasks ? "\(viewModel.content.openTaskCount) open" : "No tasks yet",
+                    subtitle: viewModel.content.hasTasks ? "Review follow-ups from recent sessions." : "Follow-ups appear after saved sessions."
+                )
+            }
+
+            Section("Upcoming") {
+                NativeInfoRow(
+                    systemImage: "calendar",
+                    title: viewModel.content.upcomingTitle ?? "No upcoming context",
+                    subtitle: viewModel.content.upcomingTitle == nil ? "NearMind stays quiet until you start a session." : "Ready for your next moment."
+                )
+            }
+
+            Section("Recent Sessions") {
+                if viewModel.content.recentSessions.isEmpty {
+                    NativeEmptyRow(title: "No recent sessions", subtitle: "Saved sessions will show here.")
+                } else {
+                    ForEach(viewModel.content.recentSessions) { session in
+                        SessionRow(item: session)
+                    }
+                }
+            }
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
         .navigationTitle("Today")
         .navigationBarTitleDisplayMode(.inline)
@@ -40,108 +91,46 @@ struct TodayView: View {
             viewModel.refresh()
         }
     }
+}
 
-    private var primaryAction: some View {
-        NativeCard {
-            VStack(alignment: .leading, spacing: 12) {
-                MiniStatusBadge(text: viewModel.statusText, color: NearMindTheme.accentMint)
-                Text("Start Live Assist")
-                    .font(.title2.weight(.semibold))
+struct NativeInfoRow: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(NearMindTheme.accentMint)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body)
                     .foregroundStyle(NearMindTheme.textPrimary)
-                Text("Use voice help when you choose. Stop, save, or discard the session at any time.")
-                    .font(.subheadline)
+                Text(subtitle)
+                    .font(.footnote)
                     .foregroundStyle(NearMindTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                PrimaryButton("Start Live Assist", systemImage: "waveform") {
-                    startAssist()
-                }
             }
         }
-    }
-
-    private var briefSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ConsumerSectionHeader("Today Brief")
-            if let brief = viewModel.content.briefText {
-                NativeCard {
-                    Text(brief)
-                        .font(.subheadline)
-                        .foregroundStyle(NearMindTheme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                EmptyStateView(
-                    title: "No brief yet",
-                    message: "Start your first Live Assist session to build useful context.",
-                    systemImage: "sun.max"
-                )
-            }
-        }
-    }
-
-    private var followUpSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ConsumerSectionHeader("Follow-ups")
-            NativeCard {
-                HStack(spacing: 12) {
-                    Image(systemName: "checklist")
-                        .font(.title3)
-                        .foregroundStyle(NearMindTheme.accentMint)
-                        .frame(width: 32)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(viewModel.content.hasTasks ? "\(viewModel.content.openTaskCount) open" : "No tasks yet")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(NearMindTheme.textPrimary)
-                        Text(viewModel.content.hasTasks ? "Review follow-ups from recent sessions." : "Follow-ups will appear after saved sessions.")
-                            .font(.footnote)
-                            .foregroundStyle(NearMindTheme.textSecondary)
-                    }
-                    Spacer()
-                }
-            }
-        }
-    }
-
-    private var upcomingSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ConsumerSectionHeader("Upcoming")
-            NativeCard {
-                HStack(spacing: 12) {
-                    Image(systemName: "calendar")
-                        .font(.title3)
-                        .foregroundStyle(NearMindTheme.accentMint)
-                        .frame(width: 32)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(viewModel.content.upcomingTitle ?? "No upcoming context")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(NearMindTheme.textPrimary)
-                        Text(viewModel.content.upcomingTitle == nil ? "NearMind will stay quiet until you start a session." : "Ready for your next moment.")
-                            .font(.footnote)
-                            .foregroundStyle(NearMindTheme.textSecondary)
-                    }
-                    Spacer()
-                }
-            }
-        }
-    }
-
-    private var recentSessionsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ConsumerSectionHeader("Recent Sessions")
-            if viewModel.content.recentSessions.isEmpty {
-                EmptyStateView(
-                    title: "No recent sessions",
-                    message: "Start your first Live Assist session when you want help in the moment.",
-                    systemImage: "clock"
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(viewModel.content.recentSessions) { session in
-                        SessionRow(item: session)
-                    }
-                }
-            }
-        }
+        .padding(.vertical, 2)
     }
 }
 
+struct NativeEmptyRow: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(NearMindTheme.textPrimary)
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(NearMindTheme.textSecondary)
+        }
+        .padding(.vertical, 4)
+    }
+}

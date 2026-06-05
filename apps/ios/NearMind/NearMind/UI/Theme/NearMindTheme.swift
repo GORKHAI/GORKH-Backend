@@ -28,10 +28,10 @@ struct NearMindLogoMark: View {
 
     var body: some View {
         Image("NearMindLogo")
+            .renderingMode(.original)
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
             .accessibilityLabel("NearMind logo")
     }
 }

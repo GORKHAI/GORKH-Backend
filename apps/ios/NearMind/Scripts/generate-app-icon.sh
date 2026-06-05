@@ -3,12 +3,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-source_icon="NearMind/Resources/Assets.xcassets/NearMindLogo.imageset/near-mind-logo.png"
+source_icon="NearMind/Resources/Assets.xcassets/NearMindIconSource.imageset/near-mind-icon-source.png"
 iconset="NearMind/Resources/Assets.xcassets/AppIcon.appiconset"
 
 if [ ! -f "$source_icon" ]; then
   echo "Missing logo source: $source_icon"
-  echo "Copy near-mind-logo.png into NearMindLogo.imageset first."
+  echo "Copy near-mind-icon-source.png into NearMindIconSource.imageset first."
   exit 1
 fi
 
