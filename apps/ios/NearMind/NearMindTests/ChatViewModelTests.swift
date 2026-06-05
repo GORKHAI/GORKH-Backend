@@ -74,6 +74,20 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.messages.last?.text, "Add a test token in Profile to chat with your assistant.")
     }
 
+    func testAskIntentOpensRelayComposerWithoutBackendSend() async {
+        let service = MockChatService()
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        let viewModel = ChatViewModel()
+        var relayGoal: String?
+        viewModel.configure(appState: appState, service: service, openRelayComposer: { relayGoal = $0 })
+
+        await viewModel.send("Ask Steve's agent if he is available for an investor call next week.")
+
+        XCTAssertEqual(service.queryCallCount, 0)
+        XCTAssertEqual(relayGoal, "Ask Steve's agent if he is available for an investor call next week.")
+        XCTAssertTrue(viewModel.messages.last?.text.contains("approve") == true)
+    }
+
     func testUnknownQueryHandlesBackendErrorSafely() async {
         let service = MockChatService()
         service.error = APIClientError.invalidJSON

@@ -179,6 +179,44 @@ Delete my memory
 11. Paste a token in Profile > Developer and ask:
 
 ```text
+Ask Steve's agent if he is available for an investor call next week.
+```
+
+12. Confirm NearMind opens the Relay composer instead of sending automatically.
+
+## Relay Agent Requests v0
+
+1. Paste a valid test JWT in Profile > Developer.
+2. Open Profile > Agent Requests.
+3. Confirm Inbox, Outbox, Drafts, and Approvals tabs are visible.
+4. Tap Draft a Relay request.
+5. Enter recipient:
+
+```text
+Steve
+```
+
+6. Enter request:
+
+```text
+Ask if next week works for an investor call.
+```
+
+7. Tap Create Draft.
+8. Confirm an approval card appears.
+9. Tap Send Request.
+10. Confirm no external email is sent.
+11. Open Outbox and confirm the request status updated.
+12. Open Chat and ask:
+
+```text
+Ask this investor if they want the deck.
+```
+
+13. Confirm Chat opens the Relay composer and does not send automatically.
+14. Open Debug Log and confirm no token, raw audio, provider key, or client `userId` appears.
+
+```text
 What should I do today?
 ```
 

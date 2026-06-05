@@ -53,6 +53,75 @@ final class APIClient {
         try await request(.sessionLatencySummary(sessionID: sessionID), as: LatencySummaryResponse.self)
     }
 
+    @discardableResult
+    func getRelayIdentity() async throws -> APIJSONResponse<RelayIdentityResponse> {
+        try await request(.relayIdentity, as: RelayIdentityResponse.self)
+    }
+
+    @discardableResult
+    func getRelayContacts() async throws -> APIJSONResponse<RelayContactsResponse> {
+        try await request(.relayContacts, as: RelayContactsResponse.self)
+    }
+
+    @discardableResult
+    func getRelayInbox() async throws -> APIJSONResponse<RelayRequestsResponse> {
+        try await request(.relayInbox, as: RelayRequestsResponse.self)
+    }
+
+    @discardableResult
+    func getRelayOutbox() async throws -> APIJSONResponse<RelayRequestsResponse> {
+        try await request(.relayOutbox, as: RelayRequestsResponse.self)
+    }
+
+    @discardableResult
+    func getRelayRequest(id: String?) async throws -> APIJSONResponse<RelayRequestResponse> {
+        try await request(.relayRequest(id: id), as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func draftRelayRequest(_ draft: RelayDraftRequest) async throws -> APIJSONResponse<RelayRequestResponse> {
+        let body = try JSONEncoder().encode(draft)
+        return try await request(.relayDraftRequest, method: .post, body: body, as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func approveRelaySend(id: String?) async throws -> APIJSONResponse<RelayRequestResponse> {
+        try await request(.relayApproveSend(id: id), method: .post, body: Data("{}".utf8), as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func cancelRelayRequest(id: String?) async throws -> APIJSONResponse<RelayRequestResponse> {
+        try await request(.relayCancel(id: id), method: .post, body: Data("{}".utf8), as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func approveRelayRequest(id: String?, approvedPayload: [String: JSONValue] = [:]) async throws -> APIJSONResponse<RelayRequestResponse> {
+        let body = try JSONEncoder().encode(RelayDecisionRequest(approvedPayload: approvedPayload))
+        return try await request(.relayApprove(id: id), method: .post, body: body, as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func rejectRelayRequest(id: String?, reason: String? = nil) async throws -> APIJSONResponse<RelayRequestResponse> {
+        let body = try JSONEncoder().encode(RelayDecisionRequest(reason: reason))
+        return try await request(.relayReject(id: id), method: .post, body: body, as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func ignoreRelayRequest(id: String?) async throws -> APIJSONResponse<RelayRequestResponse> {
+        try await request(.relayIgnore(id: id), method: .post, body: Data("{}".utf8), as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func blockRelaySender(id: String?, reason: String? = nil) async throws -> APIJSONResponse<RelayRequestResponse> {
+        let body = try JSONEncoder().encode(RelayDecisionRequest(reason: reason))
+        return try await request(.relayBlockSender(id: id), method: .post, body: body, as: RelayRequestResponse.self)
+    }
+
+    @discardableResult
+    func getRelayMessages(id: String?) async throws -> APIJSONResponse<RelayMessagesResponse> {
+        try await request(.relayMessages(id: id), as: RelayMessagesResponse.self)
+    }
+
     private func request<T: Decodable>(
         _ endpoint: Endpoint,
         method: HTTPMethod = .get,

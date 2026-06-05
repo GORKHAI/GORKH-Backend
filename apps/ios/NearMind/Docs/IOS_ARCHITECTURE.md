@@ -52,6 +52,17 @@ Developer-heavy surfaces are intentionally not shown on the default home screen.
 - `GET /mobile/sync?cursor=`
 - `GET /mobile/sessions/:id/state`
 - `GET /sessions/:id/latency-summary`
+- `GET /relay/identity`
+- `GET /relay/contacts`
+- `GET /relay/requests/inbox`
+- `GET /relay/requests/outbox`
+- `POST /relay/requests/draft`
+- `POST /relay/requests/:id/approve-send`
+- `POST /relay/requests/:id/cancel`
+- `POST /relay/requests/:id/approve`
+- `POST /relay/requests/:id/reject`
+- `POST /relay/requests/:id/ignore`
+- `POST /relay/requests/:id/block-sender`
 
 ## WebSocket Flow
 
@@ -140,6 +151,20 @@ The Chat tab is the app center in v0.5. `ChatViewModel` handles safe local inten
 
 Chat messages redact JWT-shaped strings before displaying or storing local message state. Sensitive external actions are not executed from chat in v0.5.
 
+## Relay Architecture
+
+NearMind Relay v0 is exposed in `Features/Relay`. It is a private agent request inbox/outbox, not a public social layer. The iOS app can:
+
+- Open Agent Requests from Profile.
+- Browse Inbox, Outbox, Drafts, and Pending approvals.
+- Draft a request to a named/email contact.
+- Approve sender-side send.
+- Cancel drafts.
+- Approve, reject, ignore, or block incoming requests.
+- Decode Relay mobile-sync items.
+
+All Relay API calls attach the Keychain JWT through `APIClient`. iOS never sends `userId`; backend ownership is derived from auth. Chat "ask..." intents open the Relay composer and do not send automatically.
+
 ## Consent And Lifecycle
 
 NearMind v0.3 has no hidden recording and no background always-listening. Microphone capture starts only after explicit consent, microphone permission, gateway connection, and `gateway_ack`. When the app enters background during a voice session, NearMind stops the microphone and sends `stop save=false`; the user must manually restart after returning.
@@ -166,6 +191,7 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - v0.3 AppIcon generation, real-device scripts, audio route UI, real-device smoke checklist, and latency display
 - v0.4 consumer UI redesign with tab navigation, compact onboarding, Today home, Sessions browse/detail, and diagnostics separation
 - v0.5 chat-first UX with approval cards, Profile tab, text assistant routing, and no hidden recording from chat
+- Relay v0 agent requests under Profile, Chat composer handoff, mobile-sync decoding, and sender/receiver approval controls
 
 ## Intentionally Not Implemented Yet
 

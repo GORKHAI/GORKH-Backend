@@ -3,6 +3,8 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = ChatViewModel()
+    @State private var relayComposerGoal = ""
+    @State private var isShowingRelayComposer = false
     let openLive: () -> Void
     let openProfile: () -> Void
 
@@ -68,8 +70,28 @@ struct ChatView: View {
             viewModel.configure(
                 appState: appState,
                 openLive: openLive,
-                openProfile: openProfile
+                openProfile: openProfile,
+                openRelayComposer: { goal in
+                    relayComposerGoal = goal
+                    isShowingRelayComposer = true
+                }
             )
+        }
+        .sheet(isPresented: $isShowingRelayComposer) {
+            NavigationStack {
+                RelayComposerRootView(
+                    client: APIClient(config: appState.environment.config, tokenStore: appState.environment.tokenStore),
+                    initialGoal: relayComposerGoal
+                )
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") {
+                            isShowingRelayComposer = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.large])
         }
     }
 

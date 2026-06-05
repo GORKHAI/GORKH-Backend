@@ -142,6 +142,8 @@ import { getOwnedTurns, getOwnedVoiceOutputs, getOwnedVoiceSession, handleVoiceC
 import { ackMobileNotification, ackMobileNotifications, listMobileNotifications, mobileSync } from "./mobile/notifications.js";
 import { latencySummaryForSession } from "./voice/latency.js";
 import { mobileError } from "./protocol/errors.js";
+import { answerRelayChatIntent } from "./relay/chat.js";
+import { registerRelayRoutes } from "./relay/requests.js";
 
 const devUserBody = z.object({
   email: z.string().email(),
@@ -271,6 +273,8 @@ export async function buildServer() {
       research: researchProviderStatus(),
     };
   }
+
+  registerRelayRoutes(app, requireAuth);
 
   if (config.NODE_ENV !== "production") {
     app.post("/dev/users", async (request, reply) => {
@@ -551,6 +555,8 @@ export async function buildServer() {
     const body = brainQueryBody.parse(request.body);
     if (body.sessionId && !(await ownedSession(userId, body.sessionId))) return reply.code(404).send({ error: "not found" });
     if (body.situationBriefId && !(await getOwnedSituationBrief(userId, body.situationBriefId))) return reply.code(404).send({ error: "not found" });
+    const relayAnswer = await answerRelayChatIntent(userId, body.text);
+    if (relayAnswer) return reply.send(relayAnswer);
     return reply.send(await answerBrainQuery({ userId, ...body }));
   });
 

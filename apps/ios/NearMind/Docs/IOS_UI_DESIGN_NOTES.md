@@ -27,6 +27,8 @@ Sessions lists saved interactions and opens a detail view with summary, cues, fo
 
 Profile groups memory, preferences, privacy, audio, approvals, diagnostics, and developer tools. Token entry remains Keychain-only and is intentionally nested under Developer.
 
+Agent Requests live under Profile > Approvals. Relay is intentionally not a public feed or discovery surface. It appears as a private inbox/outbox/composer for professional requests, with approval cards at send/share decision points.
+
 ## Consumer vs Developer Surfaces
 
 Consumer-facing:
@@ -43,5 +45,6 @@ Developer-facing:
 - Backend endpoint details
 - Real-device smoke checklist
 - Latency diagnostics
+- Relay request inbox/outbox and approval diagnostics
 
 Developer surfaces are reachable through Profile only, so the default app feels product-ready instead of development-first.

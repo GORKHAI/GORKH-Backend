@@ -137,6 +137,40 @@ export type RoomProvider = "livekit";
 export type RoomStatus = "draft" | "scheduled" | "active" | "ended" | "canceled";
 export type RoomParticipantRole = "host" | "guest" | "ai_agent";
 export type RoomConsentStatus = "pending" | "granted" | "denied";
+export type AgentProfileVisibility = "private" | "trusted_contacts" | "public_limited";
+export type TrustedContactStatus = "proposed" | "invited" | "trusted" | "blocked" | "removed";
+export type TrustedContactTrustLevel = "low" | "standard" | "high";
+export type AgentRequestType =
+  | "intro_request"
+  | "meeting_request"
+  | "availability_request"
+  | "investor_interest_check"
+  | "job_opportunity"
+  | "collaboration_request"
+  | "team_update_request"
+  | "room_invite"
+  | "document_review_request"
+  | "follow_up_request"
+  | "general_request";
+export type AgentRequestStatus =
+  | "draft"
+  | "pending_sender_approval"
+  | "sent"
+  | "received"
+  | "approved"
+  | "rejected"
+  | "ignored"
+  | "blocked"
+  | "expired"
+  | "canceled";
+export type AgentRequestMessageRole = "sender_agent" | "receiver_agent" | "sender_human" | "receiver_human" | "system";
+export type AgentRequestApprovalDecision =
+  | "approved_to_send"
+  | "rejected_to_send"
+  | "approved_to_share"
+  | "rejected_to_share"
+  | "ignored"
+  | "blocked";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1531,6 +1565,149 @@ export const voiceLatencyEvents = pgTable(
   }),
 );
 
+export const agentIdentities = pgTable(
+  "agent_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    displayName: text("display_name").notNull(),
+    headline: text("headline"),
+    professionalRole: text("professional_role"),
+    companyName: text("company_name"),
+    profileVisibility: text("profile_visibility").$type<AgentProfileVisibility>().notNull().default("private"),
+    relayEnabled: boolean("relay_enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("agent_identities_by_user").on(t.userId),
+  }),
+);
+
+export const trustedContacts = pgTable(
+  "trusted_contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contactUserId: uuid("contact_user_id").references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    email: text("email"),
+    companyName: text("company_name"),
+    relationship: text("relationship"),
+    status: text("status").$type<TrustedContactStatus>().notNull(),
+    trustLevel: text("trust_level").$type<TrustedContactTrustLevel>().notNull().default("standard"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserStatus: index("trusted_contacts_by_user_status").on(t.userId, t.status),
+  }),
+);
+
+export const agentRequests = pgTable(
+  "agent_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fromUserId: uuid("from_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    toUserId: uuid("to_user_id").references(() => users.id, { onDelete: "cascade" }),
+    toContactId: uuid("to_contact_id").references(() => trustedContacts.id, { onDelete: "set null" }),
+    requestType: text("request_type").$type<AgentRequestType>().notNull(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull(),
+    context: jsonb("context").notNull().default(sql`'{}'::jsonb`),
+    requestedShare: jsonb("requested_share").notNull().default(sql`'{}'::jsonb`),
+    riskLevel: text("risk_level").$type<RiskLevel>().notNull().default("medium"),
+    status: text("status").$type<AgentRequestStatus>().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    bySenderStatus: index("agent_requests_by_sender_status").on(t.fromUserId, t.status),
+    byRecipientStatus: index("agent_requests_by_recipient_status").on(t.toUserId, t.status),
+    byContactStatus: index("agent_requests_by_contact_status").on(t.toContactId, t.status),
+  }),
+);
+
+export const agentRequestMessages = pgTable(
+  "agent_request_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => agentRequests.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").$type<AgentRequestMessageRole>().notNull(),
+    body: text("body").notNull(),
+    safeForRecipient: boolean("safe_for_recipient").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byRequest: index("agent_request_messages_by_request").on(t.requestId),
+  }),
+);
+
+export const agentRequestApprovals = pgTable(
+  "agent_request_approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => agentRequests.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    decision: text("decision").$type<AgentRequestApprovalDecision>().notNull(),
+    approvedPayload: jsonb("approved_payload"),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byRequest: index("agent_request_approvals_by_request").on(t.requestId),
+  }),
+);
+
+export const agentBlocks = pgTable(
+  "agent_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedUserId: uuid("blocked_user_id").references(() => users.id, { onDelete: "cascade" }),
+    blockedEmail: text("blocked_email"),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("agent_blocks_by_user").on(t.userId),
+  }),
+);
+
+export const agentRelayAuditEvents = pgTable(
+  "agent_relay_audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    requestId: uuid("request_id").references(() => agentRequests.id, { onDelete: "set null" }),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserCreated: index("agent_relay_audit_events_by_user_created").on(t.userId, t.createdAt),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type SituationBrief = typeof situationBriefs.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
@@ -1539,6 +1716,13 @@ export type Memory = typeof memories.$inferSelect;
 export type VoiceSession = typeof voiceSessions.$inferSelect;
 export type AgentTurn = typeof agentTurns.$inferSelect;
 export type VoiceOutput = typeof voiceOutputs.$inferSelect;
+export type AgentIdentity = typeof agentIdentities.$inferSelect;
+export type TrustedContact = typeof trustedContacts.$inferSelect;
+export type AgentRequest = typeof agentRequests.$inferSelect;
+export type AgentRequestMessage = typeof agentRequestMessages.$inferSelect;
+export type AgentRequestApproval = typeof agentRequestApprovals.$inferSelect;
+export type AgentBlock = typeof agentBlocks.$inferSelect;
+export type AgentRelayAuditEvent = typeof agentRelayAuditEvents.$inferSelect;
 export type HumanProfile = typeof humanProfiles.$inferSelect;
 export type HumanProfileFact = typeof humanProfileFacts.$inferSelect;
 export type Skill = typeof skills.$inferSelect;

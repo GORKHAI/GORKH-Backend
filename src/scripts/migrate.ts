@@ -861,6 +861,88 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS agent_identities (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+        display_name text NOT NULL,
+        headline text,
+        professional_role text,
+        company_name text,
+        profile_visibility text NOT NULL DEFAULT 'private',
+        relay_enabled boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS trusted_contacts (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        contact_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        display_name text NOT NULL,
+        email text,
+        company_name text,
+        relationship text,
+        status text NOT NULL,
+        trust_level text NOT NULL DEFAULT 'standard',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_requests (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        from_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        to_contact_id uuid REFERENCES trusted_contacts(id) ON DELETE SET NULL,
+        request_type text NOT NULL,
+        title text NOT NULL,
+        summary text NOT NULL,
+        context jsonb NOT NULL DEFAULT '{}'::jsonb,
+        requested_share jsonb NOT NULL DEFAULT '{}'::jsonb,
+        risk_level text NOT NULL DEFAULT 'medium',
+        status text NOT NULL,
+        expires_at timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_request_messages (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        request_id uuid NOT NULL REFERENCES agent_requests(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role text NOT NULL,
+        body text NOT NULL,
+        safe_for_recipient boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_request_approvals (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        request_id uuid NOT NULL REFERENCES agent_requests(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        decision text NOT NULL,
+        approved_payload jsonb,
+        reason text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_blocks (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        blocked_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        blocked_email text,
+        reason text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_relay_audit_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        request_id uuid REFERENCES agent_requests(id) ON DELETE SET NULL,
+        event_type text NOT NULL,
+        payload jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE INDEX IF NOT EXISTS transcript_by_session ON transcript_segments(session_id);
       CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS situation_briefs_by_user ON situation_briefs(user_id);
@@ -964,6 +1046,15 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS mobile_notifications_by_session ON mobile_notifications(session_id);
       CREATE INDEX IF NOT EXISTS voice_latency_events_by_session ON voice_latency_events(session_id);
       CREATE INDEX IF NOT EXISTS voice_latency_events_by_user ON voice_latency_events(user_id);
+      CREATE INDEX IF NOT EXISTS agent_identities_by_user ON agent_identities(user_id);
+      CREATE INDEX IF NOT EXISTS trusted_contacts_by_user_status ON trusted_contacts(user_id, status);
+      CREATE INDEX IF NOT EXISTS agent_requests_by_sender_status ON agent_requests(from_user_id, status);
+      CREATE INDEX IF NOT EXISTS agent_requests_by_recipient_status ON agent_requests(to_user_id, status);
+      CREATE INDEX IF NOT EXISTS agent_requests_by_contact_status ON agent_requests(to_contact_id, status);
+      CREATE INDEX IF NOT EXISTS agent_request_messages_by_request ON agent_request_messages(request_id);
+      CREATE INDEX IF NOT EXISTS agent_request_approvals_by_request ON agent_request_approvals(request_id);
+      CREATE INDEX IF NOT EXISTS agent_blocks_by_user ON agent_blocks(user_id);
+      CREATE INDEX IF NOT EXISTS agent_relay_audit_events_by_user_created ON agent_relay_audit_events(user_id, created_at);
     `);
 
     await pool.query(`

@@ -14,17 +14,20 @@ final class ChatViewModel: ObservableObject {
     private var service: ChatAssistantServicing?
     private var openLive: (() -> Void)?
     private var openProfile: (() -> Void)?
+    private var openRelayComposer: ((String) -> Void)?
 
     func configure(
         appState: AppState,
         service: ChatAssistantServicing? = nil,
         openLive: (() -> Void)? = nil,
-        openProfile: (() -> Void)? = nil
+        openProfile: (() -> Void)? = nil,
+        openRelayComposer: ((String) -> Void)? = nil
     ) {
         self.appState = appState
         self.service = service ?? APIClient(config: appState.environment.config, tokenStore: appState.environment.tokenStore)
         self.openLive = openLive
         self.openProfile = openProfile
+        self.openRelayComposer = openRelayComposer
         appState.refreshAuthStatus()
         statusText = appState.tokenStatus == .stored ? "Private assistant" : "Add token in Profile"
     }
@@ -110,6 +113,12 @@ final class ChatViewModel: ObservableObject {
 
         guard hasToken else {
             appendAssistant("Add a test token in Profile to chat with your assistant.")
+            return
+        }
+
+        if Self.isRelayRequestIntent(normalized) {
+            appendAssistant("I can draft that as a private Relay request. You’ll approve it before anything is sent.")
+            openRelayComposer?(text)
             return
         }
 
@@ -226,5 +235,14 @@ final class ChatViewModel: ObservableObject {
     static func redactSecrets(_ text: String) -> String {
         let jwtPattern = #"[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"#
         return text.replacingOccurrences(of: jwtPattern, with: "[redacted token]", options: .regularExpression)
+    }
+
+    static func isRelayRequestIntent(_ normalizedText: String) -> Bool {
+        normalizedText.hasPrefix("ask ") ||
+        normalizedText.contains("ask investor") ||
+        normalizedText.contains("ask candidate") ||
+        normalizedText.contains("send a request to") ||
+        normalizedText.contains("ask steve") ||
+        normalizedText.contains("agent if")
     }
 }

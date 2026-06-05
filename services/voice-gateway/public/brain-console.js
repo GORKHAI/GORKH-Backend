@@ -148,6 +148,16 @@ async function handleAction(action) {
     if (action === "roomSummaryLoad") return show("roomsOut", await get(`/rooms/${roomId()}/summary`));
     if (action === "roomAudit") return show("roomsOut", await get(`/rooms/${roomId()}/audit`));
     if (action === "roomEnd") return show("roomsOut", await post(`/rooms/${roomId()}/end`, {}));
+    if (action === "relayIdentity") return show("relayOut", await get("/relay/identity"));
+    if (action === "relayContacts") return show("relayOut", await get("/relay/contacts"));
+    if (action === "relayInbox") return show("relayOut", await get("/relay/requests/inbox"));
+    if (action === "relayOutbox") return show("relayOut", await get("/relay/requests/outbox"));
+    if (action === "relayDraft") return draftRelayRequest();
+    if (action === "relayApproveSend") return show("relayOut", await post(`/relay/requests/${relayRequestId()}/approve-send`, {}));
+    if (action === "relayApprove") return show("relayOut", await post(`/relay/requests/${relayRequestId()}/approve`, { approvedPayload: { reply: $("relayApprovedReply").value.trim() || "Approved." } }));
+    if (action === "relayReject") return show("relayOut", await post(`/relay/requests/${relayRequestId()}/reject`, { reason: "Rejected from Brain Console." }));
+    if (action === "relayBlock") return show("relayOut", await post(`/relay/requests/${relayRequestId()}/block-sender`, { reason: "Blocked from Brain Console." }));
+    if (action === "relayAudit") return show("relayOut", await get("/relay/audit-events"));
     if (action === "connectorsList") return show("connectorsOut", await get("/connectors"));
     if (action === "connectorGet") return show("connectorsOut", await get(`/connectors/${connectorId()}`));
     if (action === "connectorPermissions") return show("connectorsOut", await get(`/connectors/${connectorId()}/permissions`));
@@ -187,6 +197,20 @@ async function createActionProposal() {
   });
   $("actionProposalId").value = result.proposal.id;
   show("actionsOut", result);
+}
+
+async function draftRelayRequest() {
+  const result = await post("/relay/requests/draft", {
+    requestType: $("relayRequestType").value,
+    recipient: {
+      displayName: $("relayRecipientName").value.trim(),
+      email: $("relayRecipientEmail").value.trim() || undefined,
+    },
+    goal: $("relayGoal").value.trim(),
+    context: { source: "brain_console" },
+  });
+  if (result.request?.id) $("relayRequestId").value = result.request.id;
+  return show("relayOut", result);
 }
 
 async function importConnectorFixture() {
@@ -500,6 +524,12 @@ function roomInviteToken() {
   const token = $("roomInviteToken").value.trim();
   if (!token) throw new Error("Guest invite token is required.");
   return encodeURIComponent(token);
+}
+
+function relayRequestId() {
+  const id = $("relayRequestId").value.trim();
+  if (!id) throw new Error("Relay request ID is required.");
+  return encodeURIComponent(id);
 }
 
 function connectorId() {

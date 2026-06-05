@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var token = ""
     @State private var statusMessage: String?
     @State private var microphoneStatus = SystemMicrophonePermissionProvider().currentStatus()
+    @State private var relayUpdateCount = 0
 
     var body: some View {
         List {
@@ -34,6 +35,9 @@ struct ProfileView: View {
         .onAppear {
             appState.refreshAuthStatus()
             microphoneStatus = SystemMicrophonePermissionProvider().currentStatus()
+            Task {
+                await loadRelayUpdateCount()
+            }
         }
     }
 
@@ -48,6 +52,12 @@ struct ProfileView: View {
                 PendingFactsView()
             } label: {
                 ProfileRow(title: "Pending facts", subtitle: "Review candidates before they become memory", systemImage: "tray.full")
+            }
+
+            NavigationLink {
+                RelayIdentityView(client: relayClient)
+            } label: {
+                ProfileRow(title: "Relay Identity", subtitle: "Private professional identity for agent requests", systemImage: "person.crop.circle")
             }
         }
         .listRowBackground(NearMindTheme.cardSurface)
@@ -109,6 +119,16 @@ struct ProfileView: View {
 
     private var approvalsSection: some View {
         Section(ProfileSection.approvals.rawValue) {
+            NavigationLink {
+                RelayInboxView(client: relayClient)
+            } label: {
+                ProfileRow(title: "Agent Requests", subtitle: relaySubtitle, systemImage: "arrow.left.arrow.right")
+            }
+            NavigationLink {
+                RelayContactListView(client: relayClient)
+            } label: {
+                ProfileRow(title: "Trusted Contacts", subtitle: "People your agent can draft controlled requests for", systemImage: "person.2")
+            }
             ProfileRow(title: "Sensitive changes", subtitle: "Chat proposes actions; you approve before changes happen", systemImage: "checkmark.shield")
             ProfileRow(title: "Memory deletion", subtitle: "Disabled from chat in v0.5; review is required", systemImage: "exclamationmark.triangle")
         }
@@ -184,6 +204,28 @@ struct ProfileView: View {
             appState.refreshAuthStatus()
         } catch {
             statusMessage = error.localizedDescription
+        }
+    }
+
+    private var relayClient: APIClient {
+        APIClient(config: appState.environment.config, tokenStore: appState.environment.tokenStore)
+    }
+
+    private var relaySubtitle: String {
+        relayUpdateCount > 0 ? "\(relayUpdateCount) recent Relay update\(relayUpdateCount == 1 ? "" : "s")" : "Inbox, outbox, drafts, and approvals"
+    }
+
+    private func loadRelayUpdateCount() async {
+        guard appState.tokenStatus == .stored else {
+            relayUpdateCount = 0
+            return
+        }
+        do {
+            let client = relayClient
+            let items = try await client.getMobileSync(cursor: nil).decoded?.items ?? []
+            relayUpdateCount = items.filter { $0.type.hasPrefix("relay_") }.count
+        } catch {
+            relayUpdateCount = 0
         }
     }
 

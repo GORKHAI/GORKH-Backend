@@ -12,6 +12,7 @@ GORKH-Backend is the intelligence/control plane. It owns auth, consent, situatio
 src/
   server.ts              Fastify HTTP + WebSocket server
   db/schema.ts           Drizzle tables
+  relay/*                private agent request policy, service, mobile sync, replays
   session/manager.ts     live session lifecycle and privacy rules
   voice/*                provider-agnostic voice control plane
   cue/fast-cues.ts       deterministic headphone/screen cues
@@ -63,9 +64,11 @@ npm run gateway:build
 npm run gateway:test:integration
 npm run gateway:replay -- text-prep-bank
 npm run gateway:replay:all
+npm run relay:replay -- request-draft
+npm run relay:replay:all
 ```
 
-`npm test` is unit-only and requires no Postgres, Redis, or provider keys. `npm run test:integration` requires real local Postgres and Redis.
+`npm test` includes backend suites that import DB-backed modules and currently requires local service env such as `DATABASE_URL`; if that env is missing, those suites can fail during import. `npm run test:integration` requires real local Postgres and Redis.
 
 ## NearMind iOS app scaffold
 
@@ -81,7 +84,21 @@ cd apps/ios/NearMind
 ./Scripts/build-device-debug.sh
 ```
 
-NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The app now uses native Today, Assist, Sessions, and Settings tabs, with debug/developer tools nested under Settings. The Live Assist screen supports real-device smoke readiness, AppIcon generation, consent-gated microphone capture, PCM16 gateway streaming, audio route display, local/native iOS TTS, and latency summary display; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
+NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The app uses native Chat, Live, Sessions, and Profile tabs, with debug/developer tools nested under Profile. The Live Assist screen supports real-device smoke readiness, AppIcon generation, consent-gated microphone capture, PCM16 gateway streaming, audio route display, local/native iOS TTS, and latency summary display; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
+
+## NearMind Relay
+
+NearMind Relay v0 is a private, human-approved agent request layer. It is not a public social network, public discovery system, open federation layer, or unrestricted A2A/MCP bridge.
+
+Relay routes are authenticated and derive the acting user from the JWT. Clients do not send `userId`. Requests are drafted first, then sender-approved, then receiver-approved before any receiver-controlled payload is shared. No external email is sent in v0, and no private memory, profile, calendar, email, provider key, or API secret is shared automatically.
+
+Docs:
+
+- [NearMind Relay v0](docs/relay/nearmind-relay-v0.md)
+- [Agent Request Policy](docs/relay/agent-request-policy.md)
+- [Privacy And Approval Model](docs/relay/privacy-and-approval-model.md)
+- [Professional Use Cases](docs/relay/professional-use-cases.md)
+- [Future A2A Compatibility](docs/relay/future-a2a-compatibility.md)
 
 ## Providers
 

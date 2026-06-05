@@ -346,6 +346,38 @@
       </section>
 
       <section class="panel">
+        <h2>NearMind Relay</h2>
+        <label>Request ID <input id="relayRequestId" placeholder="relay request uuid" /></label>
+        <label>Recipient name <input id="relayRecipientName" value="Relay Contact" /></label>
+        <label>Recipient email <input id="relayRecipientEmail" placeholder="optional@example.com" /></label>
+        <label>Type
+          <select id="relayRequestType">
+            <option value="availability_request">availability_request</option>
+            <option value="meeting_request">meeting_request</option>
+            <option value="investor_interest_check">investor_interest_check</option>
+            <option value="job_opportunity">job_opportunity</option>
+            <option value="general_request">general_request</option>
+          </select>
+        </label>
+        <label>Goal <textarea id="relayGoal">Ask if next week works for an investor call.</textarea></label>
+        <label>Approved reply <input id="relayApprovedReply" value="Yes, next Tuesday works." /></label>
+        <div class="actions">
+          <button data-action="relayIdentity" class="button">Identity</button>
+          <button data-action="relayContacts" class="button">Contacts</button>
+          <button data-action="relayInbox" class="button">Inbox</button>
+          <button data-action="relayOutbox" class="button">Outbox</button>
+          <button data-action="relayDraft" class="button">Draft</button>
+          <button data-action="relayApproveSend" class="button">Approve Send</button>
+          <button data-action="relayApprove" class="button">Receiver Approve</button>
+          <button data-action="relayReject" class="button danger">Reject</button>
+          <button data-action="relayBlock" class="button danger">Block</button>
+          <button data-action="relayAudit" class="button secondary">Relay Audit</button>
+        </div>
+        <p class="hint">Relay v0 is private and approval-gated. This panel does not send external email, share memory, or perform public discovery.</p>
+        <pre id="relayOut"></pre>
+      </section>
+
+      <section class="panel">
         <h2>Session / Privacy</h2>
         <label>Session ID <input id="sessionId" placeholder="session uuid" /></label>
         <div class="actions">
