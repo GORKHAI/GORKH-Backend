@@ -81,7 +81,7 @@ cd apps/ios/NearMind
 ./Scripts/build-device-debug.sh
 ```
 
-NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The v0.3 Live Assist screen adds real-device smoke readiness, AppIcon generation, consent-gated microphone capture, PCM16 gateway streaming, audio route display, local/native iOS TTS, and latency summary display; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
+NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The app now uses native Today, Assist, Sessions, and Settings tabs, with debug/developer tools nested under Settings. The Live Assist screen supports real-device smoke readiness, AppIcon generation, consent-gated microphone capture, PCM16 gateway streaming, audio route display, local/native iOS TTS, and latency summary display; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
 
 ## Providers
 

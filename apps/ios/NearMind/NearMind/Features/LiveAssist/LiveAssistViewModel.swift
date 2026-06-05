@@ -110,6 +110,7 @@ final class LiveAssistViewModel: ObservableObject {
             config: environment.config,
             tokenStore: environment.tokenStore
         )
+        ttsMuted = appState.ttsMutedPreference
         observeAudioRouteChanges()
         refreshTokenState()
     }

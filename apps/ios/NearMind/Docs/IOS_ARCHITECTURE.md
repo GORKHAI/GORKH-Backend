@@ -7,8 +7,8 @@ NearMind is the native SwiftUI consumer iOS app scaffold for the GORKH Brain bac
 ```text
 NearMind/
   Audio/            Microphone permission, route monitoring, PCM16 streaming, native TTS
-  App/              App state, environment, production config
-  Features/         Onboarding, Home, Live Assist, Live Smoke, Settings, Debug
+  App/              App state, tab routing, environment, production config
+  Features/         Onboarding, Today, Live Assist, Sessions, Live Smoke, Settings, Debug
   Networking/       API client, endpoint routing, WebSocket gateway client
   Protocol/         Codable client/server protocol and mobile errors
   Security/         Keychain and token storage abstractions
@@ -28,6 +28,17 @@ The production implementation is `KeychainTokenStore`, backed by `KeychainStore`
 JWTs are not written to `UserDefaults`, logs, debug event rows, or source files.
 
 Provider keys and API secrets are intentionally not represented in app settings.
+
+## Consumer Navigation
+
+NearMind now uses a native four-tab structure after onboarding:
+
+- Today: calm home screen with the primary Live Assist entry point, brief, follow-up, upcoming, and recent-session previews.
+- Assist: the core voice-session screen for context, consent, microphone/TTS controls, and live transcript/cue display.
+- Sessions: saved-session browse and detail UI with summaries, cues, follow-ups, transcript snippets, and secondary diagnostics.
+- Settings: consumer settings for token state, privacy, audio preferences, diagnostics, and developer tools.
+
+Developer-heavy surfaces are intentionally not shown on the default home screen. Typed Live Smoke and the raw debug event log are available through Settings, under Developer or Diagnostics.
 
 ## HTTP Flow
 
@@ -128,7 +139,8 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 
 - Native SwiftUI app shell
 - Consent-first onboarding
-- Home, Settings, Live Assist, and Debug Log screens
+- Native Today, Assist, Sessions, and Settings tabs
+- Debug Log and Typed Live Smoke screens behind Settings
 - Keychain-backed JWT storage
 - Production URL configuration
 - Typed WebSocket session commands
@@ -137,6 +149,7 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - Unit tests for protocol and token-store behavior
 - v0.2 branding, logo asset, consent-gated PCM16 microphone streaming, native TTS, barge-in, and lifecycle stop behavior
 - v0.3 AppIcon generation, real-device scripts, audio route UI, real-device smoke checklist, and latency display
+- v0.4 consumer UI redesign with tab navigation, compact onboarding, Today home, Sessions browse/detail, and diagnostics separation
 
 ## Intentionally Not Implemented Yet
 

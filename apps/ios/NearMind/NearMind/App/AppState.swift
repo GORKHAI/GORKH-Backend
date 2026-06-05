@@ -9,6 +9,7 @@ final class AppState: ObservableObject {
     }
 
     @Published var hasCompletedOnboarding = false
+    @Published var ttsMutedPreference = false
     @Published private(set) var isAuthenticated = false
     @Published private(set) var tokenStatus: TokenStatus = .missing
     @Published private(set) var eventLog: [DebugEvent] = []
@@ -69,6 +70,10 @@ final class AppState: ObservableObject {
 
     func clearEvents() {
         eventLog.removeAll()
+    }
+
+    func setTTSMutedPreference(_ muted: Bool) {
+        ttsMutedPreference = muted
     }
 }
 

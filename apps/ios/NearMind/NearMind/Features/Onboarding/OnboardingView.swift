@@ -1,47 +1,96 @@
 import SwiftUI
 
+struct OnboardingPage: Identifiable, Equatable {
+    let id: Int
+    let title: String
+    let message: String
+    let systemImage: String
+
+    static let defaults: [OnboardingPage] = [
+        OnboardingPage(
+            id: 0,
+            title: "NearMind",
+            message: "Your private AI right hand for real-life moments.",
+            systemImage: "sparkles"
+        ),
+        OnboardingPage(
+            id: 1,
+            title: "Consent-first",
+            message: "Live Assist starts only when you choose. No hidden recording.",
+            systemImage: "hand.raised"
+        ),
+        OnboardingPage(
+            id: 2,
+            title: "Control",
+            message: "Stop, save, or discard sessions. Tokens stay in Keychain.",
+            systemImage: "checkmark.shield"
+        )
+    ]
+}
+
 struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var selection = 0
+
+    private let pages = OnboardingPage.defaults
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Spacer()
+        VStack(spacing: 24) {
+            Spacer(minLength: 28)
 
-            VStack(alignment: .leading, spacing: 14) {
-                NearMindLogoMark(size: 96)
-                Text("NearMind")
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(NearMindTheme.textPrimary)
-                Text("Your private AI right hand for real-life moments.")
-                    .font(.title3)
-                    .foregroundStyle(NearMindTheme.textSecondary)
-            }
+            NearMindLogoMark(size: 54)
 
-            VStack(spacing: 12) {
-                SectionCard(title: "Consent-first") {
-                    Text("Live Assist starts only after you confirm consent and tap Start.")
-                        .foregroundStyle(NearMindTheme.textSecondary)
-                }
-
-                SectionCard(title: "No hidden recording") {
-                    Text("The microphone is off by default and never runs as background always-listening.")
-                        .foregroundStyle(NearMindTheme.textSecondary)
-                }
-
-                SectionCard(title: "Stop or discard") {
-                    Text("Microphone sessions can stop with save=false to discard the live session.")
-                        .foregroundStyle(NearMindTheme.textSecondary)
+            TabView(selection: $selection) {
+                ForEach(pages) { page in
+                    OnboardingPageView(page: page)
+                        .tag(page.id)
                 }
             }
+            .tabViewStyle(.page(indexDisplayMode: .always))
+            .frame(minHeight: 300)
 
-            Spacer()
-
-            PrimaryButton("Continue", systemImage: "checkmark.circle") {
-                appState.completeOnboarding()
+            PrimaryButton(selection == pages.count - 1 ? "Get Started" : "Continue", systemImage: "arrow.right") {
+                if selection < pages.count - 1 {
+                    withAnimation(.easeInOut) {
+                        selection += 1
+                    }
+                } else {
+                    appState.completeOnboarding()
+                }
             }
+            .padding(.horizontal, NearMindTheme.pagePadding)
+            .padding(.bottom, 24)
         }
-        .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(NearMindTheme.background.ignoresSafeArea())
+    }
+}
+
+private struct OnboardingPageView: View {
+    let page: OnboardingPage
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: page.systemImage)
+                .font(.system(size: 38, weight: .semibold))
+                .foregroundStyle(NearMindTheme.accentMint)
+                .frame(width: 74, height: 74)
+                .background(NearMindTheme.secondaryCTA, in: Circle())
+
+            VStack(spacing: 10) {
+                Text(page.title)
+                    .font(.largeTitle.weight(.semibold))
+                    .foregroundStyle(NearMindTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+                Text(page.message)
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 28)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

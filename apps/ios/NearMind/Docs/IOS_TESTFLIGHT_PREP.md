@@ -18,6 +18,10 @@ Review the generated icon visually before TestFlight. The in-app `NearMindLogo.i
 - `Scripts/build-device-debug.sh` builds for generic iOS or a connected iPhone using local signing settings.
 - `Scripts/build-release-archive.sh` creates a local archive only; it does not upload to App Store Connect.
 
+## UI Status
+
+The beta app shell uses native tabs for Today, Assist, Sessions, and Settings. Today is the default product home, Live Assist is the primary action screen, and debug/developer tools are nested under Settings. Before TestFlight, review the tab flow on a physical iPhone and confirm the main experience does not expose raw diagnostics by default.
+
 ## Privacy Nutrition Labels To Prepare
 
 Prepare App Store privacy answers for:
@@ -49,5 +53,6 @@ NearMind uses the microphone only when you start a Live Assist session, so it ca
 
 - Real physical-device production voice smoke still needs manual evidence.
 - Signing team must be configured locally.
+- Sessions and Today depend on currently available mobile sync data and show empty states when the backend has no saved data.
 - Background recording is intentionally disabled.
 - Calendar/Gmail UI, Brain Console, push notifications, analytics, and autonomous actions are not included in this milestone.

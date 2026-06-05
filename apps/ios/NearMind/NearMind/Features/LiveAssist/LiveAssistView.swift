@@ -4,22 +4,30 @@ struct LiveAssistView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = LiveAssistViewModel()
+    @State private var situationType = "Meeting"
+    @State private var showDiagnostics = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                statusSection
-                sessionSection
-                audioSection
-                controlsSection
-                realDeviceSmokeSection
-                latencySection
-                logsSection
+            VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
+                AppHeader(
+                    title: "Assist",
+                    subtitle: isActiveExperience ? "Live help is active." : "Prepare a consented voice session."
+                )
+
+                if isActiveExperience {
+                    activeSessionView
+                } else {
+                    prepView
+                }
+
+                diagnosticsSection
             }
-            .padding(16)
+            .padding(NearMindTheme.pagePadding)
         }
         .background(NearMindTheme.background.ignoresSafeArea())
-        .navigationTitle("Live Assist")
+        .navigationTitle("Assist")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             viewModel.configure(environment: appState.environment, appState: appState)
         }
@@ -31,189 +39,268 @@ struct LiveAssistView: View {
                 viewModel.stopForBackground()
             }
         }
+        .onChange(of: viewModel.ttsMuted) { _, muted in
+            appState.setTTSMutedPreference(muted)
+        }
     }
 
-    private var statusSection: some View {
-        SectionCard(title: "Voice Session", subtitle: appState.environment.config.gatewayWebSocketURL.absoluteString) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    StatusPill(
-                        text: viewModel.isConnected ? "Connected" : "Disconnected",
-                        color: viewModel.isConnected ? NearMindTheme.success : NearMindTheme.warning
-                    )
-                    StatusPill(
-                        text: viewModel.isSessionActive ? "Session active" : "No active session",
-                        color: viewModel.isSessionActive ? NearMindTheme.success : NearMindTheme.textSecondary
-                    )
+    private var isActiveExperience: Bool {
+        viewModel.isSessionActive || viewModel.isMicrophoneRunning || viewModel.isConnected
+    }
+
+    private var prepView: some View {
+        VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
+            NativeCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        MiniStatusBadge(
+                            text: viewModel.hasStoredToken ? "Token stored" : "Token missing",
+                            color: viewModel.hasStoredToken ? NearMindTheme.success : NearMindTheme.warning
+                        )
+                        MiniStatusBadge(
+                            text: "Mic \(viewModel.microphonePermissionStatus.rawValue)",
+                            color: viewModel.microphonePermissionStatus == .granted ? NearMindTheme.success : NearMindTheme.textSecondary
+                        )
+                    }
+
+                    Picker("Situation", selection: $situationType) {
+                        ForEach(["Meeting", "Decision", "Conversation", "Negotiation"], id: \.self) { value in
+                            Text(value).tag(value)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Policy")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(NearMindTheme.textSecondary)
+                        Picker("Policy", selection: $viewModel.policy) {
+                            ForEach(AssistPolicy.allCases) { policy in
+                                Text(policy.displayTitle).tag(policy)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    labeledTextField("Title", text: $viewModel.title, prompt: "NearMind voice session")
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Context")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(NearMindTheme.textSecondary)
+                        TextField("What is this moment about?", text: $viewModel.situationDescription, axis: .vertical)
+                            .lineLimit(3...5)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    Toggle("I consent to start Live Assist for this session", isOn: $viewModel.hasConsent)
+                        .toggleStyle(.switch)
+                        .tint(NearMindTheme.accentMint)
+                        .font(.subheadline)
+                        .foregroundStyle(NearMindTheme.textPrimary)
                 }
-                Text(viewModel.status)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(NearMindTheme.accentMint)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let warning = viewModel.lifecycleWarning {
-                    Text(warning)
-                        .font(.caption)
-                        .foregroundStyle(NearMindTheme.warning)
+            }
+
+            NativeCard {
+                PrimaryButton(
+                    "Start Session",
+                    systemImage: "waveform.circle",
+                    isDisabled: !viewModel.canStartVoiceSession
+                ) {
+                    viewModel.startVoiceSession()
                 }
-                Text("Session: \(viewModel.lastSessionId ?? "none")")
-                    .font(.caption.monospaced())
+                Text(startDisabledReason)
+                    .font(.footnote)
                     .foregroundStyle(NearMindTheme.textSecondary)
-                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    private var sessionSection: some View {
-        SectionCard(title: "Session Setup") {
-            Picker("Policy", selection: $viewModel.policy) {
-                ForEach(AssistPolicy.allCases) { policy in
-                    Text(policy.rawValue).tag(policy)
+    private var activeSessionView: some View {
+        VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
+            liveStatusCard
+            liveTranscriptCard
+            activeControlsCard
+        }
+    }
+
+    private var liveStatusCard: some View {
+        NativeCard {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        MiniStatusBadge(
+                            text: viewModel.isConnected ? "Connected" : "Disconnected",
+                            color: viewModel.isConnected ? NearMindTheme.success : NearMindTheme.warning
+                        )
+                        MiniStatusBadge(
+                            text: viewModel.isMicrophoneRunning ? "Mic streaming" : "Mic off",
+                            color: viewModel.isMicrophoneRunning ? NearMindTheme.success : NearMindTheme.textSecondary
+                        )
+                    }
+                    Text(viewModel.status)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(NearMindTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let warning = viewModel.lifecycleWarning {
+                        Text(warning)
+                            .font(.footnote)
+                            .foregroundStyle(NearMindTheme.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                Spacer()
+                Toggle("Mute TTS", isOn: $viewModel.ttsMuted)
+                    .labelsHidden()
+                    .tint(NearMindTheme.accentMint)
             }
-            .pickerStyle(.segmented)
 
-            TextField("Title", text: $viewModel.title)
-                .textFieldStyle(.roundedBorder)
+            AudioLevelBar(level: viewModel.micLevel)
 
-            TextField("Situation description", text: $viewModel.situationDescription, axis: .vertical)
-                .lineLimit(3...5)
-                .textFieldStyle(.roundedBorder)
-
-            Toggle("I have consent to start this Live Assist voice session", isOn: $viewModel.hasConsent)
-                .toggleStyle(.switch)
-                .tint(NearMindTheme.accentMint)
+            Label(viewModel.audioRouteText, systemImage: "speaker.wave.2")
+                .font(.footnote)
+                .foregroundStyle(NearMindTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack {
-                Label("JWT \(viewModel.hasStoredToken ? "stored" : "missing")", systemImage: "key")
+                Label(viewModel.ttsStatus, systemImage: "quote.bubble")
                 Spacer()
-                Label("Mic \(viewModel.microphonePermissionStatus.rawValue)", systemImage: "mic")
+                Text(viewModel.ttsDeliveryTarget)
             }
             .font(.caption)
             .foregroundStyle(NearMindTheme.textSecondary)
         }
     }
 
-    private var audioSection: some View {
-        SectionCard(title: "Audio") {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    StatusPill(
-                        text: viewModel.isMicrophoneRunning ? "Mic streaming" : "Mic off",
-                        color: viewModel.isMicrophoneRunning ? NearMindTheme.success : NearMindTheme.textSecondary
-                    )
-                    Spacer()
-                    Toggle("Mute TTS", isOn: $viewModel.ttsMuted)
-                        .labelsHidden()
-                        .tint(NearMindTheme.accentMint)
-                    Text("Mute TTS")
-                        .font(.caption)
-                        .foregroundStyle(NearMindTheme.textSecondary)
+    private var liveTranscriptCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ConsumerSectionHeader("Live Notes")
+            NativeCard {
+                LogLane(title: "Transcript", rows: viewModel.asrLog)
+                Divider().overlay(NearMindTheme.border)
+                LogLane(title: viewModel.policy == .whisperCopilot ? "Cues" : "Assistant", rows: viewModel.policy == .whisperCopilot ? viewModel.cueLog : viewModel.assistantLog)
+                if !viewModel.subagentLog.isEmpty {
+                    Divider().overlay(NearMindTheme.border)
+                    LogLane(title: "Reports", rows: viewModel.subagentLog)
                 }
-
-                AudioLevelBar(level: viewModel.micLevel)
-
-                Label(viewModel.audioRouteText, systemImage: "airpodspro")
-                    .font(.caption)
-                    .foregroundStyle(NearMindTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack {
-                    Label(viewModel.ttsStatus, systemImage: "speaker.wave.2")
-                    Spacer()
-                    Text(viewModel.ttsDeliveryTarget)
-                }
-                .font(.caption)
-                .foregroundStyle(NearMindTheme.textSecondary)
             }
         }
     }
 
-    private var controlsSection: some View {
-        SectionCard(title: "Controls") {
-            PrimaryButton(
-                "Start Voice Session",
-                systemImage: "mic.circle",
-                isDisabled: !viewModel.canStartVoiceSession
-            ) {
-                viewModel.startVoiceSession()
-            }
-
+    private var activeControlsCard: some View {
+        NativeCard {
             HStack {
-                controlButton("Stop save=false", "stop.circle", role: .destructive) {
+                controlButton("Discard", "xmark.circle", role: .destructive) {
                     viewModel.stopWithoutSaving()
                 }
-                controlButton("Stop save=true", "tray.and.arrow.down", role: nil) {
+                controlButton("Save", "tray.and.arrow.down") {
                     viewModel.stopAndSave()
                 }
             }
-
             HStack {
-                controlButton("Disconnect", "xmark.circle", role: .destructive) {
+                controlButton("Disconnect", "bolt.slash", role: .destructive) {
                     viewModel.disconnect()
                 }
-                controlButton("Simulate Barge-In", "person.wave.2") {
+                controlButton("Barge-In", "person.wave.2") {
                     viewModel.simulateBargeIn()
                 }
             }
-
-            HStack {
-                controlButton("Fetch Session State", "list.bullet.rectangle") {
-                    viewModel.fetchSessionState()
-                }
-                controlButton("Fetch Latency", "speedometer") {
-                    viewModel.fetchLatencySummary()
-                }
-            }
-
-            controlButton("Mark Log Privacy Verified", "eye.slash") {
-                viewModel.markLogPrivacyVerified()
-            }
         }
     }
 
-    private var realDeviceSmokeSection: some View {
-        SectionCard(title: "Real Device Smoke") {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(viewModel.realDeviceChecks) { check in
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: iconName(for: check.status))
-                            .foregroundStyle(color(for: check.status))
-                            .frame(width: 18)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(check.title)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(NearMindTheme.textPrimary)
-                            if !check.detail.isEmpty {
-                                Text(check.detail)
-                                    .font(.caption2)
-                                    .foregroundStyle(NearMindTheme.textSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        Spacer()
+    private var diagnosticsSection: some View {
+        DisclosureGroup(isExpanded: $showDiagnostics) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    controlButton("Session State", "list.bullet.rectangle") {
+                        viewModel.fetchSessionState()
+                    }
+                    controlButton("Latency", "speedometer") {
+                        viewModel.fetchLatencySummary()
                     }
                 }
+
+                controlButton("Verify Log Privacy", "eye.slash") {
+                    viewModel.markLogPrivacyVerified()
+                }
+
+                LatencyLane(title: "Local latency", rows: viewModel.localLatencyRows)
+                LatencyLane(title: "Backend latency", rows: viewModel.backendLatencyRows)
+                smokeChecklist
+
+                DisclosureGroup("Decoded Events") {
+                    VStack(spacing: 12) {
+                        LogLane(title: "ASR", rows: viewModel.asrLog)
+                        LogLane(title: "Assistant", rows: viewModel.assistantLog)
+                        LogLane(title: "Cues", rows: viewModel.cueLog)
+                        LogLane(title: "Subagents", rows: viewModel.subagentLog)
+                    }
+                    .padding(.top, 8)
+                }
+                .foregroundStyle(NearMindTheme.textPrimary)
+            }
+            .padding(.top, 10)
+        } label: {
+            HStack {
+                Image(systemName: "stethoscope")
+                Text("Diagnostics")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(NearMindTheme.textPrimary)
+        }
+        .padding(16)
+        .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
+        .overlay(RoundedRectangle(cornerRadius: NearMindTheme.radius).stroke(NearMindTheme.border, lineWidth: 1))
+    }
+
+    private var smokeChecklist: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Real Device Smoke")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NearMindTheme.textPrimary)
+            ForEach(viewModel.realDeviceChecks) { check in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: iconName(for: check.status))
+                        .foregroundStyle(color(for: check.status))
+                        .frame(width: 18)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(check.title)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(NearMindTheme.textPrimary)
+                        if !check.detail.isEmpty {
+                            Text(check.detail)
+                                .font(.caption2)
+                                .foregroundStyle(NearMindTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer()
+                }
             }
         }
     }
 
-    private var latencySection: some View {
-        SectionCard(title: "Latency") {
-            VStack(alignment: .leading, spacing: 12) {
-                LatencyLane(title: "Local timestamps", rows: viewModel.localLatencyRows)
-                LatencyLane(title: "Backend summary", rows: viewModel.backendLatencyRows)
-            }
+    private var startDisabledReason: String {
+        if !viewModel.hasStoredToken {
+            return "Paste a test JWT in Settings before starting."
         }
+        if !viewModel.hasConsent {
+            return "Consent is required before the microphone can start."
+        }
+        if viewModel.isBusy {
+            return "Connecting to the gateway."
+        }
+        return "Microphone starts only after the gateway confirms the session."
     }
 
-    private var logsSection: some View {
-        SectionCard(title: "Decoded Events") {
-            VStack(spacing: 12) {
-                LogLane(title: "ASR", rows: viewModel.asrLog)
-                LogLane(title: "Assistant", rows: viewModel.assistantLog)
-                LogLane(title: "Cues", rows: viewModel.cueLog)
-                LogLane(title: "Subagents", rows: viewModel.subagentLog)
-            }
+    private func labeledTextField(_ title: String, text: Binding<String>, prompt: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NearMindTheme.textSecondary)
+            TextField(prompt, text: text)
+                .textFieldStyle(.roundedBorder)
         }
     }
 
@@ -229,7 +316,7 @@ struct LiveAssistView: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .tint(role == .destructive ? NearMindTheme.error : NearMindTheme.primaryDarkGreen)
+        .tint(role == .destructive ? NearMindTheme.error : NearMindTheme.primaryCTA)
         .disabled(viewModel.isBusy)
     }
 
@@ -330,5 +417,16 @@ private struct LatencyLane: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private extension AssistPolicy {
+    var displayTitle: String {
+        switch self {
+        case .conversationAgent:
+            return "Conversation"
+        case .whisperCopilot:
+            return "Whisper"
+        }
     }
 }
