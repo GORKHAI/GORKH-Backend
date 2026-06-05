@@ -41,3 +41,39 @@ struct LatencySummaryResponse: Codable, Equatable {
     let sessionId: String
     let latencySummary: [String: JSONValue]
 }
+
+struct BrainQueryRequest: Codable, Equatable {
+    let text: String
+    let allowResearch: Bool
+    let allowProfileContext: Bool
+    let allowProfileMutation: Bool
+
+    init(
+        text: String,
+        allowResearch: Bool = false,
+        allowProfileContext: Bool = true,
+        allowProfileMutation: Bool = false
+    ) {
+        self.text = text
+        self.allowResearch = allowResearch
+        self.allowProfileContext = allowProfileContext
+        self.allowProfileMutation = allowProfileMutation
+    }
+}
+
+struct BrainQueryResponse: Codable, Equatable {
+    let status: String?
+    let answer: String?
+    let message: String?
+    let usedProfileContext: Bool?
+    let taskId: String?
+}
+
+struct ProfileReviewResponse: Codable, Equatable {
+    let confirmedFacts: [[String: JSONValue]]?
+    let proposedFacts: [[String: JSONValue]]?
+    let sensitiveCandidates: [[String: JSONValue]]?
+    let rejectedFacts: [[String: JSONValue]]?
+    let profileSummary: String?
+    let pendingActions: [String: JSONValue]?
+}

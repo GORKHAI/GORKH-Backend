@@ -8,6 +8,8 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(try Endpoint.health.url(relativeTo: baseURL).absoluteString, "https://api.gorkh.com/health")
         XCTAssertEqual(try Endpoint.healthReady.url(relativeTo: baseURL).absoluteString, "https://api.gorkh.com/health/ready")
         XCTAssertEqual(try Endpoint.brainDashboard.url(relativeTo: baseURL).absoluteString, "https://api.gorkh.com/brain/dashboard")
+        XCTAssertEqual(try Endpoint.brainQuery.url(relativeTo: baseURL).absoluteString, "https://api.gorkh.com/brain/query")
+        XCTAssertEqual(try Endpoint.humanProfileReview.url(relativeTo: baseURL).absoluteString, "https://api.gorkh.com/human/profile/review")
         XCTAssertEqual(try Endpoint.mobileSync(cursor: nil).absoluteString(relativeTo: baseURL), "https://api.gorkh.com/mobile/sync")
         XCTAssertEqual(try Endpoint.mobileSync(cursor: "abc").absoluteString(relativeTo: baseURL), "https://api.gorkh.com/mobile/sync?cursor=abc")
         XCTAssertEqual(try Endpoint.mobileSessionState(sessionID: "s1").absoluteString(relativeTo: baseURL), "https://api.gorkh.com/mobile/sessions/s1/state")

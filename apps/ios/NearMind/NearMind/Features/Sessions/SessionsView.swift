@@ -3,6 +3,7 @@ import SwiftUI
 struct SessionsView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = SessionsViewModel()
+    var startLive: () -> Void = {}
 
     var body: some View {
         List {
@@ -12,6 +13,10 @@ struct SessionsView: View {
                         title: "No saved sessions",
                         subtitle: "Saved Live Assist sessions will appear here."
                     )
+                    Button(action: startLive) {
+                        Label("Start Live Assist", systemImage: "waveform")
+                    }
+                    .foregroundStyle(NearMindTheme.accentMint)
                 } header: {
                     AppHeader(title: "Sessions", subtitle: "Review saved conversations and cues.")
                         .textCase(nil)

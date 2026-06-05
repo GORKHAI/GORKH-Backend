@@ -28,6 +28,17 @@ final class APIClient {
     }
 
     @discardableResult
+    func postBrainQuery(_ brainQuery: BrainQueryRequest) async throws -> APIJSONResponse<BrainQueryResponse> {
+        let body = try JSONEncoder().encode(brainQuery)
+        return try await request(.brainQuery, method: .post, body: body, as: BrainQueryResponse.self)
+    }
+
+    @discardableResult
+    func getHumanProfileReview() async throws -> APIJSONResponse<ProfileReviewResponse> {
+        try await request(.humanProfileReview, as: ProfileReviewResponse.self)
+    }
+
+    @discardableResult
     func getMobileSync(cursor: String?) async throws -> APIJSONResponse<MobileSyncResponse> {
         try await request(.mobileSync(cursor: cursor), as: MobileSyncResponse.self)
     }
@@ -42,16 +53,25 @@ final class APIClient {
         try await request(.sessionLatencySummary(sessionID: sessionID), as: LatencySummaryResponse.self)
     }
 
-    private func request<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> APIJSONResponse<T> {
-        let raw = try await requestRaw(endpoint)
+    private func request<T: Decodable>(
+        _ endpoint: Endpoint,
+        method: HTTPMethod = .get,
+        body: Data? = nil,
+        as type: T.Type
+    ) async throws -> APIJSONResponse<T> {
+        let raw = try await requestRaw(endpoint, method: method, body: body)
         let decoded = try? decoder.decode(T.self, from: raw.data)
         return APIJSONResponse(decoded: decoded, raw: raw.raw, rawJSON: raw.rawJSON)
     }
 
-    private func requestRaw(_ endpoint: Endpoint) async throws -> RawAPIResponse {
+    private func requestRaw(_ endpoint: Endpoint, method: HTTPMethod = .get, body: Data? = nil) async throws -> RawAPIResponse {
         var request = URLRequest(url: try endpoint.url(relativeTo: config.apiBaseURL))
-        request.httpMethod = HTTPMethod.get.rawValue
+        request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
 
         if let token = try tokenStore.readToken(), !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

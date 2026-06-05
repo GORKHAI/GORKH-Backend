@@ -3,8 +3,8 @@ import XCTest
 
 final class UIArchitectureTests: XCTestCase {
     func testRootTabStructure() {
-        XCTAssertEqual(AppTab.allCases.map(\.title), ["Today", "Assist", "Sessions", "Settings"])
-        XCTAssertEqual(AppTab.allCases.map(\.systemImage), ["sun.max", "waveform", "clock", "gearshape"])
+        XCTAssertEqual(AppTab.allCases.map(\.title), ["Chat", "Live", "Sessions", "Profile"])
+        XCTAssertEqual(AppTab.allCases.map(\.systemImage), ["message", "waveform", "clock", "person.crop.circle"])
     }
 
     func testOnboardingProgressionContent() {
@@ -71,13 +71,16 @@ final class UIArchitectureTests: XCTestCase {
         XCTAssertNotNil(item?.date)
     }
 
-    func testSettingsSectionsAreSeparated() {
-        XCTAssertEqual(SettingsSection.allCases.map(\.rawValue), [
-            "Account / Token",
+    func testProfileSectionsMoveDeveloperToolsDeeper() {
+        XCTAssertEqual(ProfileSection.allCases.map(\.rawValue), [
+            "Profile & Memory",
+            "Preferences",
             "Privacy & Data",
             "Audio",
+            "Approvals",
             "Diagnostics",
             "Developer"
         ])
+        XCTAssertEqual(ProfileSection.allCases.last, .developer)
     }
 }

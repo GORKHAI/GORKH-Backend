@@ -17,10 +17,10 @@ Backend `npm test` is separate from iOS validation and requires local backend en
 
 1. Launch NearMind in an iOS simulator.
 2. Complete onboarding.
-3. Open Settings.
+3. Open Profile.
 4. Paste a valid test JWT.
 5. Save the token to Keychain and verify token status shows `stored`.
-6. Return to Home and open Live Smoke Test.
+6. Open Developer, then Typed Live Smoke.
 7. Tap API health check.
 8. Tap Connect.
 9. Tap Start conversation_agent.
@@ -42,8 +42,8 @@ Typed live smoke must not start microphone capture, native TTS, push notificatio
 
 Conversation test:
 
-1. Paste a valid test JWT in Settings.
-2. Open Live Assist.
+1. Paste a valid test JWT in Profile > Developer.
+2. Open Live.
 3. Select `conversation_agent`.
 4. Enter situation:
 
@@ -120,10 +120,10 @@ Use `IOS_REAL_DEVICE_SMOKE.md` for the full physical iPhone checklist. The Live 
 
 1. Launch NearMind in an iOS simulator.
 2. Complete onboarding.
-3. Open Settings.
+3. Open Profile.
 4. Paste a valid test JWT.
 5. Save the token to Keychain.
-6. Return to Home and open Live Assist.
+6. Open Live.
 7. Tap Connect.
 8. Select `conversation_agent`.
 9. Enter a title and situation description.
@@ -148,3 +148,39 @@ The APR is 9.4 percent and there is also an arrangement fee.
 18. Tap `Stop save=false`.
 19. Tap Disconnect.
 20. Verify the app does not crash and the debug log does not display the JWT.
+
+## Chat-First Smoke v0.5
+
+1. Complete onboarding and confirm the first tab is Chat.
+2. Confirm the assistant welcome says:
+
+```text
+Tell me what’s happening, or ask me what needs attention today.
+```
+
+3. Tap `Start Live Assist`.
+4. Confirm an approval card appears and microphone recording does not start.
+5. Tap `Open Live` and confirm the app switches to Live without starting a session.
+6. Return to Chat and ask:
+
+```text
+Mute voice replies
+```
+
+7. Confirm an approval card appears; tap Confirm and verify Profile shows voice replies muted.
+8. Ask:
+
+```text
+Delete my memory
+```
+
+9. Confirm NearMind does not delete anything and offers to open Profile & Memory.
+10. Remove the token, ask an unknown question, and confirm Chat says to add a test token in Profile.
+11. Paste a token in Profile > Developer and ask:
+
+```text
+What should I do today?
+```
+
+12. Confirm Chat uses mobile sync data or shows a quiet empty state.
+13. Tap the Chat mic button and confirm it does not start recording; use Live for voice sessions.

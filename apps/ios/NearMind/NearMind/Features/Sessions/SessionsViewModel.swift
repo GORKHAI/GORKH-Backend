@@ -18,7 +18,7 @@ final class SessionsViewModel: ObservableObject {
     func refresh() {
         guard appState?.tokenStatus == .stored else {
             content = .empty
-            statusText = "Paste a test JWT in Settings to sync sessions."
+            statusText = "Paste a test JWT in Profile to sync sessions."
             return
         }
 

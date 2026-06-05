@@ -4,12 +4,12 @@
 
 NearMind uses a native four-tab structure:
 
-- Today: default home and calm overview.
-- Assist: primary Live Assist voice-session workflow.
+- Chat: default home and main personal-assistant interface.
+- Live: explicit consent-based real-time voice-session workflow.
 - Sessions: saved-session browsing and detail.
-- Settings: account, privacy, audio, diagnostics, and developer tools.
+- Profile: memory, preferences, privacy, audio, approvals, diagnostics, and developer tools.
 
-The app intentionally avoids a web-style landing page. Onboarding is a short three-step flow, then users land on Today.
+The app intentionally avoids a web-style landing page. Onboarding is a short three-step flow, then users land in Chat.
 
 ## Design System
 
@@ -19,22 +19,22 @@ The UI uses compact native cards, small status badges, section headers, and empt
 
 ## Product Screens
 
-Today focuses on one primary action, Start Live Assist, plus brief, follow-up, upcoming, and recent-session previews. Empty states are quiet and action-oriented.
+Chat focuses on the relationship with the assistant: a small NearMind header, assistant welcome, message list, quick action chips, and a native input bar. Chat can summarize today, propose opening Live, show memory review summaries, and ask the backend for general answers when a test token exists.
 
-Assist is the core action screen. Inactive state shows context, policy, consent, and Start Session. Active state shows live status, microphone state, route, TTS mute, transcript/cue previews, barge-in, save/discard stop, and disconnect.
+Live is the focused action screen. Inactive state shows context, policy, consent, and Start Voice Session. Active state shows live status, microphone state, route, TTS mute, transcript/cue previews, barge-in, save/discard stop, and disconnect.
 
 Sessions lists saved interactions and opens a detail view with summary, cues, follow-ups, and transcript snippets. Latency and diagnostics are secondary.
 
-Settings groups token, privacy, audio, diagnostics, and developer tools. Token entry remains Keychain-only.
+Profile groups memory, preferences, privacy, audio, approvals, diagnostics, and developer tools. Token entry remains Keychain-only and is intentionally nested under Developer.
 
 ## Consumer vs Developer Surfaces
 
 Consumer-facing:
 
-- Today
-- Assist
+- Chat
+- Live
 - Sessions
-- Settings account/privacy/audio sections
+- Profile memory/preferences/privacy/audio sections
 
 Developer-facing:
 
@@ -44,4 +44,4 @@ Developer-facing:
 - Real-device smoke checklist
 - Latency diagnostics
 
-Developer surfaces are reachable through Settings only, so the default app feels product-ready instead of development-first.
+Developer surfaces are reachable through Profile only, so the default app feels product-ready instead of development-first.

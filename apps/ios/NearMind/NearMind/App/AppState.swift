@@ -2,6 +2,12 @@ import Foundation
 
 @MainActor
 final class AppState: ObservableObject {
+    private enum DefaultsKey {
+        static let hasCompletedOnboarding = "NearMind.hasCompletedOnboarding"
+        static let ttsMutedPreference = "NearMind.ttsMutedPreference"
+        static let defaultAssistPolicy = "NearMind.defaultAssistPolicy"
+    }
+
     enum TokenStatus: String {
         case missing
         case stored
@@ -13,15 +19,23 @@ final class AppState: ObservableObject {
     @Published private(set) var isAuthenticated = false
     @Published private(set) var tokenStatus: TokenStatus = .missing
     @Published private(set) var eventLog: [DebugEvent] = []
+    @Published var defaultAssistPolicy: AssistPolicy = .conversationAgent
 
     let environment: AppEnvironment
 
     init(environment: AppEnvironment) {
         self.environment = environment
+        hasCompletedOnboarding = UserDefaults.standard.bool(forKey: DefaultsKey.hasCompletedOnboarding)
+        ttsMutedPreference = UserDefaults.standard.bool(forKey: DefaultsKey.ttsMutedPreference)
+        if let policy = UserDefaults.standard.string(forKey: DefaultsKey.defaultAssistPolicy),
+           let decoded = AssistPolicy(rawValue: policy) {
+            defaultAssistPolicy = decoded
+        }
     }
 
     func completeOnboarding() {
         hasCompletedOnboarding = true
+        UserDefaults.standard.set(true, forKey: DefaultsKey.hasCompletedOnboarding)
     }
 
     func refreshAuthStatus() {
@@ -74,6 +88,12 @@ final class AppState: ObservableObject {
 
     func setTTSMutedPreference(_ muted: Bool) {
         ttsMutedPreference = muted
+        UserDefaults.standard.set(muted, forKey: DefaultsKey.ttsMutedPreference)
+    }
+
+    func setDefaultAssistPolicy(_ policy: AssistPolicy) {
+        defaultAssistPolicy = policy
+        UserDefaults.standard.set(policy.rawValue, forKey: DefaultsKey.defaultAssistPolicy)
     }
 }
 

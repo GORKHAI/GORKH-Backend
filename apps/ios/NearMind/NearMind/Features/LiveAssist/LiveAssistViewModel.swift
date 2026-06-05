@@ -9,7 +9,7 @@ enum VoiceSessionError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingToken:
-            return "Paste and save a test JWT in Settings first."
+            return "Paste and save a test JWT in Profile first."
         case .missingConsent:
             return "Check consent before starting a voice session."
         case .microphoneDenied:
@@ -110,6 +110,7 @@ final class LiveAssistViewModel: ObservableObject {
             config: environment.config,
             tokenStore: environment.tokenStore
         )
+        policy = appState.defaultAssistPolicy
         ttsMuted = appState.ttsMutedPreference
         observeAudioRouteChanges()
         refreshTokenState()
@@ -121,7 +122,7 @@ final class LiveAssistViewModel: ObservableObject {
         markSmoke(
             .tokenStored,
             status: hasStoredToken ? .passed : .failed,
-            detail: hasStoredToken ? "JWT is stored in Keychain." : "Paste a test JWT in Settings."
+            detail: hasStoredToken ? "JWT is stored in Keychain." : "Paste a test JWT in Profile."
         )
     }
 

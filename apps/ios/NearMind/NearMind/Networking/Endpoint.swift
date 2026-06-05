@@ -4,6 +4,8 @@ enum Endpoint: Equatable {
     case health
     case healthReady
     case brainDashboard
+    case brainQuery
+    case humanProfileReview
     case mobileSync(cursor: String?)
     case mobileSessionState(sessionID: String?)
     case sessionLatencySummary(sessionID: String?)
@@ -16,6 +18,10 @@ enum Endpoint: Equatable {
             return baseURL.appending(path: "health/ready")
         case .brainDashboard:
             return baseURL.appending(path: "brain/dashboard")
+        case .brainQuery:
+            return baseURL.appending(path: "brain/query")
+        case .humanProfileReview:
+            return baseURL.appending(path: "human/profile/review")
         case .mobileSync(let cursor):
             var components = URLComponents(url: baseURL.appending(path: "mobile/sync"), resolvingAgainstBaseURL: false)!
             if let cursor, !cursor.isEmpty {

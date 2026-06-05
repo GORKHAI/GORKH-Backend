@@ -11,8 +11,8 @@ struct LiveAssistView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
                 AppHeader(
-                    title: "Assist",
-                    subtitle: isActiveExperience ? "Live help is active." : "Prepare a consented voice session."
+                    title: "Live Assist",
+                    subtitle: isActiveExperience ? "Real-time help is active." : "Real-time help when you choose."
                 )
 
                 if isActiveExperience {
@@ -26,7 +26,7 @@ struct LiveAssistView: View {
             .padding(NearMindTheme.pagePadding)
         }
         .background(NearMindTheme.background.ignoresSafeArea())
-        .navigationTitle("Assist")
+        .navigationTitle("Live")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             viewModel.configure(environment: appState.environment, appState: appState)
@@ -41,6 +41,9 @@ struct LiveAssistView: View {
         }
         .onChange(of: viewModel.ttsMuted) { _, muted in
             appState.setTTSMutedPreference(muted)
+        }
+        .onChange(of: viewModel.policy) { _, policy in
+            appState.setDefaultAssistPolicy(policy)
         }
     }
 
@@ -103,7 +106,7 @@ struct LiveAssistView: View {
 
             NativeCard {
                 PrimaryButton(
-                    "Start Session",
+                    "Start Voice Session",
                     systemImage: "waveform.circle",
                     isDisabled: !viewModel.canStartVoiceSession
                 ) {
@@ -283,7 +286,7 @@ struct LiveAssistView: View {
 
     private var startDisabledReason: String {
         if !viewModel.hasStoredToken {
-            return "Paste a test JWT in Settings before starting."
+            return "Paste a test JWT in Profile before starting."
         }
         if !viewModel.hasConsent {
             return "Consent is required before the microphone can start."

@@ -8,7 +8,7 @@ NearMind is the native SwiftUI consumer iOS app scaffold for the GORKH Brain bac
 NearMind/
   Audio/            Microphone permission, route monitoring, PCM16 streaming, native TTS
   App/              App state, tab routing, environment, production config
-  Features/         Onboarding, Today, Live Assist, Sessions, Live Smoke, Settings, Debug
+  Features/         Onboarding, Chat, Live Assist, Sessions, Profile, Live Smoke, Debug
   Networking/       API client, endpoint routing, WebSocket gateway client
   Protocol/         Codable client/server protocol and mobile errors
   Security/         Keychain and token storage abstractions
@@ -23,7 +23,7 @@ NearMind/
 
 ## Token Storage
 
-The app accepts a test JWT in Settings and stores it through `TokenStoreProtocol`.
+The app accepts a test JWT in Profile > Developer and stores it through `TokenStoreProtocol`.
 The production implementation is `KeychainTokenStore`, backed by `KeychainStore`.
 JWTs are not written to `UserDefaults`, logs, debug event rows, or source files.
 
@@ -31,14 +31,14 @@ Provider keys and API secrets are intentionally not represented in app settings.
 
 ## Consumer Navigation
 
-NearMind now uses a native four-tab structure after onboarding:
+NearMind now uses a native chat-first four-tab structure after onboarding:
 
-- Today: calm home screen with the primary Live Assist entry point, brief, follow-up, upcoming, and recent-session previews.
-- Assist: the core voice-session screen for context, consent, microphone/TTS controls, and live transcript/cue display.
+- Chat: default home and primary interface. Users ask NearMind for help, today context, memory summaries, or to open consented Live Assist.
+- Live: the focused real-time voice-session screen for context, consent, microphone/TTS controls, and live transcript/cue display.
 - Sessions: saved-session browse and detail UI with summaries, cues, follow-ups, transcript snippets, and secondary diagnostics.
-- Settings: consumer settings for token state, privacy, audio preferences, diagnostics, and developer tools.
+- Profile: profile and memory, preferences, privacy/data controls, audio settings, approvals, diagnostics, and developer tools.
 
-Developer-heavy surfaces are intentionally not shown on the default home screen. Typed Live Smoke and the raw debug event log are available through Settings, under Developer or Diagnostics.
+Developer-heavy surfaces are intentionally not shown on the default home screen. Typed Live Smoke and the raw debug event log are available through Profile > Developer.
 
 ## HTTP Flow
 
@@ -47,6 +47,8 @@ Developer-heavy surfaces are intentionally not shown on the default home screen.
 - `GET /health`
 - `GET /health/ready`
 - `GET /brain/dashboard`
+- `POST /brain/query`
+- `GET /human/profile/review`
 - `GET /mobile/sync?cursor=`
 - `GET /mobile/sessions/:id/state`
 - `GET /sessions/:id/latency-summary`
@@ -125,6 +127,19 @@ Native TTS routes through the current system output. Earbuds are supported, but 
 
 `voice_cancel_speech` stops current local speech. The Simulate Barge-In button sends `speech_started`, stops local TTS, and then sends `speech_ended` after a short delay.
 
+## Chat-First UX
+
+The Chat tab is the app center in v0.5. `ChatViewModel` handles safe local intent routing before backend calls:
+
+- “Start Live Assist” creates an approval card and switches to Live only after the user confirms. It never starts the microphone.
+- “Mute voice replies” creates a local approval card and updates the non-sensitive native TTS mute preference only after confirmation.
+- “Delete my memory” does not execute deletion from chat. It routes the user to Profile & Memory for review.
+- “What should I do today?” reads mobile sync data when a token is available.
+- “What do you remember about me?” reads the profile review endpoint when available.
+- Unknown text uses `POST /brain/query` if a token is stored, with profile context allowed and profile mutation disabled.
+
+Chat messages redact JWT-shaped strings before displaying or storing local message state. Sensitive external actions are not executed from chat in v0.5.
+
 ## Consent And Lifecycle
 
 NearMind v0.3 has no hidden recording and no background always-listening. Microphone capture starts only after explicit consent, microphone permission, gateway connection, and `gateway_ack`. When the app enters background during a voice session, NearMind stops the microphone and sends `stop save=false`; the user must manually restart after returning.
@@ -139,8 +154,8 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 
 - Native SwiftUI app shell
 - Consent-first onboarding
-- Native Today, Assist, Sessions, and Settings tabs
-- Debug Log and Typed Live Smoke screens behind Settings
+- Native Chat, Live, Sessions, and Profile tabs
+- Debug Log and Typed Live Smoke screens behind Profile > Developer
 - Keychain-backed JWT storage
 - Production URL configuration
 - Typed WebSocket session commands
@@ -150,6 +165,7 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - v0.2 branding, logo asset, consent-gated PCM16 microphone streaming, native TTS, barge-in, and lifecycle stop behavior
 - v0.3 AppIcon generation, real-device scripts, audio route UI, real-device smoke checklist, and latency display
 - v0.4 consumer UI redesign with tab navigation, compact onboarding, Today home, Sessions browse/detail, and diagnostics separation
+- v0.5 chat-first UX with approval cards, Profile tab, text assistant routing, and no hidden recording from chat
 
 ## Intentionally Not Implemented Yet
 
@@ -165,4 +181,4 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 
 ## Next Milestone
 
-The next recommended milestone is TestFlight preparation: real-device evidence capture, accessibility pass, signing team configuration, privacy labels, and beta release notes.
+The next recommended milestone is Chat Voice Input v0.6: add explicit consent-gated short-form voice dictation for Chat, while keeping Live as the only streaming microphone mode.

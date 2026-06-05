@@ -2,6 +2,7 @@ import Foundation
 
 enum HTTPMethod: String {
     case get = "GET"
+    case post = "POST"
 }
 
 enum APIClientError: Error, Equatable, LocalizedError {

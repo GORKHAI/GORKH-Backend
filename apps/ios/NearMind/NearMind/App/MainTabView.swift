@@ -1,30 +1,33 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var selectedTab: AppTab = .today
+    @State private var selectedTab: AppTab = .chat
 
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                TodayView {
-                    selectedTab = .assist
-                }
+                ChatView(
+                    openLive: { selectedTab = .live },
+                    openProfile: { selectedTab = .profile }
+                )
             }
             .tabItem {
-                Label(AppTab.today.title, systemImage: AppTab.today.systemImage)
+                Label(AppTab.chat.title, systemImage: AppTab.chat.systemImage)
             }
-            .tag(AppTab.today)
+            .tag(AppTab.chat)
 
             NavigationStack {
                 LiveAssistView()
             }
             .tabItem {
-                Label(AppTab.assist.title, systemImage: AppTab.assist.systemImage)
+                Label(AppTab.live.title, systemImage: AppTab.live.systemImage)
             }
-            .tag(AppTab.assist)
+            .tag(AppTab.live)
 
             NavigationStack {
-                SessionsView()
+                SessionsView {
+                    selectedTab = .live
+                }
             }
             .tabItem {
                 Label(AppTab.sessions.title, systemImage: AppTab.sessions.systemImage)
@@ -32,12 +35,12 @@ struct MainTabView: View {
             .tag(AppTab.sessions)
 
             NavigationStack {
-                SettingsView()
+                ProfileView()
             }
             .tabItem {
-                Label(AppTab.settings.title, systemImage: AppTab.settings.systemImage)
+                Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage)
             }
-            .tag(AppTab.settings)
+            .tag(AppTab.profile)
         }
         .tint(NearMindTheme.accentMint)
     }

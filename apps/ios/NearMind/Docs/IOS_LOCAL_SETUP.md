@@ -44,7 +44,7 @@ Backend `npm test` is a separate validation path. It requires local backend env,
 
 ## Test JWT
 
-Get a test JWT from the deployed backend/operator flow, open NearMind Settings, paste it into the secure field, and tap Save token to Keychain.
+Get a test JWT from the deployed backend/operator flow, open NearMind Profile, paste it into the Developer secure field, and tap Save token to Keychain.
 
 Token policy:
 
