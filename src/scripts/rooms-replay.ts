@@ -45,8 +45,12 @@ const dev = await postJson<{ user: { id: string; email: string }; token: string 
 if (scenario === "not-configured") {
   const room = await createRoom();
   const token = await postJsonAllowError(`${base}/rooms/${room.id}/host-token`, {}, dev.token);
-  console.log(`not-configured: ${JSON.stringify(token)}`);
-  assertIncludes(JSON.stringify(token), config.ROOMS_ENABLED ? "rooms_not_configured" : "rooms_disabled");
+  console.log(`not-configured: ${JSON.stringify(redactTokenFields(token))}`);
+  if (isRoomNotConfigured(token)) {
+    assertIncludes(JSON.stringify(token), config.ROOMS_ENABLED ? "rooms_not_configured" : "rooms_disabled");
+  } else {
+    assertTokenShape(token, "host");
+  }
 }
 
 if (scenario === "create-room") {

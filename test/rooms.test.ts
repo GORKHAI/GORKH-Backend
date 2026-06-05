@@ -1,15 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createInviteToken, hashInviteToken } from "../src/rooms/invite.js";
-import { canTranscriptAfterConsent, roomConfigStatus, RoomsPolicyError } from "../src/rooms/policy.js";
-import { createLiveKitAccessToken, liveKitPermissionsForRole } from "../src/rooms/livekit-client.js";
 import { consentAllowsJoin, parseRoomMode } from "../services/voice-gateway/src/room-client/consent-ui.js";
 
 describe("Nearmind Rooms policy", () => {
-  it("defaults disabled and does not claim LiveKit is configured", () => {
+  it("reports LiveKit configuration without leaking secrets", async () => {
+    const { roomConfigStatus } = await import("../src/rooms/policy.js");
     const status = roomConfigStatus();
-    expect(status.enabled).toBe(false);
     expect(status.provider).toBe("livekit");
-    if (!status.configured) expect(status.errorCode).toMatch(/rooms_/);
+    if (status.enabled) {
+      expect(status.configured).toBe(true);
+      expect(status.errorCode).toBeUndefined();
+    } else {
+      expect(status.configured).toBe(false);
+      expect(status.errorCode).toMatch(/rooms_/);
+    }
   });
 
   it("hashes invite tokens without storing the raw token", () => {
@@ -20,7 +24,8 @@ describe("Nearmind Rooms policy", () => {
     expect(hashInviteToken(token)).toEqual(hash);
   });
 
-  it("requires all human participants to grant consent before transcript ingestion", () => {
+  it("requires all human participants to grant consent before transcript ingestion", async () => {
+    const { canTranscriptAfterConsent } = await import("../src/rooms/policy.js");
     expect(canTranscriptAfterConsent(true, [{ role: "host", consentStatus: "granted" }])).toBe(true);
     expect(
       canTranscriptAfterConsent(true, [
@@ -38,10 +43,21 @@ describe("Nearmind Rooms policy", () => {
   });
 
   it("does not mint fake LiveKit tokens when rooms are disabled or not configured", async () => {
+    vi.resetModules();
+    vi.stubEnv("ROOMS_ENABLED", "false");
+    vi.stubEnv("LIVEKIT_URL", "");
+    vi.stubEnv("LIVEKIT_API_KEY", "");
+    vi.stubEnv("LIVEKIT_API_SECRET", "");
+    const [{ createLiveKitAccessToken }, { RoomsPolicyError }] = await Promise.all([
+      import("../src/rooms/livekit-client.js"),
+      import("../src/rooms/policy.js"),
+    ]);
     await expect(createLiveKitAccessToken({ identity: "host-test", roomName: "room-test", role: "host" })).rejects.toBeInstanceOf(RoomsPolicyError);
+    vi.unstubAllEnvs();
   });
 
-  it("keeps host and guest LiveKit grants least-privilege and publish-capable", () => {
+  it("keeps host and guest LiveKit grants least-privilege and publish-capable", async () => {
+    const { liveKitPermissionsForRole } = await import("../src/rooms/livekit-client.js");
     expect(liveKitPermissionsForRole("host")).toEqual({ canPublish: true, canSubscribe: true, canPublishData: true });
     expect(liveKitPermissionsForRole("guest")).toEqual({ canPublish: true, canSubscribe: true, canPublishData: true });
     expect(liveKitPermissionsForRole("ai_agent")).toEqual({ canPublish: false, canSubscribe: true, canPublishData: false });

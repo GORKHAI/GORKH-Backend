@@ -275,7 +275,7 @@ export async function createInvestorRelayRequest(userId: string, investorId: str
       fitScore: investor.fitScore,
       fitReasons: investor.fitReasons,
       campaignName: campaign?.name,
-      note: "No deck attachment or external email is sent in Relay v0.",
+      note: "No deck attachment or external send is performed in Relay v0.",
     },
   });
 }

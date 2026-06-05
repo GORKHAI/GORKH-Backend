@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { investorProfiles, outreachCampaigns, users } from "../db/schema.js";
+import { agentBlocks, investorProfiles, outreachCampaigns, users } from "../db/schema.js";
 import { createMobileNotification, mobileSync } from "../mobile/notifications.js";
 import {
   approveRelaySend,
@@ -43,6 +43,7 @@ async function main() {
 export async function runRelayReplay(name: RelayReplayName) {
   const sender = await getReplayUser("relay-sender@gorkh.dev", "Relay Sender");
   const receiver = await getReplayUser("relay-receiver@gorkh.dev", "Relay Receiver");
+  await clearReplayBlock(sender.id, receiver.id);
   if (name === "identity") {
     const identity = await getOrCreateRelayIdentity(sender.id);
     if (!identity.relayEnabled) throw new Error("relay identity disabled unexpectedly");
@@ -105,6 +106,10 @@ export async function runRelayReplay(name: RelayReplayName) {
     console.log("relay investor-relay-request: passed");
     return;
   }
+}
+
+async function clearReplayBlock(senderUserId: string, receiverUserId: string) {
+  await db.delete(agentBlocks).where(and(eq(agentBlocks.userId, receiverUserId), eq(agentBlocks.blockedUserId, senderUserId)));
 }
 
 async function draftForReceiver(userId: string, email: string) {

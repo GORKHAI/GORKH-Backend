@@ -18,6 +18,10 @@ process.env.RESEARCH_PROVIDER = "none";
 process.env.TAVILY_API_KEY = "";
 process.env.BRAVE_API_KEY = "";
 process.env.EXA_API_KEY = "";
+process.env.ROOMS_ENABLED = "false";
+process.env.LIVEKIT_URL = "";
+process.env.LIVEKIT_API_KEY = "";
+process.env.LIVEKIT_API_SECRET = "";
 
 const { Pool } = pg;
 
