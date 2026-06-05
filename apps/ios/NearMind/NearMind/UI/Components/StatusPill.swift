@@ -10,7 +10,8 @@ struct StatusPill: View {
             .foregroundStyle(color)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(color.opacity(0.14), in: Capsule())
+            .background(color.opacity(0.16), in: Capsule())
+            .overlay(Capsule().stroke(color.opacity(0.22), lineWidth: 1))
             .accessibilityLabel(text)
     }
 }

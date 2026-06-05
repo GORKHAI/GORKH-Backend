@@ -13,6 +13,7 @@ enum AssistPolicy: String, CaseIterable, Codable, Identifiable {
 
 enum TextInputKind: String, Codable {
     case text
+    case pcm16
 }
 
 enum OutputKind: String, Codable {
@@ -21,6 +22,7 @@ enum OutputKind: String, Codable {
 
 enum RetentionPolicy: String, Codable {
     case askOnStop = "ask_on_stop"
+    case discardOnStop = "discard_on_stop"
 }
 
 enum ClientEventType: String, Codable {

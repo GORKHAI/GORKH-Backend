@@ -52,6 +52,16 @@ Token policy:
 - Provider keys and API secrets do not belong in the app or docs.
 - Do not commit `.env`, JWTs, screenshots containing JWTs, provider keys, or API secrets.
 
+## Branding Asset
+
+The in-app logo asset lives in:
+
+```text
+NearMind/Resources/Assets.xcassets/NearMindLogo.imageset/
+```
+
+It was copied from `~/Downloads/near-mind-logo.png`. The Downloads file is not part of the repo. AppIcon is unchanged in v0.2; generate a full icon size set from a reviewed final icon before TestFlight.
+
 ## Live Smoke Scope
 
 The v0.1 live smoke screen verifies typed sessions only:
@@ -63,4 +73,17 @@ The v0.1 live smoke screen verifies typed sessions only:
 - `stop save=false`.
 - Mobile sync, session state, and latency summary fetches when a session ID exists.
 
-It intentionally does not implement microphone streaming, native TTS, push notifications, Calendar/Gmail UI, full Brain Console UI, provider key storage, API secret storage, hidden recording, or client-sent `userId`.
+It intentionally does not start microphone streaming or native TTS. Live Smoke remains typed-only so protocol regressions stay isolated.
+
+## Voice Session Scope
+
+The v0.2 Live Assist screen verifies:
+
+- Consent-gated microphone permission.
+- PCM16 16 kHz mono binary audio frames over `/gateway/voice`.
+- Native iOS TTS for gateway client TTS instructions and short cues.
+- Button-based barge-in using `speech_started`.
+- `stop save=false` discard behavior.
+- Foreground-only microphone capture.
+
+It intentionally does not implement push notifications, Calendar/Gmail UI, full Brain Console UI, provider key storage, API secret storage, hidden/background recording, or client-sent `userId`.

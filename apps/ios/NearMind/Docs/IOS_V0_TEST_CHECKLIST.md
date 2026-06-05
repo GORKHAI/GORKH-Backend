@@ -38,7 +38,63 @@ Backend `npm test` is separate from iOS validation and requires local backend en
 
 Typed live smoke must not start microphone capture, native TTS, push notifications, Calendar/Gmail UI, provider key entry, API secret storage, or any `userId` field in WebSocket payloads.
 
-## Manual Gateway Smoke
+## Voice + TTS Smoke
+
+Conversation test:
+
+1. Paste a valid test JWT in Settings.
+2. Open Live Assist.
+3. Select `conversation_agent`.
+4. Enter situation:
+
+```text
+Bank loan meeting preparation.
+```
+
+5. Check consent.
+6. Tap Start Voice Session.
+7. Grant microphone permission when iOS prompts.
+8. Say:
+
+```text
+What should I ask before this bank loan meeting?
+```
+
+9. Expect ASR final text to appear.
+10. Expect assistant text to appear.
+11. Expect native iOS TTS to speak if TTS is unmuted and the gateway emits `gateway_client_tts_instruction`.
+12. Tap Stop save=false.
+13. Confirm the microphone level returns to off/zero.
+
+Whisper test:
+
+1. Select `whisper_copilot`.
+2. Check consent.
+3. Tap Start Voice Session.
+4. Say:
+
+```text
+The APR is 9.4 percent and there is also an arrangement fee.
+```
+
+5. Expect ASR final text to appear.
+6. Expect `voice_cue` to appear.
+7. Expect native iOS TTS to speak the short cue if unmuted.
+8. Confirm long `screen_only` subagent reports are not spoken.
+9. Tap Simulate Barge-In.
+10. Confirm TTS stops.
+11. Tap Stop save=false.
+12. Confirm the microphone stops and the session is discarded.
+
+Privacy checks:
+
+1. Start a voice session, then background the app. Confirm the microphone stops and the app shows the v0.2 background warning.
+2. Start another voice session, then tap Disconnect. Confirm the microphone and TTS stop.
+3. Open Debug Log and confirm no token appears.
+4. Confirm raw audio frames are not logged.
+5. Confirm `stop save=false` is available and used for discard tests.
+
+## Manual Typed Gateway Smoke
 
 1. Launch NearMind in an iOS simulator.
 2. Complete onboarding.

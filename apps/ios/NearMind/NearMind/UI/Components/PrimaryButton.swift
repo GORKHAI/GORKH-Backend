@@ -26,7 +26,8 @@ struct PrimaryButton: View {
                 .padding(.vertical, 12)
         }
         .buttonStyle(.borderedProminent)
-        .tint(.teal)
+        .tint(NearMindTheme.primaryDarkGreen)
+        .foregroundStyle(NearMindTheme.textPrimary)
         .disabled(isDisabled)
     }
 }

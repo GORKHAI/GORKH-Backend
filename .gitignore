@@ -6,3 +6,9 @@ coverage/
 .env.*
 !.env.example
 .reference-agent-labs/
+**/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+*.moved-aside

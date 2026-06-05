@@ -12,15 +12,19 @@
 		06954C38EB693971DB5112A6 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 204F70D53F9116EA5B033BDE /* HomeView.swift */; };
 		165D7CF378A0BEF871667C90 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */; };
 		1EE269CF6838A724B6AB9C0F /* LiveSmokeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E93EB46EC3634490BD921CF /* LiveSmokeViewModel.swift */; };
+		28E836D48E0BED9DB905F25F /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EBDEC324A886FD68242313C /* AudioSessionManager.swift */; };
 		2D988B0D4D294C7CD37863B8 /* LiveSmokeDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368E6DFA01236A779E9D8A15 /* LiveSmokeDecodingTests.swift */; };
 		39C24007A64E1A70EECFC8FC /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D258112F1D63FB401ACF7E8C /* TokenStore.swift */; };
 		44AB17E2320CDA8AB865733D /* StartSessionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA0EE6E68DCDA93E6993C59 /* StartSessionPayload.swift */; };
 		51B79F77D0D9B5D9891C6519 /* TokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999F8513036555CAA5B9FB8B /* TokenStoreTests.swift */; };
+		52B270E2CF0DC737682F5EE5 /* AudioLevelMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE8496A4823C37185A8CE54 /* AudioLevelMeter.swift */; };
 		53ABEE4E6FEF3E5004637DEB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 32C4E0EF99339E76DCE89D8A /* Assets.xcassets */; };
 		57A7179C1B32441454662CE0 /* GatewayEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D441E5E909D5717679D099F1 /* GatewayEvents.swift */; };
+		58F521C24C4540279A1EAD34 /* SpeechOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFF32394AA90954F09D4871 /* SpeechOutputManager.swift */; };
 		5AFF3F396A0D339C3A5E6B4E /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E48ED43705865A9870756F0 /* AppEnvironment.swift */; };
 		5D6463C103F70ECE0A00FF8F /* MobileErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B178B5F90DA16C1FA1CBA008 /* MobileErrors.swift */; };
 		6E1905DE40E138E36F826540 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752FCF2489A94245F1EAA234 /* AppConfig.swift */; };
+		74CDDC57102B2B114FE1B86D /* PCM16AudioStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4EBE93BF6755D11E58ED5D /* PCM16AudioStreamer.swift */; };
 		753D54ECDE61E8D87B2DB6FD /* NearMindApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9981CFBD150C48360607EB42 /* NearMindApp.swift */; };
 		7B9416642BE82594AE27F322 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55D19963775948576C4E986C /* StatusPill.swift */; };
 		8203838536E34FE954AE2A92 /* DebugEventLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78C4209F1E1D37049384198 /* DebugEventLogView.swift */; };
@@ -37,7 +41,10 @@
 		BE5E5E47ACD81CE79EE62EB5 /* LiveSmokeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB78D50CAF920BC45043327 /* LiveSmokeView.swift */; };
 		C2067673ADEE33F66232BA89 /* LiveAssistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B72B765D06D89BC0FD25FB4 /* LiveAssistView.swift */; };
 		C32C917EC1497FEFE564130D /* MobileProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA9664A7AC81269022EF6437 /* MobileProtocol.swift */; };
+		CB9D43BF091E6C87C8B9A9A8 /* NearMindTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A521B208FF0385963A7AAA43 /* NearMindTheme.swift */; };
 		D4DD6ACDE779ACE98C467FDD /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0502CBEBF23E284AFDC80AE /* APIClient.swift */; };
+		D67CF910F36E5AE77C31BD40 /* MicrophonePermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 204B72862AD7A1E1DCC67882 /* MicrophonePermission.swift */; };
+		E18F5B67505277A941A2A110 /* AudioVoiceSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9512DCEB3E5D1CCAC65EFE3 /* AudioVoiceSessionTests.swift */; };
 		EEFF77E45A72AEA58AF748AA /* MobileErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0B59AADCBAFD0FF76C6E0D /* MobileErrorTests.swift */; };
 		EFE2C04813DB4CCA0F724712 /* LiveAssistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD1546113C21AFC271D28A7 /* LiveAssistViewModel.swift */; };
 		F056E0B8AA7D1FE11E364307 /* SectionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71394968C44164E4D66BF974 /* SectionCard.swift */; };
@@ -59,6 +66,7 @@
 /* Begin PBXFileReference section */
 		0B72E11CEBBDBA4EE9A6DA81 /* LiveSmokeCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeCheck.swift; sourceTree = "<group>"; };
 		105A8D7D76A65482CB9C7E20 /* Endpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoint.swift; sourceTree = "<group>"; };
+		204B72862AD7A1E1DCC67882 /* MicrophonePermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophonePermission.swift; sourceTree = "<group>"; };
 		204F70D53F9116EA5B033BDE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		25E1EAAAB2C3BF22465F0EC7 /* HTTPTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTypes.swift; sourceTree = "<group>"; };
 		2922C81280ACE920B921ACB2 /* NearMind.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NearMind.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -69,6 +77,7 @@
 		4DCE2B9735758D4F703D8C56 /* LiveSmokeResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeResponses.swift; sourceTree = "<group>"; };
 		4EA0EE6E68DCDA93E6993C59 /* StartSessionPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartSessionPayload.swift; sourceTree = "<group>"; };
 		55D19963775948576C4E986C /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		5BE8496A4823C37185A8CE54 /* AudioLevelMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioLevelMeter.swift; sourceTree = "<group>"; };
 		5DD1546113C21AFC271D28A7 /* LiveAssistViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAssistViewModel.swift; sourceTree = "<group>"; };
 		5EBB4BC1453B8DD4EDA2254A /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		60DF2FA88B0D681101F6A8DA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -76,6 +85,7 @@
 		752FCF2489A94245F1EAA234 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		7B559028E59BCC34AB8BB9BA /* LiveSmokeChecklistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeChecklistTests.swift; sourceTree = "<group>"; };
 		8CB78D50CAF920BC45043327 /* LiveSmokeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeView.swift; sourceTree = "<group>"; };
+		8EBDEC324A886FD68242313C /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
 		90148E4F2555322D929A10AC /* GatewayWebSocketClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayWebSocketClientTests.swift; sourceTree = "<group>"; };
 		9981CFBD150C48360607EB42 /* NearMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearMindApp.swift; sourceTree = "<group>"; };
 		999F8513036555CAA5B9FB8B /* TokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStoreTests.swift; sourceTree = "<group>"; };
@@ -83,14 +93,18 @@
 		9E48ED43705865A9870756F0 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		9E58E7A38F967349BBA6AE8F /* StartPayloadEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartPayloadEncodingTests.swift; sourceTree = "<group>"; };
 		9E93EB46EC3634490BD921CF /* LiveSmokeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeViewModel.swift; sourceTree = "<group>"; };
+		A521B208FF0385963A7AAA43 /* NearMindTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearMindTheme.swift; sourceTree = "<group>"; };
 		AA0B59AADCBAFD0FF76C6E0D /* MobileErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileErrorTests.swift; sourceTree = "<group>"; };
 		AAA1F698C67782B7B8B1381D /* APIEndpointTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEndpointTests.swift; sourceTree = "<group>"; };
+		AF4EBE93BF6755D11E58ED5D /* PCM16AudioStreamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCM16AudioStreamer.swift; sourceTree = "<group>"; };
 		B178B5F90DA16C1FA1CBA008 /* MobileErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileErrors.swift; sourceTree = "<group>"; };
 		B4EE78C8813A9B7B1587327B /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		B72D26F6BBC87F6C62D21FAD /* NearMindTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NearMindTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		C9512DCEB3E5D1CCAC65EFE3 /* AudioVoiceSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVoiceSessionTests.swift; sourceTree = "<group>"; };
 		D258112F1D63FB401ACF7E8C /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		D441E5E909D5717679D099F1 /* GatewayEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayEvents.swift; sourceTree = "<group>"; };
+		DDFF32394AA90954F09D4871 /* SpeechOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechOutputManager.swift; sourceTree = "<group>"; };
 		DFE75564CFD5B1181C953179 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E4E0A88B76019369B14281A0 /* GatewayWebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayWebSocketClient.swift; sourceTree = "<group>"; };
 		E5E74CC4E0EFBE4220682EC5 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
@@ -104,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				AAA1F698C67782B7B8B1381D /* APIEndpointTests.swift */,
+				C9512DCEB3E5D1CCAC65EFE3 /* AudioVoiceSessionTests.swift */,
 				90148E4F2555322D929A10AC /* GatewayWebSocketClientTests.swift */,
 				7B559028E59BCC34AB8BB9BA /* LiveSmokeChecklistTests.swift */,
 				368E6DFA01236A779E9D8A15 /* LiveSmokeDecodingTests.swift */,
@@ -119,6 +134,7 @@
 			isa = PBXGroup;
 			children = (
 				1535231DBD8F903CEBC6C174 /* Components */,
+				2B5C05581678653C428E93D2 /* Theme */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -131,6 +147,14 @@
 				55D19963775948576C4E986C /* StatusPill.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		2B5C05581678653C428E93D2 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				A521B208FF0385963A7AAA43 /* NearMindTheme.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 		3468C46473DCE93D42941184 /* LiveAssist */ = {
@@ -147,6 +171,7 @@
 			children = (
 				9981CFBD150C48360607EB42 /* NearMindApp.swift */,
 				74D00CA7AA5E0C40CFE21DB0 /* App */,
+				65FBDB16C4554BB14EDA711B /* Audio */,
 				55FFCF93858EA27F45735242 /* Features */,
 				47F1A9DEEA1B170C4EF2DC44 /* Networking */,
 				94032BB5E467E2F913C4A82D /* Protocol */,
@@ -222,6 +247,18 @@
 				BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */,
 			);
 			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		65FBDB16C4554BB14EDA711B /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				5BE8496A4823C37185A8CE54 /* AudioLevelMeter.swift */,
+				8EBDEC324A886FD68242313C /* AudioSessionManager.swift */,
+				204B72862AD7A1E1DCC67882 /* MicrophonePermission.swift */,
+				AF4EBE93BF6755D11E58ED5D /* PCM16AudioStreamer.swift */,
+				DDFF32394AA90954F09D4871 /* SpeechOutputManager.swift */,
+			);
+			path = Audio;
 			sourceTree = "<group>";
 		};
 		74D00CA7AA5E0C40CFE21DB0 /* App */ = {
@@ -380,6 +417,8 @@
 				6E1905DE40E138E36F826540 /* AppConfig.swift in Sources */,
 				5AFF3F396A0D339C3A5E6B4E /* AppEnvironment.swift in Sources */,
 				B7ACB00E413A39BBFC43774A /* AppState.swift in Sources */,
+				52B270E2CF0DC737682F5EE5 /* AudioLevelMeter.swift in Sources */,
+				28E836D48E0BED9DB905F25F /* AudioSessionManager.swift in Sources */,
 				8203838536E34FE954AE2A92 /* DebugEventLogView.swift in Sources */,
 				A1459C9173CDA812F75BAFB9 /* Endpoint.swift in Sources */,
 				57A7179C1B32441454662CE0 /* GatewayEvents.swift in Sources */,
@@ -393,13 +432,17 @@
 				8C5C91E3594F3CB2A3E2D0D6 /* LiveSmokeResponses.swift in Sources */,
 				BE5E5E47ACD81CE79EE62EB5 /* LiveSmokeView.swift in Sources */,
 				1EE269CF6838A724B6AB9C0F /* LiveSmokeViewModel.swift in Sources */,
+				D67CF910F36E5AE77C31BD40 /* MicrophonePermission.swift in Sources */,
 				5D6463C103F70ECE0A00FF8F /* MobileErrors.swift in Sources */,
 				C32C917EC1497FEFE564130D /* MobileProtocol.swift in Sources */,
 				753D54ECDE61E8D87B2DB6FD /* NearMindApp.swift in Sources */,
+				CB9D43BF091E6C87C8B9A9A8 /* NearMindTheme.swift in Sources */,
 				165D7CF378A0BEF871667C90 /* OnboardingView.swift in Sources */,
+				74CDDC57102B2B114FE1B86D /* PCM16AudioStreamer.swift in Sources */,
 				9BF7FD6892B134D45A6235E0 /* PrimaryButton.swift in Sources */,
 				F056E0B8AA7D1FE11E364307 /* SectionCard.swift in Sources */,
 				B43994262FEDF677367FBB75 /* SettingsView.swift in Sources */,
+				58F521C24C4540279A1EAD34 /* SpeechOutputManager.swift in Sources */,
 				44AB17E2320CDA8AB865733D /* StartSessionPayload.swift in Sources */,
 				7B9416642BE82594AE27F322 /* StatusPill.swift in Sources */,
 				39C24007A64E1A70EECFC8FC /* TokenStore.swift in Sources */,
@@ -412,6 +455,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				04029A81D95C943E526C9A50 /* APIEndpointTests.swift in Sources */,
+				E18F5B67505277A941A2A110 /* AudioVoiceSessionTests.swift in Sources */,
 				F24E5837991557AF41C8BE26 /* GatewayWebSocketClientTests.swift in Sources */,
 				05F4F3706E1B69BCF8A9AD6C /* LiveSmokeChecklistTests.swift in Sources */,
 				2D988B0D4D294C7CD37863B8 /* LiveSmokeDecodingTests.swift in Sources */,

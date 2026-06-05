@@ -44,4 +44,25 @@ final class StartPayloadEncodingTests: XCTestCase {
         XCTAssertEqual(object["policy"] as? String, "whisper_copilot")
         XCTAssertEqual(consent["participantCount"] as? Int, 2)
     }
+
+    func testPCM16StartPayloadEncodesAudioShapeWithoutUserId() throws {
+        let payload = StartSessionPayload.pcm16Voice(
+            policy: .conversationAgent,
+            situationDescription: "Voice loan prep",
+            title: "Voice",
+            consentGranted: true,
+            retentionPolicy: .discardOnStop
+        )
+
+        let data = try JSONEncoder().encode(payload)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let input = try XCTUnwrap(object["input"] as? [String: Any])
+
+        XCTAssertEqual(object["protocolVersion"] as? Int, 1)
+        XCTAssertEqual(input["kind"] as? String, "pcm16")
+        XCTAssertEqual(input["sampleRate"] as? Int, 16_000)
+        XCTAssertEqual(input["channels"] as? Int, 1)
+        XCTAssertEqual(object["retentionPolicy"] as? String, "discard_on_stop")
+        XCTAssertNil(object["userId"])
+    }
 }

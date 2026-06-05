@@ -48,7 +48,7 @@ if [[ -z "$DESTINATION_NAME" ]]; then
     sed -nE 's/.*platform:iOS Simulator.*name:([^,}]+).*/\1/p' |
     sed 's/^[[:space:]]*//' |
     sed 's/[[:space:]]*$//' |
-    grep '^iPhone' |
+    sed -n '/^iPhone/p' |
     head -n 1
   )"
 fi

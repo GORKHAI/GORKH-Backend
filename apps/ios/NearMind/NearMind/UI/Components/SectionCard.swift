@@ -16,21 +16,21 @@ struct SectionCard<Content: View>: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(NearMindTheme.textPrimary)
                 if let subtitle {
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NearMindTheme.textSecondary)
                 }
             }
             content
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
+        .background(NearMindTheme.surface, in: RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                .stroke(NearMindTheme.border, lineWidth: 1)
         )
     }
 }

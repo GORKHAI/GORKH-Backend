@@ -46,7 +46,7 @@ struct SettingsView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.black.ignoresSafeArea())
+        .background(NearMindTheme.background.ignoresSafeArea())
         .navigationTitle("Settings")
         .onAppear {
             appState.refreshAuthStatus()

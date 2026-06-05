@@ -1,9 +1,12 @@
 import Foundation
 
+typealias GatewayEventHandler = (GatewayServerEvent, String) -> Void
+
 enum GatewayWebSocketError: Error, LocalizedError {
     case missingToken
     case invalidMessage
     case notConnected
+    case sessionNotActive
     case timedOut(String)
 
     var errorDescription: String? {
@@ -14,6 +17,8 @@ enum GatewayWebSocketError: Error, LocalizedError {
             return "The gateway returned a message type NearMind cannot display."
         case .notConnected:
             return "Connect to the gateway first."
+        case .sessionNotActive:
+            return "Start a gateway session before streaming audio."
         case .timedOut(let label):
             return "\(label) timed out."
         }
@@ -21,8 +26,26 @@ enum GatewayWebSocketError: Error, LocalizedError {
 }
 
 @MainActor
-final class GatewayWebSocketClient: ObservableObject {
-    typealias EventHandler = (GatewayServerEvent, String) -> Void
+protocol GatewayVoiceClientProtocol: AnyObject {
+    var isConnected: Bool { get }
+    var sessionActive: Bool { get }
+    var canSendAudio: Bool { get }
+    var lastSessionId: String? { get }
+    func connect(timeout seconds: TimeInterval, onEvent: @escaping GatewayEventHandler) async throws
+    func sendStart(_ payload: StartSessionPayload) async throws
+    func sendStartAndWaitForAck(_ payload: StartSessionPayload, timeout seconds: TimeInterval) async throws -> GatewayServerEvent
+    func sendUserText(_ text: String) async throws
+    func sendTranscript(_ text: String) async throws
+    func sendSpeechStarted() async throws
+    func sendSpeechEnded() async throws
+    func sendStop(save: Bool) async throws
+    func sendAudioFrame(_ data: Data) async throws
+    func disconnect()
+}
+
+@MainActor
+final class GatewayWebSocketClient: ObservableObject, GatewayVoiceClientProtocol {
+    typealias EventHandler = GatewayEventHandler
     enum ConnectionState: String {
         case disconnected
         case connecting
@@ -37,6 +60,11 @@ final class GatewayWebSocketClient: ObservableObject {
     @Published private(set) var lastGatewaySessionId: String?
     @Published private(set) var lastErrorCode: String?
     @Published private(set) var eventCount = 0
+    @Published private(set) var sessionActive = false
+
+    var canSendAudio: Bool {
+        isConnected && sessionActive
+    }
 
     private let config: AppConfig
     private let tokenStore: TokenStoreProtocol
@@ -91,11 +119,13 @@ final class GatewayWebSocketClient: ObservableObject {
     }
 
     func sendStart(_ payload: StartSessionPayload) async throws {
+        sessionActive = false
         try await send(payload)
     }
 
     func sendStartAndWaitForAck(_ payload: StartSessionPayload, timeout seconds: TimeInterval) async throws -> GatewayServerEvent {
-        try await sendAndWait(payload, timeout: seconds, label: "Start ack") { event in
+        sessionActive = false
+        return try await sendAndWait(payload, timeout: seconds, label: "Start ack") { event in
             if case .gatewayAck = event { return true }
             if case .gatewayError = event { return true }
             return false
@@ -142,6 +172,18 @@ final class GatewayWebSocketClient: ObservableObject {
 
     func sendStop(save: Bool) async throws {
         try await send(StopClientEvent(type: .stop, save: save))
+        sessionActive = false
+    }
+
+    func sendAudioFrame(_ data: Data) async throws {
+        guard let task, isConnected else {
+            throw GatewayWebSocketError.notConnected
+        }
+        guard sessionActive else {
+            throw GatewayWebSocketError.sessionNotActive
+        }
+        guard !data.isEmpty else { return }
+        try await task.send(.data(data))
     }
 
     func disconnect() {
@@ -154,6 +196,7 @@ final class GatewayWebSocketClient: ObservableObject {
         isConnected = false
         connectionState = .disconnected
         currentToken = nil
+        sessionActive = false
     }
 
     static func redactedForLog(_ text: String, token: String?) -> String {
@@ -264,9 +307,11 @@ final class GatewayWebSocketClient: ObservableObject {
             lastGatewaySessionId = payload["gatewaySessionId"]?.stringValue
             lastSessionId = payload["backendSessionId"]?.stringValue ?? payload["sessionId"]?.stringValue
             lastVoiceSessionId = payload["backendVoiceSessionId"]?.stringValue ?? payload["voiceSessionId"]?.stringValue
+            sessionActive = true
         case .voiceAck(let payload):
             lastSessionId = payload["sessionId"]?.stringValue ?? lastSessionId
             lastVoiceSessionId = payload["voiceSessionId"]?.stringValue ?? lastVoiceSessionId
+            sessionActive = true
         case .error(let error):
             lastErrorCode = error.code
         case .gatewayError(let payload):

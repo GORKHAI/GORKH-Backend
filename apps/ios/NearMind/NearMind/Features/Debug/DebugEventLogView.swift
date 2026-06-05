@@ -7,7 +7,7 @@ struct DebugEventLogView: View {
         List {
             if appState.eventLog.isEmpty {
                 Text("No decoded gateway events yet.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NearMindTheme.textSecondary)
             } else {
                 ForEach(appState.eventLog) { event in
                     VStack(alignment: .leading, spacing: 8) {
@@ -17,12 +17,12 @@ struct DebugEventLogView: View {
                             Spacer()
                             Text(event.timestamp, style: .time)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(NearMindTheme.textSecondary)
                         }
                         if let rawJSON = event.rawJSON {
                             Text(rawJSON)
                                 .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(NearMindTheme.textSecondary)
                                 .textSelection(.enabled)
                         }
                     }
@@ -31,7 +31,7 @@ struct DebugEventLogView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.black.ignoresSafeArea())
+        .background(NearMindTheme.background.ignoresSafeArea())
         .navigationTitle("Debug Log")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

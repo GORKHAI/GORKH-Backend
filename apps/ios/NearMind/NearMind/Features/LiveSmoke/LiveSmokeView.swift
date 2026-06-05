@@ -11,14 +11,14 @@ struct LiveSmokeView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(viewModel.status)
                             .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.teal)
+                            .foregroundStyle(NearMindTheme.accentMint)
                             .fixedSize(horizontal: false, vertical: true)
                         Text("Session: \(viewModel.lastSessionId ?? "none")")
                             .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NearMindTheme.textSecondary)
                         Text("Gateway events: \(viewModel.gatewayEventCount)")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NearMindTheme.textSecondary)
                     }
                     .textSelection(.enabled)
                 }
@@ -55,7 +55,7 @@ struct LiveSmokeView: View {
                     }
                     Text(LiveSmokeViewModel.bankPrepText)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NearMindTheme.textSecondary)
                     button("Send bank prep user_text", "paperplane") {
                         viewModel.sendConversationText()
                     }
@@ -70,7 +70,7 @@ struct LiveSmokeView: View {
                     }
                     Text(LiveSmokeViewModel.aprTranscript)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NearMindTheme.textSecondary)
                     button("Send APR transcript", "text.bubble") {
                         viewModel.sendWhisperTranscript()
                     }
@@ -89,7 +89,7 @@ struct LiveSmokeView: View {
             }
             .padding(16)
         }
-        .background(Color.black.ignoresSafeArea())
+        .background(NearMindTheme.background.ignoresSafeArea())
         .navigationTitle("Live Smoke Test")
         .onAppear {
             viewModel.configure(environment: appState.environment, appState: appState)
@@ -107,6 +107,7 @@ struct LiveSmokeView: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
+        .tint(role == .destructive ? NearMindTheme.error : NearMindTheme.primaryDarkGreen)
         .disabled(viewModel.isBusy)
     }
 }
@@ -122,9 +123,10 @@ private struct LiveSmokeCheckRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(check.title)
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NearMindTheme.textPrimary)
                 Text(check.detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NearMindTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -145,10 +147,10 @@ private struct LiveSmokeCheckRow: View {
     private var color: Color {
         switch check.status {
         case .pending: return .secondary
-        case .running: return .yellow
-        case .passed: return .green
-        case .failed: return .red
-        case .skipped: return .orange
+        case .running: return NearMindTheme.warning
+        case .passed: return NearMindTheme.success
+        case .failed: return NearMindTheme.error
+        case .skipped: return NearMindTheme.warning
         }
     }
 }

@@ -13,13 +13,13 @@ struct HomeView: View {
                 }
                 .padding(16)
             }
-            .background(Color.black.ignoresSafeArea())
+            .background(NearMindTheme.background.ignoresSafeArea())
             .navigationTitle("NearMind")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     StatusPill(
                         text: appState.isAuthenticated ? "JWT saved" : "No JWT",
-                        color: appState.isAuthenticated ? .green : .orange
+                        color: appState.isAuthenticated ? NearMindTheme.success : NearMindTheme.warning
                     )
                 }
             }
@@ -27,11 +27,15 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("GORKH Brain")
-                .font(.title.weight(.bold))
-            Text("Native SwiftUI scaffold for future live voice assistance.")
-                .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: 14) {
+            NearMindLogoMark(size: 70)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("NearMind")
+                    .font(.title.weight(.bold))
+                    .foregroundStyle(NearMindTheme.textPrimary)
+                Text("Private live help for real-life conversations.")
+                    .foregroundStyle(NearMindTheme.textSecondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -43,7 +47,7 @@ struct HomeView: View {
                 Label(appState.environment.config.gatewayWebSocketURL.absoluteString, systemImage: "waveform.path.ecg")
             }
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(NearMindTheme.textSecondary)
             .textSelection(.enabled)
         }
     }
@@ -63,9 +67,6 @@ struct HomeView: View {
             }
 
             CardRow(title: "Daily Brief", subtitle: "Placeholder for daily brief APIs", systemImage: "sun.max")
-                .opacity(0.65)
-
-            CardRow(title: "Tasks", subtitle: "Placeholder for task APIs", systemImage: "checklist")
                 .opacity(0.65)
 
             NavigationLink {
@@ -93,22 +94,23 @@ private struct CardRow: View {
         HStack(spacing: 12) {
             Image(systemName: systemImage)
                 .font(.title3)
-                .foregroundStyle(.teal)
+                .foregroundStyle(NearMindTheme.accentMint)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(NearMindTheme.textPrimary)
                 Text(subtitle)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NearMindTheme.textSecondary)
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(NearMindTheme.textSecondary.opacity(0.65))
         }
         .padding(16)
-        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
+        .background(NearMindTheme.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(NearMindTheme.border, lineWidth: 1))
     }
 }

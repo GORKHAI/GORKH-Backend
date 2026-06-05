@@ -11,6 +11,14 @@ struct StartSessionPayload: Codable, Equatable {
 
     struct Input: Codable, Equatable {
         let kind: TextInputKind
+        let sampleRate: Int?
+        let channels: Int?
+
+        init(kind: TextInputKind, sampleRate: Int? = nil, channels: Int? = nil) {
+            self.kind = kind
+            self.sampleRate = sampleRate
+            self.channels = channels
+        }
     }
 
     struct Output: Codable, Equatable {
@@ -31,7 +39,9 @@ struct StartSessionPayload: Codable, Equatable {
         policy: AssistPolicy,
         situationDescription: String,
         title: String,
-        consentGranted: Bool
+        consentGranted: Bool,
+        input: Input = Input(kind: .text),
+        retentionPolicy: RetentionPolicy = .askOnStop
     ) {
         self.type = .start
         self.protocolVersion = MobileProtocol.protocolVersion
@@ -45,8 +55,25 @@ struct StartSessionPayload: Codable, Equatable {
             participantCount: policy == .whisperCopilot ? 2 : 1,
             jurisdiction: "unknown"
         )
-        self.input = Input(kind: .text)
+        self.input = input
         self.output = Output(kind: .both)
-        self.retentionPolicy = .askOnStop
+        self.retentionPolicy = retentionPolicy
+    }
+
+    static func pcm16Voice(
+        policy: AssistPolicy,
+        situationDescription: String,
+        title: String,
+        consentGranted: Bool,
+        retentionPolicy: RetentionPolicy = .askOnStop
+    ) -> StartSessionPayload {
+        StartSessionPayload(
+            policy: policy,
+            situationDescription: situationDescription,
+            title: title,
+            consentGranted: consentGranted,
+            input: Input(kind: .pcm16, sampleRate: 16_000, channels: 1),
+            retentionPolicy: retentionPolicy
+        )
     }
 }
