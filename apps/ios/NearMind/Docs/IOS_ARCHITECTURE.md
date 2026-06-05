@@ -7,7 +7,7 @@ NearMind is the native SwiftUI consumer iOS app scaffold for the GORKH Brain bac
 ```text
 NearMind/
   App/              App state, environment, production config
-  Features/         Onboarding, Home, Live Assist, Settings, Debug
+  Features/         Onboarding, Home, Live Assist, Live Smoke, Settings, Debug
   Networking/       API client, endpoint routing, WebSocket gateway client
   Protocol/         Codable client/server protocol and mobile errors
   Security/         Keychain and token storage abstractions
@@ -33,9 +33,11 @@ Provider keys and API secrets are intentionally not represented in app settings.
 `APIClient` uses `URLSession` and the configured API base URL. It attaches the saved JWT as a Bearer token when present and currently supports:
 
 - `GET /health`
+- `GET /health/ready`
 - `GET /brain/dashboard`
 - `GET /mobile/sync?cursor=`
 - `GET /mobile/sessions/:id/state`
+- `GET /sessions/:id/latency-summary`
 
 ## WebSocket Flow
 
@@ -49,6 +51,8 @@ Provider keys and API secrets are intentionally not represented in app settings.
 - `stop`
 
 Incoming gateway and voice events are decoded into `GatewayServerEvent`. Unknown future events fall back to `.unknown` and are appended to the debug log without crashing.
+Known gateway operational events include `gateway_error`, `gateway_warning`, and `gateway_metrics` so live smoke output stays readable.
+The client tracks connection state, gateway/backend/voice session IDs, last error code, and event count for live smoke checks.
 
 ## Protocol Version
 
@@ -60,7 +64,11 @@ The start payload includes:
 - `policy`
 - `situationDescription`
 - `title`
-- `consent`
+- `consent.granted`
+- `consent.method = "user_tap"`
+- `consent.noticeText`
+- `consent.participantCount`
+- `consent.jurisdiction`
 - `input.kind = "text"`
 - `output.kind = "both"`
 - `retentionPolicy = "ask_on_stop"`
@@ -75,6 +83,7 @@ It does not include `userId`; identity is derived from the Bearer token.
 - Keychain-backed JWT storage
 - Production URL configuration
 - Typed WebSocket session commands
+- Typed live smoke screen for production API/gateway verification without microphone
 - Stable mobile error decoding
 - Unit tests for protocol and token-store behavior
 

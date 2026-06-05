@@ -2,8 +2,15 @@ import Foundation
 
 @MainActor
 final class AppState: ObservableObject {
+    enum TokenStatus: String {
+        case missing
+        case stored
+        case invalid
+    }
+
     @Published var hasCompletedOnboarding = false
     @Published private(set) var isAuthenticated = false
+    @Published private(set) var tokenStatus: TokenStatus = .missing
     @Published private(set) var eventLog: [DebugEvent] = []
 
     let environment: AppEnvironment
@@ -17,7 +24,14 @@ final class AppState: ObservableObject {
     }
 
     func refreshAuthStatus() {
-        isAuthenticated = (try? environment.tokenStore.readToken())?.isEmpty == false
+        let hasToken = (try? environment.tokenStore.readToken())?.isEmpty == false
+        isAuthenticated = hasToken
+        tokenStatus = hasToken ? .stored : .missing
+    }
+
+    func markTokenInvalid() {
+        isAuthenticated = false
+        tokenStatus = .invalid
     }
 
     func append(event: GatewayServerEvent, rawJSON: String) {
@@ -37,6 +51,17 @@ final class AppState: ObservableObject {
                 timestamp: Date(),
                 title: message,
                 rawJSON: nil
+            ),
+            at: 0
+        )
+    }
+
+    func appendRaw(title: String, rawJSON: String) {
+        eventLog.insert(
+            DebugEvent(
+                timestamp: Date(),
+                title: title,
+                rawJSON: rawJSON
             ),
             at: 0
         )

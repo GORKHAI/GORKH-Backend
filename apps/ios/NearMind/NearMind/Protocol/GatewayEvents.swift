@@ -7,6 +7,9 @@ enum GatewayServerEvent: Equatable {
     case gatewayASRPartial([String: JSONValue])
     case gatewayASRFinal([String: JSONValue])
     case gatewayClientTTSInstruction([String: JSONValue])
+    case gatewayMetrics([String: JSONValue])
+    case gatewayWarning([String: JSONValue])
+    case gatewayError([String: JSONValue])
     case voiceAck([String: JSONValue])
     case voiceState([String: JSONValue])
     case voiceSegment([String: JSONValue])
@@ -31,6 +34,9 @@ enum GatewayServerEvent: Equatable {
         case .gatewayASRPartial: return "gateway_asr_partial"
         case .gatewayASRFinal: return "gateway_asr_final"
         case .gatewayClientTTSInstruction: return "gateway_client_tts_instruction"
+        case .gatewayMetrics: return "gateway_metrics"
+        case .gatewayWarning: return "gateway_warning"
+        case .gatewayError: return "gateway_error"
         case .voiceAck: return "voice_ack"
         case .voiceState: return "voice_state"
         case .voiceSegment: return "voice_segment"
@@ -74,6 +80,9 @@ extension GatewayServerEvent: Decodable {
         case "gateway_asr_partial": self = .gatewayASRPartial(payload)
         case "gateway_asr_final": self = .gatewayASRFinal(payload)
         case "gateway_client_tts_instruction": self = .gatewayClientTTSInstruction(payload)
+        case "gateway_metrics": self = .gatewayMetrics(payload)
+        case "gateway_warning": self = .gatewayWarning(payload)
+        case "gateway_error": self = .gatewayError(payload)
         case "voice_ack": self = .voiceAck(payload)
         case "voice_state": self = .voiceState(payload)
         case "voice_segment": self = .voiceSegment(payload)

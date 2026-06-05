@@ -8,6 +8,8 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Authentication") {
+                LabeledContent("Token status", value: tokenStatusText)
+
                 SecureField("Paste test JWT", text: $token)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -69,6 +71,17 @@ struct SettingsView: View {
             appState.refreshAuthStatus()
         } catch {
             statusMessage = error.localizedDescription
+        }
+    }
+
+    private var tokenStatusText: String {
+        switch appState.tokenStatus {
+        case .missing:
+            return "missing"
+        case .stored:
+            return "stored"
+        case .invalid:
+            return "invalid"
         }
     }
 }

@@ -21,10 +21,18 @@ fi
 
 xcodegen generate
 
+if ! RUNTIME_OUTPUT="$(xcrun simctl list runtimes available 2>&1)"; then
+  echo "Unable to query iOS simulator runtimes. CoreSimulatorService or the iOS simulator runtime is unavailable." >&2
+  echo "$RUNTIME_OUTPUT" >&2
+  RUNTIME_OUTPUT=""
+fi
+
+DESTINATIONS_OUTPUT="$(xcodebuild -project NearMind.xcodeproj -scheme NearMind -showdestinations 2>&1 || true)"
+
 if ! SIMCTL_OUTPUT="$(xcrun simctl list devices available 2>&1)"; then
   echo "Unable to query iOS simulators. CoreSimulatorService or the iOS simulator runtime is unavailable." >&2
   echo "$SIMCTL_OUTPUT" >&2
-  exit 1
+  SIMCTL_OUTPUT=""
 fi
 
 DESTINATION_NAME="$(
@@ -35,7 +43,20 @@ DESTINATION_NAME="$(
 )"
 
 if [[ -z "$DESTINATION_NAME" ]]; then
-  echo "No available iPhone simulator was found. Install an iOS simulator runtime in Xcode." >&2
+  DESTINATION_NAME="$(
+    printf '%s\n' "$DESTINATIONS_OUTPUT" |
+    sed -nE 's/.*platform:iOS Simulator.*name:([^,}]+).*/\1/p' |
+    sed 's/^[[:space:]]*//' |
+    sed 's/[[:space:]]*$//' |
+    grep '^iPhone' |
+    head -n 1
+  )"
+fi
+
+if [[ -z "$DESTINATION_NAME" ]]; then
+  echo "Available destinations:" >&2
+  printf '%s\n' "$DESTINATIONS_OUTPUT" >&2
+  echo "No iOS simulator runtime/device installed. Install via Xcode → Settings → Platforms." >&2
   exit 1
 fi
 

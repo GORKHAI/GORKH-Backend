@@ -14,25 +14,41 @@ final class APIClient {
 
     @discardableResult
     func getHealth() async throws -> [String: JSONValue] {
-        try await request(.health)
+        try await requestRaw(.health).raw
+    }
+
+    @discardableResult
+    func getHealthReady() async throws -> APIJSONResponse<HealthResponse> {
+        try await request(.healthReady, as: HealthResponse.self)
     }
 
     @discardableResult
     func getBrainDashboard() async throws -> [String: JSONValue] {
-        try await request(.brainDashboard)
+        try await requestRaw(.brainDashboard).raw
     }
 
     @discardableResult
-    func getMobileSync(cursor: String?) async throws -> [String: JSONValue] {
-        try await request(.mobileSync(cursor: cursor))
+    func getMobileSync(cursor: String?) async throws -> APIJSONResponse<MobileSyncResponse> {
+        try await request(.mobileSync(cursor: cursor), as: MobileSyncResponse.self)
     }
 
     @discardableResult
-    func getMobileSessionState(sessionID: String?) async throws -> [String: JSONValue] {
-        try await request(.mobileSessionState(sessionID: sessionID))
+    func getMobileSessionState(sessionID: String?) async throws -> APIJSONResponse<SessionStateResponse> {
+        try await request(.mobileSessionState(sessionID: sessionID), as: SessionStateResponse.self)
     }
 
-    private func request(_ endpoint: Endpoint) async throws -> [String: JSONValue] {
+    @discardableResult
+    func getSessionLatencySummary(sessionID: String?) async throws -> APIJSONResponse<LatencySummaryResponse> {
+        try await request(.sessionLatencySummary(sessionID: sessionID), as: LatencySummaryResponse.self)
+    }
+
+    private func request<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> APIJSONResponse<T> {
+        let raw = try await requestRaw(endpoint)
+        let decoded = try? decoder.decode(T.self, from: raw.data)
+        return APIJSONResponse(decoded: decoded, raw: raw.raw, rawJSON: raw.rawJSON)
+    }
+
+    private func requestRaw(_ endpoint: Endpoint) async throws -> RawAPIResponse {
         var request = URLRequest(url: try endpoint.url(relativeTo: config.apiBaseURL))
         request.httpMethod = HTTPMethod.get.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -46,13 +62,39 @@ final class APIClient {
             throw APIClientError.invalidResponse
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw APIClientError.httpStatus(httpResponse.statusCode)
+            throw APIClientError.httpStatus(httpResponse.statusCode, decodeMobileError(from: data))
         }
 
         if data.isEmpty {
-            return [:]
+            return RawAPIResponse(data: data, raw: [:], rawJSON: "{}")
         }
 
-        return try decoder.decode([String: JSONValue].self, from: data)
+        guard let raw = try? decoder.decode([String: JSONValue].self, from: data) else {
+            throw APIClientError.invalidJSON
+        }
+        return RawAPIResponse(data: data, raw: raw, rawJSON: String(decoding: data, as: UTF8.self))
     }
+
+    private func decodeMobileError(from data: Data) -> MobileError? {
+        if let envelope = try? decoder.decode(MobileErrorEnvelope.self, from: data) {
+            return envelope.error
+        }
+        return try? decoder.decode(MobileError.self, from: data)
+    }
+}
+
+struct APIJSONResponse<T: Decodable> {
+    let decoded: T?
+    let raw: [String: JSONValue]
+    let rawJSON: String
+}
+
+private struct RawAPIResponse {
+    let data: Data
+    let raw: [String: JSONValue]
+    let rawJSON: String
+}
+
+private struct MobileErrorEnvelope: Decodable {
+    let error: MobileError
 }

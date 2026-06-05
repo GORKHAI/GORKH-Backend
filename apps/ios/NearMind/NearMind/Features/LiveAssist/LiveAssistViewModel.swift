@@ -48,7 +48,7 @@ final class LiveAssistViewModel: ObservableObject {
             policy: policy,
             situationDescription: situationDescription,
             title: title,
-            consent: hasConsent
+            consentGranted: hasConsent
         )
         send {
             try await self.client?.sendStart(payload)

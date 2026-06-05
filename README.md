@@ -73,8 +73,12 @@ The native SwiftUI iOS scaffold for NearMind lives at `apps/ios/NearMind`.
 
 ```bash
 cd apps/ios/NearMind
+./Scripts/list-simulators.sh
 ./Scripts/build-simulator.sh
+./Scripts/test-simulator.sh
 ```
+
+NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
 
 ## Providers
 

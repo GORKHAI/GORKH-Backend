@@ -56,6 +56,12 @@ struct HomeView: View {
                 CardRow(title: "Live Assist", subtitle: "Typed WebSocket session prototype", systemImage: "message")
             }
 
+            NavigationLink {
+                LiveSmokeView()
+            } label: {
+                CardRow(title: "Live Smoke Test", subtitle: "Production typed gateway verification", systemImage: "checkmark.seal")
+            }
+
             CardRow(title: "Daily Brief", subtitle: "Placeholder for daily brief APIs", systemImage: "sun.max")
                 .opacity(0.65)
 

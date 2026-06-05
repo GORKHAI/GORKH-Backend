@@ -39,6 +39,18 @@ struct JSONValue: Codable, Hashable {
         self.value = value
     }
 
+    var stringValue: String? {
+        value?.base as? String
+    }
+
+    var boolValue: Bool? {
+        value?.base as? Bool
+    }
+
+    var dictionaryValue: [String: JSONValue]? {
+        value?.base as? [String: JSONValue]
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if container.decodeNil() {

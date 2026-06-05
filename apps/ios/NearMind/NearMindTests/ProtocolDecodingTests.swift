@@ -28,6 +28,26 @@ final class ProtocolDecodingTests: XCTestCase {
         XCTAssertEqual(payload["text"], JSONValue("Prepare a repayment question."))
     }
 
+    func testDecodesGatewayErrorWarningAndMetrics() throws {
+        let error = try decode(#"{"type":"gateway_error","stage":"protocol","message":"invalid_message"}"#)
+        guard case .gatewayError(let errorPayload) = error else {
+            return XCTFail("Expected gateway_error")
+        }
+        XCTAssertEqual(errorPayload["stage"], JSONValue("protocol"))
+
+        let warning = try decode(#"{"type":"gateway_warning","code":"protocol_version_missing"}"#)
+        guard case .gatewayWarning(let warningPayload) = warning else {
+            return XCTFail("Expected gateway_warning")
+        }
+        XCTAssertEqual(warningPayload["code"], JSONValue("protocol_version_missing"))
+
+        let metrics = try decode(#"{"type":"gateway_metrics","latencyMs":{"gatewayToBackend":12}}"#)
+        guard case .gatewayMetrics(let metricsPayload) = metrics else {
+            return XCTFail("Expected gateway_metrics")
+        }
+        XCTAssertNotNil(metricsPayload["latencyMs"])
+    }
+
     func testDecodesStableErrorCode() throws {
         let event = try decode(#"{"type":"error","code":"voice_auth_required","message":"Auth required","retryable":false,"details":{"reason":"missing_token"}}"#)
         guard case .error(let error) = event else {
