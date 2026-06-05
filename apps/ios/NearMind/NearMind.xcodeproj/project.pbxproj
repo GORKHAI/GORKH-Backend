@@ -1,0 +1,622 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		06954C38EB693971DB5112A6 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 204F70D53F9116EA5B033BDE /* HomeView.swift */; };
+		165D7CF378A0BEF871667C90 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */; };
+		39C24007A64E1A70EECFC8FC /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D258112F1D63FB401ACF7E8C /* TokenStore.swift */; };
+		44AB17E2320CDA8AB865733D /* StartSessionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA0EE6E68DCDA93E6993C59 /* StartSessionPayload.swift */; };
+		51B79F77D0D9B5D9891C6519 /* TokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999F8513036555CAA5B9FB8B /* TokenStoreTests.swift */; };
+		53ABEE4E6FEF3E5004637DEB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 32C4E0EF99339E76DCE89D8A /* Assets.xcassets */; };
+		57A7179C1B32441454662CE0 /* GatewayEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D441E5E909D5717679D099F1 /* GatewayEvents.swift */; };
+		5AFF3F396A0D339C3A5E6B4E /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E48ED43705865A9870756F0 /* AppEnvironment.swift */; };
+		5D6463C103F70ECE0A00FF8F /* MobileErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B178B5F90DA16C1FA1CBA008 /* MobileErrors.swift */; };
+		6E1905DE40E138E36F826540 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752FCF2489A94245F1EAA234 /* AppConfig.swift */; };
+		753D54ECDE61E8D87B2DB6FD /* NearMindApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9981CFBD150C48360607EB42 /* NearMindApp.swift */; };
+		7B9416642BE82594AE27F322 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55D19963775948576C4E986C /* StatusPill.swift */; };
+		8203838536E34FE954AE2A92 /* DebugEventLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78C4209F1E1D37049384198 /* DebugEventLogView.swift */; };
+		8919EAF7D71DC7AB000D2EFC /* StartPayloadEncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E58E7A38F967349BBA6AE8F /* StartPayloadEncodingTests.swift */; };
+		9BF7FD6892B134D45A6235E0 /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E74CC4E0EFBE4220682EC5 /* PrimaryButton.swift */; };
+		A1459C9173CDA812F75BAFB9 /* Endpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105A8D7D76A65482CB9C7E20 /* Endpoint.swift */; };
+		AB534C449976452CD51E274B /* GatewayWebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E0A88B76019369B14281A0 /* GatewayWebSocketClient.swift */; };
+		ACDD9174F50E463892E07B72 /* HTTPTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E1EAAAB2C3BF22465F0EC7 /* HTTPTypes.swift */; };
+		B43994262FEDF677367FBB75 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60DF2FA88B0D681101F6A8DA /* SettingsView.swift */; };
+		B502E53067717E08C50210F0 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBB4BC1453B8DD4EDA2254A /* KeychainStore.swift */; };
+		B7ACB00E413A39BBFC43774A /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4EE78C8813A9B7B1587327B /* AppState.swift */; };
+		C2067673ADEE33F66232BA89 /* LiveAssistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B72B765D06D89BC0FD25FB4 /* LiveAssistView.swift */; };
+		C32C917EC1497FEFE564130D /* MobileProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA9664A7AC81269022EF6437 /* MobileProtocol.swift */; };
+		D4DD6ACDE779ACE98C467FDD /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0502CBEBF23E284AFDC80AE /* APIClient.swift */; };
+		EEFF77E45A72AEA58AF748AA /* MobileErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0B59AADCBAFD0FF76C6E0D /* MobileErrorTests.swift */; };
+		EFE2C04813DB4CCA0F724712 /* LiveAssistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD1546113C21AFC271D28A7 /* LiveAssistViewModel.swift */; };
+		F056E0B8AA7D1FE11E364307 /* SectionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71394968C44164E4D66BF974 /* SectionCard.swift */; };
+		F2E8EB23ADDAB2B7C2B496C9 /* ProtocolDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF089CE65B24778C5CD58A2 /* ProtocolDecodingTests.swift */; };
+		F9A5C0A70E3756338295A550 /* VoiceEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D7AC3C8D473EB6623C92967 /* VoiceEvents.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F416E6B36C413568C45B1440 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5486F5847F5CD3054C14FF97 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC81E7A2EF73C2CF1A8DEB44;
+			remoteInfo = NearMind;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		105A8D7D76A65482CB9C7E20 /* Endpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Endpoint.swift; sourceTree = "<group>"; };
+		204F70D53F9116EA5B033BDE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		25E1EAAAB2C3BF22465F0EC7 /* HTTPTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTypes.swift; sourceTree = "<group>"; };
+		2922C81280ACE920B921ACB2 /* NearMind.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NearMind.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		32C4E0EF99339E76DCE89D8A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3AF089CE65B24778C5CD58A2 /* ProtocolDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolDecodingTests.swift; sourceTree = "<group>"; };
+		3B72B765D06D89BC0FD25FB4 /* LiveAssistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAssistView.swift; sourceTree = "<group>"; };
+		4EA0EE6E68DCDA93E6993C59 /* StartSessionPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartSessionPayload.swift; sourceTree = "<group>"; };
+		55D19963775948576C4E986C /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		5DD1546113C21AFC271D28A7 /* LiveAssistViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAssistViewModel.swift; sourceTree = "<group>"; };
+		5EBB4BC1453B8DD4EDA2254A /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		60DF2FA88B0D681101F6A8DA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		71394968C44164E4D66BF974 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
+		752FCF2489A94245F1EAA234 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		9981CFBD150C48360607EB42 /* NearMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearMindApp.swift; sourceTree = "<group>"; };
+		999F8513036555CAA5B9FB8B /* TokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStoreTests.swift; sourceTree = "<group>"; };
+		9D7AC3C8D473EB6623C92967 /* VoiceEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEvents.swift; sourceTree = "<group>"; };
+		9E48ED43705865A9870756F0 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		9E58E7A38F967349BBA6AE8F /* StartPayloadEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartPayloadEncodingTests.swift; sourceTree = "<group>"; };
+		AA0B59AADCBAFD0FF76C6E0D /* MobileErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileErrorTests.swift; sourceTree = "<group>"; };
+		B178B5F90DA16C1FA1CBA008 /* MobileErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileErrors.swift; sourceTree = "<group>"; };
+		B4EE78C8813A9B7B1587327B /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		B72D26F6BBC87F6C62D21FAD /* NearMindTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NearMindTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		D258112F1D63FB401ACF7E8C /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		D441E5E909D5717679D099F1 /* GatewayEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayEvents.swift; sourceTree = "<group>"; };
+		DFE75564CFD5B1181C953179 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E4E0A88B76019369B14281A0 /* GatewayWebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayWebSocketClient.swift; sourceTree = "<group>"; };
+		E5E74CC4E0EFBE4220682EC5 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
+		F0502CBEBF23E284AFDC80AE /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		F78C4209F1E1D37049384198 /* DebugEventLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugEventLogView.swift; sourceTree = "<group>"; };
+		FA9664A7AC81269022EF6437 /* MobileProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileProtocol.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		01EF09F9BA0189CC142ACF8E /* NearMindTests */ = {
+			isa = PBXGroup;
+			children = (
+				AA0B59AADCBAFD0FF76C6E0D /* MobileErrorTests.swift */,
+				3AF089CE65B24778C5CD58A2 /* ProtocolDecodingTests.swift */,
+				9E58E7A38F967349BBA6AE8F /* StartPayloadEncodingTests.swift */,
+				999F8513036555CAA5B9FB8B /* TokenStoreTests.swift */,
+			);
+			path = NearMindTests;
+			sourceTree = "<group>";
+		};
+		0591FBC985866CCC6202AEB0 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				1535231DBD8F903CEBC6C174 /* Components */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		1535231DBD8F903CEBC6C174 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				E5E74CC4E0EFBE4220682EC5 /* PrimaryButton.swift */,
+				71394968C44164E4D66BF974 /* SectionCard.swift */,
+				55D19963775948576C4E986C /* StatusPill.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		3468C46473DCE93D42941184 /* LiveAssist */ = {
+			isa = PBXGroup;
+			children = (
+				3B72B765D06D89BC0FD25FB4 /* LiveAssistView.swift */,
+				5DD1546113C21AFC271D28A7 /* LiveAssistViewModel.swift */,
+			);
+			path = LiveAssist;
+			sourceTree = "<group>";
+		};
+		37AC517899E9639CFAB21F28 /* NearMind */ = {
+			isa = PBXGroup;
+			children = (
+				9981CFBD150C48360607EB42 /* NearMindApp.swift */,
+				74D00CA7AA5E0C40CFE21DB0 /* App */,
+				55FFCF93858EA27F45735242 /* Features */,
+				47F1A9DEEA1B170C4EF2DC44 /* Networking */,
+				94032BB5E467E2F913C4A82D /* Protocol */,
+				94D6C9A71C4473B04E28DB1E /* Resources */,
+				586F42EC777F3145594279FA /* Security */,
+				0591FBC985866CCC6202AEB0 /* UI */,
+			);
+			path = NearMind;
+			sourceTree = "<group>";
+		};
+		47F1A9DEEA1B170C4EF2DC44 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				F0502CBEBF23E284AFDC80AE /* APIClient.swift */,
+				105A8D7D76A65482CB9C7E20 /* Endpoint.swift */,
+				E4E0A88B76019369B14281A0 /* GatewayWebSocketClient.swift */,
+				25E1EAAAB2C3BF22465F0EC7 /* HTTPTypes.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		55FFCF93858EA27F45735242 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				DB2DFA8BD068004B9F86DA9A /* Debug */,
+				5618FC437D556F152A2DA401 /* Home */,
+				3468C46473DCE93D42941184 /* LiveAssist */,
+				5E080792D1A25DC9272F03BE /* Onboarding */,
+				581842D3AF885789329E1088 /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		5618FC437D556F152A2DA401 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				204F70D53F9116EA5B033BDE /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		581842D3AF885789329E1088 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				60DF2FA88B0D681101F6A8DA /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		586F42EC777F3145594279FA /* Security */ = {
+			isa = PBXGroup;
+			children = (
+				5EBB4BC1453B8DD4EDA2254A /* KeychainStore.swift */,
+				D258112F1D63FB401ACF7E8C /* TokenStore.swift */,
+			);
+			path = Security;
+			sourceTree = "<group>";
+		};
+		5A28F3B089FDDF94E4D7CA52 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2922C81280ACE920B921ACB2 /* NearMind.app */,
+				B72D26F6BBC87F6C62D21FAD /* NearMindTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5E080792D1A25DC9272F03BE /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				BEB9BBFA43E9AC9688F3B334 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		74D00CA7AA5E0C40CFE21DB0 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				752FCF2489A94245F1EAA234 /* AppConfig.swift */,
+				9E48ED43705865A9870756F0 /* AppEnvironment.swift */,
+				B4EE78C8813A9B7B1587327B /* AppState.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		94032BB5E467E2F913C4A82D /* Protocol */ = {
+			isa = PBXGroup;
+			children = (
+				D441E5E909D5717679D099F1 /* GatewayEvents.swift */,
+				B178B5F90DA16C1FA1CBA008 /* MobileErrors.swift */,
+				FA9664A7AC81269022EF6437 /* MobileProtocol.swift */,
+				4EA0EE6E68DCDA93E6993C59 /* StartSessionPayload.swift */,
+				9D7AC3C8D473EB6623C92967 /* VoiceEvents.swift */,
+			);
+			path = Protocol;
+			sourceTree = "<group>";
+		};
+		94D6C9A71C4473B04E28DB1E /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				32C4E0EF99339E76DCE89D8A /* Assets.xcassets */,
+				DFE75564CFD5B1181C953179 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		D76ED4C8949D06E5A9EF35F7 = {
+			isa = PBXGroup;
+			children = (
+				37AC517899E9639CFAB21F28 /* NearMind */,
+				01EF09F9BA0189CC142ACF8E /* NearMindTests */,
+				5A28F3B089FDDF94E4D7CA52 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DB2DFA8BD068004B9F86DA9A /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				F78C4209F1E1D37049384198 /* DebugEventLogView.swift */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2312D44340F5377D53880EC9 /* NearMindTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F80E8AF888933AC674EF372 /* Build configuration list for PBXNativeTarget "NearMindTests" */;
+			buildPhases = (
+				74E061D0034980BA1B0618D7 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8D3C38A487E35F438923A2D1 /* PBXTargetDependency */,
+			);
+			name = NearMindTests;
+			packageProductDependencies = (
+			);
+			productName = NearMindTests;
+			productReference = B72D26F6BBC87F6C62D21FAD /* NearMindTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		CC81E7A2EF73C2CF1A8DEB44 /* NearMind */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3A4C2BCD54D2EE8D3DF7D76E /* Build configuration list for PBXNativeTarget "NearMind" */;
+			buildPhases = (
+				39BACD659A37D3903F6B9AD5 /* Sources */,
+				4A08E0F6738EC42C62F7AB45 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NearMind;
+			packageProductDependencies = (
+			);
+			productName = NearMind;
+			productReference = 2922C81280ACE920B921ACB2 /* NearMind.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5486F5847F5CD3054C14FF97 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2312D44340F5377D53880EC9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					CC81E7A2EF73C2CF1A8DEB44 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 8D41AC4AC9B85A89B4F168A5 /* Build configuration list for PBXProject "NearMind" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D76ED4C8949D06E5A9EF35F7;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5A28F3B089FDDF94E4D7CA52 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CC81E7A2EF73C2CF1A8DEB44 /* NearMind */,
+				2312D44340F5377D53880EC9 /* NearMindTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4A08E0F6738EC42C62F7AB45 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				53ABEE4E6FEF3E5004637DEB /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		39BACD659A37D3903F6B9AD5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4DD6ACDE779ACE98C467FDD /* APIClient.swift in Sources */,
+				6E1905DE40E138E36F826540 /* AppConfig.swift in Sources */,
+				5AFF3F396A0D339C3A5E6B4E /* AppEnvironment.swift in Sources */,
+				B7ACB00E413A39BBFC43774A /* AppState.swift in Sources */,
+				8203838536E34FE954AE2A92 /* DebugEventLogView.swift in Sources */,
+				A1459C9173CDA812F75BAFB9 /* Endpoint.swift in Sources */,
+				57A7179C1B32441454662CE0 /* GatewayEvents.swift in Sources */,
+				AB534C449976452CD51E274B /* GatewayWebSocketClient.swift in Sources */,
+				ACDD9174F50E463892E07B72 /* HTTPTypes.swift in Sources */,
+				06954C38EB693971DB5112A6 /* HomeView.swift in Sources */,
+				B502E53067717E08C50210F0 /* KeychainStore.swift in Sources */,
+				C2067673ADEE33F66232BA89 /* LiveAssistView.swift in Sources */,
+				EFE2C04813DB4CCA0F724712 /* LiveAssistViewModel.swift in Sources */,
+				5D6463C103F70ECE0A00FF8F /* MobileErrors.swift in Sources */,
+				C32C917EC1497FEFE564130D /* MobileProtocol.swift in Sources */,
+				753D54ECDE61E8D87B2DB6FD /* NearMindApp.swift in Sources */,
+				165D7CF378A0BEF871667C90 /* OnboardingView.swift in Sources */,
+				9BF7FD6892B134D45A6235E0 /* PrimaryButton.swift in Sources */,
+				F056E0B8AA7D1FE11E364307 /* SectionCard.swift in Sources */,
+				B43994262FEDF677367FBB75 /* SettingsView.swift in Sources */,
+				44AB17E2320CDA8AB865733D /* StartSessionPayload.swift in Sources */,
+				7B9416642BE82594AE27F322 /* StatusPill.swift in Sources */,
+				39C24007A64E1A70EECFC8FC /* TokenStore.swift in Sources */,
+				F9A5C0A70E3756338295A550 /* VoiceEvents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		74E061D0034980BA1B0618D7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EEFF77E45A72AEA58AF748AA /* MobileErrorTests.swift in Sources */,
+				F2E8EB23ADDAB2B7C2B496C9 /* ProtocolDecodingTests.swift in Sources */,
+				8919EAF7D71DC7AB000D2EFC /* StartPayloadEncodingTests.swift in Sources */,
+				51B79F77D0D9B5D9891C6519 /* TokenStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8D3C38A487E35F438923A2D1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC81E7A2EF73C2CF1A8DEB44 /* NearMind */;
+			targetProxy = F416E6B36C413568C45B1440 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		165CF559319EFF750E7958B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nearmind.app.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NearMind.app/NearMind";
+			};
+			name = Release;
+		};
+		5DDD704371A307564E199678 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		73DAA7A7897A94197AD13A93 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = NearMind/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nearmind.app;
+				PRODUCT_NAME = NearMind;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		AF87DC4D628E516EBB30DC39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nearmind.app.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NearMind.app/NearMind";
+			};
+			name = Debug;
+		};
+		C1119D0D217526511A3CD0B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = NearMind/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.nearmind.app;
+				PRODUCT_NAME = NearMind;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DEF733B647FAFA6C2068F599 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F80E8AF888933AC674EF372 /* Build configuration list for PBXNativeTarget "NearMindTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF87DC4D628E516EBB30DC39 /* Debug */,
+				165CF559319EFF750E7958B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3A4C2BCD54D2EE8D3DF7D76E /* Build configuration list for PBXNativeTarget "NearMind" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C1119D0D217526511A3CD0B7 /* Debug */,
+				73DAA7A7897A94197AD13A93 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8D41AC4AC9B85A89B4F168A5 /* Build configuration list for PBXProject "NearMind" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DEF733B647FAFA6C2068F599 /* Debug */,
+				5DDD704371A307564E199678 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5486F5847F5CD3054C14FF97 /* Project object */;
+}

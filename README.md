@@ -67,6 +67,15 @@ npm run gateway:replay:all
 
 `npm test` is unit-only and requires no Postgres, Redis, or provider keys. `npm run test:integration` requires real local Postgres and Redis.
 
+## NearMind iOS app scaffold
+
+The native SwiftUI iOS scaffold for NearMind lives at `apps/ios/NearMind`.
+
+```bash
+cd apps/ios/NearMind
+./Scripts/build-simulator.sh
+```
+
 ## Providers
 
 Optional provider keys:
