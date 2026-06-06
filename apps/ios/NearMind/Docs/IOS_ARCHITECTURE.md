@@ -8,7 +8,7 @@ NearMind is the native SwiftUI consumer iOS app scaffold for the GORKH Brain bac
 NearMind/
   Audio/            Microphone permission, route monitoring, PCM16 streaming, native TTS
   App/              App state, tab routing, environment, production config
-  Features/         Onboarding, Chat, Live Assist, Sessions, Profile, Live Smoke, Debug
+  Features/         Onboarding, Auth, Chat, Live Assist, Sessions, Profile, Account, Live Smoke, Debug
   Networking/       API client, endpoint routing, WebSocket gateway client
   Protocol/         Codable client/server protocol and mobile errors
   Security/         Keychain and token storage abstractions
@@ -23,7 +23,7 @@ NearMind/
 
 ## Token Storage
 
-The app accepts a test JWT in Profile > Developer and stores it through `TokenStoreProtocol`.
+After onboarding, the app shows Auth Welcome when no Keychain JWT exists. It accepts Sign in with Apple readiness, Email readiness, or a small internal test-token path. The app accepts a test JWT in Profile > Developer and stores it through `TokenStoreProtocol`.
 The production implementation is `KeychainTokenStore`, backed by `KeychainStore`.
 JWTs are not written to `UserDefaults`, logs, debug event rows, or source files.
 
@@ -49,6 +49,15 @@ Developer-heavy surfaces are intentionally not shown on the default home screen.
 - `GET /brain/dashboard`
 - `POST /brain/query`
 - `GET /human/profile/review`
+- `POST /auth/apple/verify`
+- `POST /auth/email/start`
+- `POST /auth/email/verify`
+- `GET /account/me`
+- `POST /account/sign-out`
+- `POST /account/delete-request`
+- `POST /account/delete-cancel`
+- `GET /plans/me`
+- `GET /billing/status`
 - `GET /mobile/sync?cursor=`
 - `GET /mobile/sessions/:id/state`
 - `GET /sessions/:id/latency-summary`
@@ -151,6 +160,14 @@ The Chat tab is the app center in v0.5. `ChatViewModel` handles safe local inten
 
 Chat messages redact JWT-shaped strings before displaying or storing local message state. Sensitive external actions are not executed from chat in v0.5.
 
+## Auth And Account Shell
+
+Auth v0 introduces `AuthWelcomeView`, `AuthViewModel`, `AppleSignInButtonView`, and `EmailSignInView`. Apple and email auth are callable but disabled by default on the backend, so the app displays clear not-enabled errors instead of pretending login is active.
+
+`AppState` loads auth status from Keychain, fetches `/account/me` after launch when a token exists, and clears account state when the token is removed. Sign out calls `/account/sign-out` when possible and always clears the local Keychain token afterward.
+
+Profile now has consumer-facing Account and Plan sections. Plan status is read-only: Internal Alpha, billing disabled, and subscriptions coming later. There is no StoreKit, purchase button, price, fake paywall, or payment link in this milestone.
+
 ## Relay Architecture
 
 NearMind Relay v0 is exposed in `Features/Relay`. It is a private agent request inbox/outbox, not a public social layer. The iOS app can:
@@ -192,6 +209,7 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - v0.4 consumer UI redesign with tab navigation, compact onboarding, Today home, Sessions browse/detail, and diagnostics separation
 - v0.5 chat-first UX with approval cards, Profile tab, text assistant routing, and no hidden recording from chat
 - Relay v0 agent requests under Profile, Chat composer handoff, mobile-sync decoding, and sender/receiver approval controls
+- Auth/account/plan shell v0 with Auth Welcome, Apple/email readiness, account profile, sign out, deletion request, and status-only Internal Alpha plan
 
 ## Intentionally Not Implemented Yet
 
@@ -200,6 +218,7 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - Provider key entry or storage
 - Analytics SDKs
 - Ad SDKs
+- StoreKit purchases, fake pricing, or paywalls
 
 ## App Icon
 

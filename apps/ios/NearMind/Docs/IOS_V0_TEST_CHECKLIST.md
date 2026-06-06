@@ -17,7 +17,7 @@ Backend `npm test` is separate from iOS validation and requires local backend en
 
 1. Launch NearMind in an iOS simulator.
 2. Complete onboarding.
-3. Open Profile.
+3. If Auth Welcome appears, tap Use test token.
 4. Paste a valid test JWT.
 5. Save the token to Keychain and verify token status shows `stored`.
 6. Open Developer, then Typed Live Smoke.
@@ -37,6 +37,24 @@ Backend `npm test` is separate from iOS validation and requires local backend en
 20. Open Debug Log and confirm no token appears in logs.
 
 Typed live smoke must not start microphone capture, native TTS, push notifications, Calendar/Gmail UI, provider key entry, API secret storage, or any `userId` field in WebSocket payloads.
+
+## Auth And Account Shell v0
+
+1. Clear the local Keychain token or launch on a fresh install.
+2. Complete onboarding.
+3. Confirm Auth Welcome appears with NearMind logo, Continue with Apple, Continue with Email, and a small Use test token link.
+4. Tap Continue with Email and confirm the app says email sign-in is not enabled in this alpha.
+5. Tap Continue with Apple only on a signed-in simulator/device. If backend Apple auth is disabled, confirm a clear not-enabled message appears.
+6. Tap Use test token and paste a valid backend JWT.
+7. Confirm the app enters Chat/Live/Sessions/Profile.
+8. Open Profile and confirm Account and Plan sections appear above developer tools.
+9. Confirm Plan says Internal Alpha and billing is not enabled.
+10. Open Account and tap Sign out. Confirm the app returns to Auth Welcome and the local token is cleared.
+11. Sign in again with a test token.
+12. Open Account > Account deletion.
+13. Submit a deletion request and confirm the backend response message appears.
+14. Cancel the pending deletion request.
+15. Confirm Debug Log does not show the JWT or any Apple identity token.
 
 ## Voice + TTS Smoke
 

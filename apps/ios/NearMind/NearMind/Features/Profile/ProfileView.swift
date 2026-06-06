@@ -1,6 +1,8 @@
 import SwiftUI
 
 enum ProfileSection: String, CaseIterable {
+    case account = "Account"
+    case plan = "Plan"
     case profileMemory = "Profile & Memory"
     case preferences = "Preferences"
     case privacyData = "Privacy & Data"
@@ -19,6 +21,8 @@ struct ProfileView: View {
 
     var body: some View {
         List {
+            accountSection
+            planSection
             profileMemorySection
             preferencesSection
             privacySection
@@ -36,9 +40,38 @@ struct ProfileView: View {
             appState.refreshAuthStatus()
             microphoneStatus = SystemMicrophonePermissionProvider().currentStatus()
             Task {
+                await appState.refreshAccount()
                 await loadRelayUpdateCount()
             }
         }
+    }
+
+    private var accountSection: some View {
+        Section(ProfileSection.account.rawValue) {
+            NavigationLink {
+                AccountView()
+            } label: {
+                ProfileRow(
+                    title: appState.account?.displayLabel ?? "NearMind account",
+                    subtitle: appState.account?.email ?? "Account, sign out, and deletion request",
+                    systemImage: "person.crop.circle"
+                )
+            }
+            Button(role: .destructive) {
+                Task { await appState.signOut() }
+            } label: {
+                ProfileRow(title: "Sign out", subtitle: "Clears the Keychain token from this device", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+        }
+        .listRowBackground(NearMindTheme.cardSurface)
+    }
+
+    private var planSection: some View {
+        Section(ProfileSection.plan.rawValue) {
+            PlanStatusView(plan: appState.account?.plan, billing: appState.billingStatus)
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+        }
+        .listRowBackground(NearMindTheme.cardSurface)
     }
 
     private var profileMemorySection: some View {
@@ -90,6 +123,12 @@ struct ProfileView: View {
                 ProfilePrivacyDataView()
             } label: {
                 ProfileRow(title: "Privacy controls", subtitle: "Consent, retention, logs, and local data", systemImage: "lock.shield")
+            }
+
+            NavigationLink {
+                DeleteAccountView()
+            } label: {
+                ProfileRow(title: "Request account deletion", subtitle: appState.account?.deletionStatus ?? "Sends a backend deletion request", systemImage: "person.crop.circle.badge.xmark")
             }
 
             Button(role: .destructive) {

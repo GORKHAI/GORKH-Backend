@@ -11,6 +11,7 @@ import {
   type MobileNotificationPriority,
 } from "../db/schema.js";
 import { relayMobileSyncItems } from "../relay/mobile-sync.js";
+import { accountMobileSyncItems } from "../auth/account.js";
 
 export interface MobileCursor {
   createdAt: string;
@@ -96,7 +97,7 @@ export async function mobileSync(userId: string, options: { cursor?: string; lim
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
   const cursor = decodeCursor(options.cursor);
   const since = cursor ? new Date(cursor.createdAt) : new Date(0);
-  const [notifications, reports, actions, briefs, tasks, commitmentRows, sessionRows, relayItems] = await Promise.all([
+  const [notifications, reports, actions, briefs, tasks, commitmentRows, sessionRows, relayItems, accountItems] = await Promise.all([
     db.select().from(mobileNotifications).where(and(eq(mobileNotifications.userId, userId), gt(mobileNotifications.createdAt, since))).orderBy(asc(mobileNotifications.createdAt)).limit(limit),
     db.select().from(subagentReports).where(and(eq(subagentReports.userId, userId), gt(subagentReports.createdAt, since))).orderBy(asc(subagentReports.createdAt)).limit(limit),
     db.select().from(actionProposals).where(and(eq(actionProposals.userId, userId), gt(actionProposals.updatedAt, since))).orderBy(asc(actionProposals.updatedAt)).limit(limit),
@@ -105,6 +106,7 @@ export async function mobileSync(userId: string, options: { cursor?: string; lim
     db.select().from(commitments).where(and(eq(commitments.userId, userId), gt(commitments.updatedAt, since))).orderBy(asc(commitments.updatedAt)).limit(limit),
     db.select().from(sessions).where(and(eq(sessions.userId, userId), gt(sessions.startedAt, since))).orderBy(asc(sessions.startedAt)).limit(limit),
     relayMobileSyncItems(userId, since, limit),
+    accountMobileSyncItems(userId, since, limit),
   ]);
   const items = [
     ...notifications.map((item) => ({ type: "notification", createdAt: item.createdAt, item })),
@@ -115,12 +117,13 @@ export async function mobileSync(userId: string, options: { cursor?: string; lim
     ...commitmentRows.map((item) => ({ type: "commitment", createdAt: item.updatedAt, item })),
     ...sessionRows.map((item) => ({ type: "session", createdAt: item.startedAt, item: redactSession(item) })),
     ...relayItems,
+    ...accountItems,
   ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).slice(0, limit);
   const last = items.at(-1);
   return {
     cursor: last ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: String((last.item as { id?: string }).id ?? "") }) : options.cursor ?? null,
     items: items.map(({ type, item }) => ({ type, item })),
-    hasMore: notifications.length + reports.length + actions.length + briefs.length + tasks.length + commitmentRows.length + sessionRows.length + relayItems.length > limit,
+    hasMore: notifications.length + reports.length + actions.length + briefs.length + tasks.length + commitmentRows.length + sessionRows.length + relayItems.length + accountItems.length > limit,
   };
 }
 

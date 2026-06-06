@@ -73,6 +73,8 @@ final class UIArchitectureTests: XCTestCase {
 
     func testProfileSectionsMoveDeveloperToolsDeeper() {
         XCTAssertEqual(ProfileSection.allCases.map(\.rawValue), [
+            "Account",
+            "Plan",
             "Profile & Memory",
             "Preferences",
             "Privacy & Data",

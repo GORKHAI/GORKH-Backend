@@ -22,6 +22,59 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS auth_accounts (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider text NOT NULL,
+        provider_subject text NOT NULL,
+        email text,
+        email_verified boolean NOT NULL DEFAULT false,
+        display_name text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE(provider, provider_subject)
+      );
+
+      CREATE TABLE IF NOT EXISTS auth_sessions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_id text UNIQUE NOT NULL,
+        device_label text,
+        platform text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        expires_at timestamptz,
+        revoked_at timestamptz
+      );
+
+      CREATE TABLE IF NOT EXISTS account_deletion_requests (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status text NOT NULL,
+        reason text,
+        requested_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz
+      );
+
+      CREATE TABLE IF NOT EXISTS user_plans (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_code text NOT NULL,
+        status text NOT NULL,
+        source text NOT NULL,
+        billing_enabled boolean NOT NULL DEFAULT false,
+        current_period_end timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS account_audit_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        event_type text NOT NULL,
+        payload jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS situation_briefs (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -944,6 +997,12 @@ export async function runMigration(): Promise<void> {
       );
 
       CREATE INDEX IF NOT EXISTS transcript_by_session ON transcript_segments(session_id);
+      CREATE INDEX IF NOT EXISTS auth_accounts_by_user ON auth_accounts(user_id);
+      CREATE INDEX IF NOT EXISTS auth_sessions_by_user ON auth_sessions(user_id);
+      CREATE INDEX IF NOT EXISTS auth_sessions_by_token_id ON auth_sessions(token_id);
+      CREATE INDEX IF NOT EXISTS account_deletion_requests_by_user_status ON account_deletion_requests(user_id, status);
+      CREATE INDEX IF NOT EXISTS user_plans_by_user ON user_plans(user_id);
+      CREATE INDEX IF NOT EXISTS account_audit_events_by_user_created ON account_audit_events(user_id, created_at);
       CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS situation_briefs_by_user ON situation_briefs(user_id);
       CREATE INDEX IF NOT EXISTS memories_by_user ON memories(user_id);

@@ -60,11 +60,17 @@ describe("NearMind Relay policy", () => {
   });
 
   it("live verifier requires API and gateway URLs", () => {
-    const cfg = relayLiveConfigFromEnv({
-      LIVE_TEST_JWT_A: "secret.jwt.a",
-      LIVE_TEST_JWT_B: "secret.jwt.b",
-      LIVE_RELAY_TEST_EMAIL_B: "receiver@example.test",
-    });
+    const cfg = {
+      ...relayLiveConfigFromEnv({
+        LIVE_API_URL: "https://api.example.test",
+        LIVE_GATEWAY_URL: "https://voice.example.test",
+        LIVE_TEST_JWT_A: "secret.jwt.a",
+        LIVE_TEST_JWT_B: "secret.jwt.b",
+        LIVE_RELAY_TEST_EMAIL_B: "receiver@example.test",
+      }),
+      apiUrl: "",
+      gatewayUrl: "",
+    };
     expect(validateRelayLiveConfig(cfg)).toContain("LIVE_API_URL");
     expect(validateRelayLiveConfig(cfg)).toContain("LIVE_GATEWAY_URL");
   });

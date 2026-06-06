@@ -144,6 +144,9 @@ import { latencySummaryForSession } from "./voice/latency.js";
 import { mobileError } from "./protocol/errors.js";
 import { answerRelayChatIntent } from "./relay/chat.js";
 import { registerRelayRoutes } from "./relay/requests.js";
+import { registerAccountRoutes } from "./auth/account.js";
+import { registerAppleAuthRoutes } from "./auth/apple.js";
+import { registerEmailAuthRoutes } from "./auth/email-auth.js";
 
 const devUserBody = z.object({
   email: z.string().email(),
@@ -274,6 +277,9 @@ export async function buildServer() {
     };
   }
 
+  registerAppleAuthRoutes(app);
+  registerEmailAuthRoutes(app);
+  registerAccountRoutes(app, requireAuth);
   registerRelayRoutes(app, requireAuth);
 
   if (config.NODE_ENV !== "production") {

@@ -22,6 +22,16 @@ Review the generated icon visually before TestFlight. The in-app `NearMindLogo.i
 
 The beta app shell uses native tabs for Chat, Live, Sessions, and Profile. Chat is the default product home, Live is the explicit consent-based voice screen, and debug/developer tools are nested under Profile. Before TestFlight, review the tab flow on a physical iPhone and confirm the main experience does not expose raw diagnostics by default.
 
+## Auth And Account Status
+
+The app has an Auth Welcome screen and account shell. Sign in with Apple and email sign-in are UI/API-ready, but backend providers are disabled by default for alpha unless explicitly configured.
+
+- Developer token remains available only as an internal test-token path.
+- JWTs are stored in Keychain only.
+- Account deletion is request-based in v0.
+- Plan shows Internal Alpha and billing disabled.
+- No StoreKit, purchase button, price, fake paywall, or external payment link is present.
+
 ## Privacy Nutrition Labels To Prepare
 
 Prepare App Store privacy answers for:
@@ -31,6 +41,8 @@ Prepare App Store privacy answers for:
 - Session metadata, state, and latency metrics.
 - Relay request titles, summaries, statuses, messages, and approval decisions.
 - JWT-based account authentication.
+- Account deletion request status.
+- Plan status; billing is disabled in v0.
 
 Current v0 limitations:
 
@@ -59,3 +71,4 @@ NearMind uses the microphone only when you start a Live Assist session, so it ca
 - Chat can propose sensitive actions, but v0.5 only performs local approved preference changes and navigation.
 - Calendar/Gmail UI, Brain Console, push notifications, analytics, and autonomous actions are not included in this milestone.
 - Relay v0 is an in-app, human-approved request workflow only. It does not send email externally, expose public discovery, or share memory/profile/calendar/email data automatically.
+- Sign in with Apple must be enabled/configured server-side before public TestFlight login can rely on it.

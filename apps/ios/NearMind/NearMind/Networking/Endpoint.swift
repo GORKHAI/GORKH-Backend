@@ -6,6 +6,15 @@ enum Endpoint: Equatable {
     case brainDashboard
     case brainQuery
     case humanProfileReview
+    case authAppleVerify
+    case authEmailStart
+    case authEmailVerify
+    case accountMe
+    case accountSignOut
+    case accountDeleteRequest
+    case accountDeleteCancel
+    case planMe
+    case billingStatus
     case mobileSync(cursor: String?)
     case mobileSessionState(sessionID: String?)
     case sessionLatencySummary(sessionID: String?)
@@ -35,6 +44,24 @@ enum Endpoint: Equatable {
             return baseURL.appending(path: "brain/query")
         case .humanProfileReview:
             return baseURL.appending(path: "human/profile/review")
+        case .authAppleVerify:
+            return baseURL.appending(path: "auth/apple/verify")
+        case .authEmailStart:
+            return baseURL.appending(path: "auth/email/start")
+        case .authEmailVerify:
+            return baseURL.appending(path: "auth/email/verify")
+        case .accountMe:
+            return baseURL.appending(path: "account/me")
+        case .accountSignOut:
+            return baseURL.appending(path: "account/sign-out")
+        case .accountDeleteRequest:
+            return baseURL.appending(path: "account/delete-request")
+        case .accountDeleteCancel:
+            return baseURL.appending(path: "account/delete-cancel")
+        case .planMe:
+            return baseURL.appending(path: "plans/me")
+        case .billingStatus:
+            return baseURL.appending(path: "billing/status")
         case .mobileSync(let cursor):
             var components = URLComponents(url: baseURL.appending(path: "mobile/sync"), resolvingAgainstBaseURL: false)!
             if let cursor, !cursor.isEmpty {

@@ -10,6 +10,7 @@ import {
   real,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
@@ -171,6 +172,11 @@ export type AgentRequestApprovalDecision =
   | "rejected_to_share"
   | "ignored"
   | "blocked";
+export type AuthProvider = "apple" | "email" | "dev";
+export type AccountDeletionStatus = "requested" | "canceled" | "completed";
+export type UserPlanCode = "internal_alpha" | "free" | "pro" | "team";
+export type UserPlanStatus = "active" | "inactive" | "canceled" | "billing_not_enabled";
+export type UserPlanSource = "system" | "apple_storekit_future" | "admin";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -178,6 +184,99 @@ export const users = pgTable("users", {
   displayName: text("display_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").$type<AuthProvider>().notNull(),
+    providerSubject: text("provider_subject").notNull(),
+    email: text("email"),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    displayName: text("display_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byProviderSubject: uniqueIndex("auth_accounts_provider_subject_unique").on(t.provider, t.providerSubject),
+    byUser: index("auth_accounts_by_user").on(t.userId),
+  }),
+);
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenId: text("token_id").notNull().unique(),
+    deviceLabel: text("device_label"),
+    platform: text("platform"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => ({
+    byUser: index("auth_sessions_by_user").on(t.userId),
+    byToken: index("auth_sessions_by_token_id").on(t.tokenId),
+  }),
+);
+
+export const accountDeletionRequests = pgTable(
+  "account_deletion_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").$type<AccountDeletionStatus>().notNull(),
+    reason: text("reason"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    byUserStatus: index("account_deletion_requests_by_user_status").on(t.userId, t.status),
+  }),
+);
+
+export const userPlans = pgTable(
+  "user_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    planCode: text("plan_code").$type<UserPlanCode>().notNull(),
+    status: text("status").$type<UserPlanStatus>().notNull(),
+    source: text("source").$type<UserPlanSource>().notNull(),
+    billingEnabled: boolean("billing_enabled").notNull().default(false),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("user_plans_by_user").on(t.userId),
+  }),
+);
+
+export const accountAuditEvents = pgTable(
+  "account_audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserCreated: index("account_audit_events_by_user_created").on(t.userId, t.createdAt),
+  }),
+);
 
 export const situationBriefs = pgTable(
   "situation_briefs",
@@ -1709,6 +1808,11 @@ export const agentRelayAuditEvents = pgTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type AuthAccount = typeof authAccounts.$inferSelect;
+export type AuthSession = typeof authSessions.$inferSelect;
+export type AccountDeletionRequest = typeof accountDeletionRequests.$inferSelect;
+export type UserPlan = typeof userPlans.$inferSelect;
+export type AccountAuditEvent = typeof accountAuditEvents.$inferSelect;
 export type SituationBrief = typeof situationBriefs.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type TranscriptSegment = typeof transcriptSegments.$inferSelect;

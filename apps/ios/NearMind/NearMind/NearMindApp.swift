@@ -17,15 +17,18 @@ private struct RootView: View {
 
     var body: some View {
         Group {
-            if appState.hasCompletedOnboarding {
+            if !appState.hasCompletedOnboarding {
+                OnboardingView()
+            } else if appState.isAuthenticated {
                 MainTabView()
             } else {
-                OnboardingView()
+                AuthWelcomeView(appState: appState)
             }
         }
         .preferredColorScheme(.dark)
         .task {
             appState.refreshAuthStatus()
+            await appState.refreshAccount()
         }
     }
 }

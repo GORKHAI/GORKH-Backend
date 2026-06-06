@@ -91,13 +91,67 @@ describe("integration auth and situations", () => {
     expect(invalid.statusCode).toBe(401);
   });
 
-  it("keeps ops test-user disabled by default", async () => {
+  it("does not mint ops test users without an ops admin token", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/ops/test-user",
       payload: { email: "ops-disabled@example.com", displayName: "Ops Disabled" },
     });
-    expect(response.statusCode).toBe(404);
+    expect([401, 404]).toContain(response.statusCode);
+  });
+
+  it("keeps Apple and email auth readiness disabled clearly by default", async () => {
+    const apple = await app.inject({ method: "POST", url: "/auth/apple/verify", payload: { identityToken: "redacted" } });
+    expect(apple.statusCode).toBe(501);
+    expect(apple.json()).toMatchObject({ error: { code: "apple_sign_in_not_enabled" } });
+
+    const email = await app.inject({ method: "POST", url: "/auth/email/start", payload: { email: "auth-disabled@example.com" } });
+    expect(email.statusCode).toBe(501);
+    expect(email.json()).toMatchObject({ error: { code: "email_auth_not_enabled" } });
+  });
+
+  it("exposes account and plan shell without secrets", async () => {
+    const user = await devUser("it-account@example.com");
+    const missing = await app.inject({ method: "GET", url: "/account/me" });
+    expect(missing.statusCode).toBe(401);
+
+    const account = await app.inject({ method: "GET", url: "/account/me", headers: auth(user.token) });
+    expect(account.statusCode).toBe(200);
+    expect(account.json()).toMatchObject({ account: { id: user.user.id, email: user.user.email, plan: { planCode: "internal_alpha", billingEnabled: false } } });
+    expect(JSON.stringify(account.json())).not.toContain(user.token);
+
+    const plan = await app.inject({ method: "GET", url: "/plans/me", headers: auth(user.token) });
+    expect(plan.statusCode).toBe(200);
+    expect(plan.json()).toMatchObject({ plan: { planCode: "internal_alpha", status: "billing_not_enabled", billingEnabled: false } });
+
+    const billing = await app.inject({ method: "GET", url: "/billing/status" });
+    expect(billing.statusCode).toBe(200);
+    expect(billing.json()).toMatchObject({ billingEnabled: false, provider: "none" });
+  });
+
+  it("records account deletion request and syncs account status", async () => {
+    const user = await devUser("it-delete-account@example.com");
+    const deletion = await app.inject({ method: "POST", url: "/account/delete-request", headers: auth(user.token), payload: { reason: "Integration test" } });
+    expect(deletion.statusCode).toBe(200);
+    expect(deletion.json()).toMatchObject({ deletionRequest: { status: "requested" } });
+
+    const sync = await app.inject({ method: "GET", url: "/mobile/sync", headers: auth(user.token) });
+    expect(sync.statusCode).toBe(200);
+    const itemTypes = sync.json().items.map((item: { type: string }) => item.type);
+    expect(itemTypes).toContain("deletion_request_status");
+    expect(itemTypes).toContain("account_status");
+
+    const cancel = await app.inject({ method: "POST", url: "/account/delete-cancel", headers: auth(user.token), payload: {} });
+    expect(cancel.statusCode).toBe(200);
+    expect(cancel.json()).toMatchObject({ deletionRequest: { status: "canceled" } });
+  });
+
+  it("sign out asks the client to clear legacy tokens without logging the token", async () => {
+    const user = await devUser("it-signout@example.com");
+    const response = await app.inject({ method: "POST", url: "/account/sign-out", headers: auth(user.token), payload: {} });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ ok: true, sessionRevoked: false, clientClearRequired: true });
+    expect(JSON.stringify(response.json())).not.toContain(user.token);
   });
 
   it("creates bank and doctor situations and enforces ownership", async () => {

@@ -66,6 +66,8 @@ npm run gateway:replay -- text-prep-bank
 npm run gateway:replay:all
 npm run relay:replay -- request-draft
 npm run relay:replay:all
+npm run auth:replay -- apple-disabled
+npm run auth:replay:all
 ```
 
 `npm test` includes backend suites that import DB-backed modules and currently requires local service env such as `DATABASE_URL`; if that env is missing, those suites can fail during import. `npm run test:integration` requires real local Postgres and Redis.
@@ -85,6 +87,24 @@ cd apps/ios/NearMind
 ```
 
 NearMind iOS builds do not require a local backend. The typed live smoke screen uses production URLs and a pasted test JWT stored in Keychain. The app uses native Chat, Live, Sessions, and Profile tabs, with debug/developer tools nested under Profile. The Live Assist screen supports real-device smoke readiness, AppIcon generation, consent-gated microphone capture, PCM16 gateway streaming, audio route display, local/native iOS TTS, and latency summary display; it does not store provider keys, API secrets, or JWTs outside Keychain. Backend `npm test` requires local service env such as `DATABASE_URL` plus Redis/Upstash configuration; do not commit `.env` files or test JWTs.
+
+## NearMind Auth And Account
+
+Auth v0 adds a real account shell without enabling production auth providers by default.
+
+- `POST /auth/apple/verify` is ready for Sign in with Apple but returns `apple_sign_in_not_enabled` while `APPLE_SIGN_IN_ENABLED=false`.
+- `POST /auth/email/start` and `POST /auth/email/verify` return disabled/provider-not-configured errors while email auth is not configured. No fake email is sent.
+- `GET /account/me`, `POST /account/sign-out`, `POST /account/delete-request`, and `POST /account/delete-cancel` are authenticated account endpoints.
+- `GET /plans/me` returns the status-only `internal_alpha` plan.
+- `GET /billing/status` returns billing disabled. No StoreKit, pricing, fake paywall, or billing provider is active.
+
+Docs:
+
+- [Auth v0](docs/auth/auth-v0.md)
+- [Apple Sign In Readiness](docs/auth/apple-sign-in-readiness.md)
+- [Account Deletion Policy](docs/auth/account-deletion-policy.md)
+- [Plan Shell v0](docs/billing/plan-shell-v0.md)
+- [iOS Auth Account](apps/ios/NearMind/Docs/IOS_AUTH_ACCOUNT.md)
 
 ## NearMind Relay
 

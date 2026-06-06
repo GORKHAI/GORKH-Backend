@@ -39,6 +39,55 @@ final class APIClient {
     }
 
     @discardableResult
+    func verifyAppleSignIn(_ appleRequest: AppleVerifyRequest) async throws -> APIJSONResponse<AuthTokenResponse> {
+        let body = try JSONEncoder().encode(appleRequest)
+        return try await request(.authAppleVerify, method: .post, body: body, as: AuthTokenResponse.self)
+    }
+
+    @discardableResult
+    func startEmailSignIn(_ emailRequest: EmailStartRequest) async throws -> APIJSONResponse<EmptyResponse> {
+        let body = try JSONEncoder().encode(emailRequest)
+        return try await request(.authEmailStart, method: .post, body: body, as: EmptyResponse.self)
+    }
+
+    @discardableResult
+    func verifyEmailSignIn(_ emailRequest: EmailVerifyRequest) async throws -> APIJSONResponse<AuthTokenResponse> {
+        let body = try JSONEncoder().encode(emailRequest)
+        return try await request(.authEmailVerify, method: .post, body: body, as: AuthTokenResponse.self)
+    }
+
+    @discardableResult
+    func getAccountMe() async throws -> APIJSONResponse<AccountProfileResponse> {
+        try await request(.accountMe, as: AccountProfileResponse.self)
+    }
+
+    @discardableResult
+    func signOut() async throws -> APIJSONResponse<SignOutResponse> {
+        try await request(.accountSignOut, method: .post, body: Data("{}".utf8), as: SignOutResponse.self)
+    }
+
+    @discardableResult
+    func requestAccountDeletion(_ deleteRequest: DeleteAccountRequest) async throws -> APIJSONResponse<DeleteAccountResponse> {
+        let body = try JSONEncoder().encode(deleteRequest)
+        return try await request(.accountDeleteRequest, method: .post, body: body, as: DeleteAccountResponse.self)
+    }
+
+    @discardableResult
+    func cancelAccountDeletion() async throws -> APIJSONResponse<DeleteAccountResponse> {
+        try await request(.accountDeleteCancel, method: .post, body: Data("{}".utf8), as: DeleteAccountResponse.self)
+    }
+
+    @discardableResult
+    func getPlanMe() async throws -> APIJSONResponse<PlanStatusResponse> {
+        try await request(.planMe, as: PlanStatusResponse.self)
+    }
+
+    @discardableResult
+    func getBillingStatus() async throws -> APIJSONResponse<BillingStatus> {
+        try await request(.billingStatus, as: BillingStatus.self)
+    }
+
+    @discardableResult
     func getMobileSync(cursor: String?) async throws -> APIJSONResponse<MobileSyncResponse> {
         try await request(.mobileSync(cursor: cursor), as: MobileSyncResponse.self)
     }

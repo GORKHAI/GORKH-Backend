@@ -19,6 +19,8 @@ final class AppState: ObservableObject {
     @Published private(set) var isAuthenticated = false
     @Published private(set) var tokenStatus: TokenStatus = .missing
     @Published private(set) var eventLog: [DebugEvent] = []
+    @Published var account: AccountProfile?
+    @Published var billingStatus: BillingStatus?
     @Published var defaultAssistPolicy: AssistPolicy = .conversationAgent
 
     let environment: AppEnvironment
@@ -42,6 +44,44 @@ final class AppState: ObservableObject {
         let hasToken = (try? environment.tokenStore.readToken())?.isEmpty == false
         isAuthenticated = hasToken
         tokenStatus = hasToken ? .stored : .missing
+        if !hasToken {
+            account = nil
+            billingStatus = nil
+        }
+    }
+
+    func saveAuthenticatedToken(_ token: String) throws {
+        try environment.tokenStore.saveToken(token)
+        refreshAuthStatus()
+    }
+
+    func refreshAccount() async {
+        refreshAuthStatus()
+        guard isAuthenticated else { return }
+        do {
+            async let accountResponse = environment.apiClient.getAccountMe()
+            async let billingResponse = environment.apiClient.getBillingStatus()
+            account = try await accountResponse.decoded?.account
+            billingStatus = try await billingResponse.decoded
+        } catch {
+            if (error as? APIClientError)?.mobileErrorCode == "auth_invalid" {
+                markTokenInvalid()
+            }
+            appendLocal(message: "Account refresh failed: \(error.localizedDescription)")
+        }
+    }
+
+    func signOut() async {
+        do {
+            _ = try? await environment.apiClient.signOut()
+            try environment.tokenStore.clearToken()
+            account = nil
+            billingStatus = nil
+            refreshAuthStatus()
+            appendLocal(message: "Signed out.")
+        } catch {
+            appendLocal(message: "Sign out failed: \(error.localizedDescription)")
+        }
     }
 
     func markTokenInvalid() {
