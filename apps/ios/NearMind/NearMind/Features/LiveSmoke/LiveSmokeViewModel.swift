@@ -50,7 +50,7 @@ final class LiveSmokeViewModel: ObservableObject {
         } else if appState.tokenStatus == .invalid {
             set(.tokenStored, .failed, "Stored token was rejected by backend auth.")
         } else {
-            set(.tokenStored, .failed, "Paste and save a test JWT in Profile.")
+            set(.tokenStored, .failed, "Add a test JWT in You → Developer.")
         }
     }
 
@@ -234,7 +234,7 @@ final class LiveSmokeViewModel: ObservableObject {
     private func requireToken() -> Bool {
         refreshTokenCheck()
         guard appState?.tokenStatus == .stored else {
-            status = "Paste and save a test JWT in Profile first."
+            status = "Sign in or add a test JWT in You → Developer first."
             return false
         }
         return true

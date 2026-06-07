@@ -6,6 +6,8 @@ struct LiveAssistView: View {
     @StateObject private var viewModel = LiveAssistViewModel()
     @State private var situationType = "Meeting"
     @State private var showDiagnostics = false
+    @State private var showMoreOptions = false
+    @State private var showLiveNotes = false
 
     var body: some View {
         ScrollView {
@@ -55,37 +57,12 @@ struct LiveAssistView: View {
         VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
             NativeCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        MiniStatusBadge(
-                            text: viewModel.hasStoredToken ? "Token stored" : "Token missing",
-                            color: viewModel.hasStoredToken ? NearMindTheme.success : NearMindTheme.warning
-                        )
-                        MiniStatusBadge(
-                            text: "Mic \(viewModel.microphonePermissionStatus.rawValue)",
-                            color: viewModel.microphonePermissionStatus == .granted ? NearMindTheme.success : NearMindTheme.textSecondary
-                        )
-                    }
-
                     Picker("Situation", selection: $situationType) {
                         ForEach(["Meeting", "Decision", "Conversation", "Negotiation"], id: \.self) { value in
                             Text(value).tag(value)
                         }
                     }
                     .pickerStyle(.segmented)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Policy")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(NearMindTheme.textSecondary)
-                        Picker("Policy", selection: $viewModel.policy) {
-                            ForEach(AssistPolicy.allCases) { policy in
-                                Text(policy.displayTitle).tag(policy)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    labeledTextField("Title", text: $viewModel.title, prompt: "NearMind voice session")
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Context")
@@ -101,17 +78,53 @@ struct LiveAssistView: View {
                         .tint(NearMindTheme.accentMint)
                         .font(.subheadline)
                         .foregroundStyle(NearMindTheme.textPrimary)
+                        .accessibilityHint("Required before NearMind can start a live microphone session")
+
+                    DisclosureGroup(isExpanded: $showMoreOptions) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack {
+                                MiniStatusBadge(
+                                    text: viewModel.hasStoredToken ? "Token stored" : "Token missing",
+                                    color: viewModel.hasStoredToken ? NearMindTheme.success : NearMindTheme.warning
+                                )
+                                MiniStatusBadge(
+                                    text: "Mic \(viewModel.microphonePermissionStatus.rawValue)",
+                                    color: viewModel.microphonePermissionStatus == .granted ? NearMindTheme.success : NearMindTheme.textSecondary
+                                )
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Mode")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(NearMindTheme.textSecondary)
+                                Picker("Mode", selection: $viewModel.policy) {
+                                    ForEach(AssistPolicy.allCases) { policy in
+                                        Text(policy.displayTitle).tag(policy)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                            }
+
+                            labeledTextField("Session title", text: $viewModel.title, prompt: "NearMind voice session")
+                        }
+                        .padding(.top, 8)
+                    } label: {
+                        Text("More options")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NearMindTheme.textPrimary)
+                    }
                 }
             }
 
             NativeCard {
                 PrimaryButton(
-                    "Start Voice Session",
-                    systemImage: "waveform.circle",
+                    "Start Live Assist",
+                    systemImage: "mic.circle",
                     isDisabled: !viewModel.canStartVoiceSession
                 ) {
                     viewModel.startVoiceSession()
                 }
+                .accessibilityHint("Starts the microphone only after consent and gateway confirmation")
                 Text(startDisabledReason)
                     .font(.footnote)
                     .foregroundStyle(NearMindTheme.textSecondary)
@@ -123,8 +136,9 @@ struct LiveAssistView: View {
     private var activeSessionView: some View {
         VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
             liveStatusCard
-            liveTranscriptCard
+            currentGuidanceCard
             activeControlsCard
+            liveTranscriptCard
         }
     }
 
@@ -169,17 +183,38 @@ struct LiveAssistView: View {
             HStack {
                 Label(viewModel.ttsStatus, systemImage: "quote.bubble")
                 Spacer()
-                Text(viewModel.ttsDeliveryTarget)
+                Text(viewModel.ttsMuted ? "Muted" : viewModel.ttsDeliveryTarget)
             }
             .font(.caption)
             .foregroundStyle(NearMindTheme.textSecondary)
         }
     }
 
+    private var currentGuidanceCard: some View {
+        NativeCard {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(viewModel.policy == .whisperCopilot ? "Current cue" : "Current guidance")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                Text(primaryLiveLine)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(NearMindTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let transcript = viewModel.asrLog.first {
+                    Text(transcript)
+                        .font(.footnote)
+                        .foregroundStyle(NearMindTheme.textSecondary)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private var liveTranscriptCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ConsumerSectionHeader("Live Notes")
-            NativeCard {
+        DisclosureGroup(isExpanded: $showLiveNotes) {
+            VStack(alignment: .leading, spacing: 10) {
                 LogLane(title: "Transcript", rows: viewModel.asrLog)
                 Divider().overlay(NearMindTheme.border)
                 LogLane(title: viewModel.policy == .whisperCopilot ? "Cues" : "Assistant", rows: viewModel.policy == .whisperCopilot ? viewModel.cueLog : viewModel.assistantLog)
@@ -188,13 +223,24 @@ struct LiveAssistView: View {
                     LogLane(title: "Reports", rows: viewModel.subagentLog)
                 }
             }
+            .padding(.top, 8)
+        } label: {
+            HStack {
+                Image(systemName: "text.bubble")
+                Text("Transcript & notes")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(NearMindTheme.textPrimary)
         }
+        .padding(16)
+        .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius))
+        .overlay(RoundedRectangle(cornerRadius: NearMindTheme.radius).stroke(NearMindTheme.border, lineWidth: 1))
     }
 
     private var activeControlsCard: some View {
         NativeCard {
             HStack {
-                controlButton("Discard", "xmark.circle", role: .destructive) {
+                controlButton("Stop & Discard", "xmark.circle", role: .destructive) {
                     viewModel.stopWithoutSaving()
                 }
                 controlButton("Save", "tray.and.arrow.down") {
@@ -205,10 +251,13 @@ struct LiveAssistView: View {
                 controlButton("Disconnect", "bolt.slash", role: .destructive) {
                     viewModel.disconnect()
                 }
-                controlButton("Barge-In", "person.wave.2") {
+                controlButton("Barge in", "person.wave.2") {
                     viewModel.simulateBargeIn()
                 }
             }
+            Toggle("Mute spoken responses", isOn: $viewModel.ttsMuted)
+                .tint(NearMindTheme.accentMint)
+                .foregroundStyle(NearMindTheme.textPrimary)
         }
     }
 
@@ -286,7 +335,7 @@ struct LiveAssistView: View {
 
     private var startDisabledReason: String {
         if !viewModel.hasStoredToken {
-            return "Paste a test JWT in Profile before starting."
+            return "Sign in or add a test JWT in You → Developer before starting."
         }
         if !viewModel.hasConsent {
             return "Consent is required before the microphone can start."
@@ -321,6 +370,20 @@ struct LiveAssistView: View {
         .buttonStyle(.borderedProminent)
         .tint(role == .destructive ? NearMindTheme.error : NearMindTheme.primaryCTA)
         .disabled(viewModel.isBusy)
+        .accessibilityHint(role == .destructive ? "Stops active audio immediately" : "")
+    }
+
+    private var primaryLiveLine: String {
+        if viewModel.policy == .whisperCopilot, let cue = viewModel.cueLog.first {
+            return cue
+        }
+        if let assistant = viewModel.assistantLog.first {
+            return assistant
+        }
+        if let cue = viewModel.cueLog.first {
+            return cue
+        }
+        return viewModel.isMicrophoneRunning ? "Listening for the moment." : "Ready."
     }
 
     private func iconName(for status: RealDeviceSmokeCheckStatus) -> String {

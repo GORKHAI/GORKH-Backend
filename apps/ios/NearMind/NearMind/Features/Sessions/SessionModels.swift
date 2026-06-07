@@ -25,6 +25,7 @@ struct SessionListItem: Identifiable, Equatable {
     let retentionStatus: SessionRetentionStatus
     let summary: String?
     let cues: [String]
+    let commitments: [String]
     let followUps: [String]
     let transcriptSnippets: [String]
     let diagnostics: [String]
@@ -56,7 +57,8 @@ struct SessionListItem: Identifiable, Equatable {
             retentionStatus: retention,
             summary: summary,
             cues: item.strings(for: "cues", "keyCues", "voiceCues"),
-            followUps: item.strings(for: "followUps", "commitments", "tasks"),
+            commitments: item.strings(for: "commitments"),
+            followUps: item.strings(for: "followUps", "tasks"),
             transcriptSnippets: item.strings(for: "transcriptSnippets", "transcript", "snippets"),
             diagnostics: Self.diagnostics(from: item)
         )

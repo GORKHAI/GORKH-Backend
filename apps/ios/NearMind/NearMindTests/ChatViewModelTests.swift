@@ -13,7 +13,7 @@ final class ChatViewModelTests: XCTestCase {
         let viewModel = ChatViewModel()
 
         XCTAssertEqual(viewModel.messages.first?.role, .assistant)
-        XCTAssertTrue(viewModel.messages.first?.text.contains("what needs attention today") == true)
+        XCTAssertTrue(viewModel.messages.first?.text.contains("what needs attention") == true)
     }
 
     func testStartLiveQuickActionCreatesApprovalAndConfirmOpensLive() async {
@@ -40,11 +40,26 @@ final class ChatViewModelTests: XCTestCase {
         await viewModel.send("Mute voice replies")
 
         XCTAssertEqual(viewModel.pendingApproval?.kind, .muteVoiceReplies)
+        XCTAssertEqual(viewModel.pendingApproval?.confirmLabel, "Mute")
         XCTAssertFalse(appState.ttsMutedPreference)
 
         viewModel.confirmApproval()
 
         XCTAssertTrue(appState.ttsMutedPreference)
+    }
+
+    func testUnmuteVoiceRepliesRequiresApprovalAndStoresLocalPreference() async {
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        appState.setTTSMutedPreference(true)
+        let viewModel = ChatViewModel()
+        viewModel.configure(appState: appState, service: MockChatService())
+
+        await viewModel.send("Unmute voice replies")
+
+        XCTAssertEqual(viewModel.pendingApproval?.kind, .unmuteVoiceReplies)
+        viewModel.confirmApproval()
+
+        XCTAssertFalse(appState.ttsMutedPreference)
     }
 
     func testDeleteMemoryDoesNotCallBackendAndRoutesToProfileApproval() async {
@@ -57,6 +72,7 @@ final class ChatViewModelTests: XCTestCase {
         await viewModel.send("Delete my memory")
 
         XCTAssertEqual(viewModel.pendingApproval?.kind, .openProfileMemory)
+        XCTAssertEqual(viewModel.pendingApproval?.confirmLabel, "Open You")
         XCTAssertEqual(service.queryCallCount, 0)
         viewModel.confirmApproval()
         XCTAssertTrue(openedProfile)
@@ -71,7 +87,7 @@ final class ChatViewModelTests: XCTestCase {
         await viewModel.send("Explain my day")
 
         XCTAssertEqual(service.queryCallCount, 0)
-        XCTAssertEqual(viewModel.messages.last?.text, "Add a test token in Profile to chat with your assistant.")
+        XCTAssertEqual(viewModel.messages.last?.text, "Sign in or add a test token in You → Developer to chat with NearMind.")
     }
 
     func testAskIntentOpensRelayComposerWithoutBackendSend() async {
@@ -86,6 +102,20 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(service.queryCallCount, 0)
         XCTAssertEqual(relayGoal, "Ask Steve's agent if he is available for an investor call next week.")
         XCTAssertTrue(viewModel.messages.last?.text.contains("approve") == true)
+    }
+
+    func testAskSomeoneQuickActionDoesNotSendAutomatically() async {
+        let service = MockChatService()
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        let viewModel = ChatViewModel()
+        var relayGoal: String?
+        viewModel.configure(appState: appState, service: service, openRelayComposer: { relayGoal = $0 })
+
+        viewModel.handleQuickAction(.askSomeone)
+        await Task.yield()
+
+        XCTAssertEqual(service.queryCallCount, 0)
+        XCTAssertEqual(relayGoal, "Ask someone")
     }
 
     func testUnknownQueryHandlesBackendErrorSafely() async {
@@ -121,7 +151,7 @@ final class ChatViewModelTests: XCTestCase {
 
         await viewModel.send("What should I do today?")
 
-        XCTAssertEqual(service.todayCallCount, 1)
+        XCTAssertGreaterThanOrEqual(service.todayCallCount, 1)
         XCTAssertTrue(viewModel.messages.last?.text.contains("I don’t have any tasks yet") == true)
     }
 

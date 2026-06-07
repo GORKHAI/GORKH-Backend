@@ -1,40 +1,111 @@
 import SwiftUI
 
-enum ProfileSection: String, CaseIterable {
+enum YouSection: String, CaseIterable {
     case account = "Account"
-    case plan = "Plan"
-    case profileMemory = "Profile & Memory"
+    case memory = "Memory"
+    case privacy = "Privacy"
+    case requests = "Requests"
     case preferences = "Preferences"
-    case privacyData = "Privacy & Data"
     case audio = "Audio"
-    case approvals = "Approvals"
-    case diagnostics = "Diagnostics"
     case developer = "Developer"
 }
 
-struct ProfileView: View {
+struct YouView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var token = ""
-    @State private var statusMessage: String?
     @State private var microphoneStatus = SystemMicrophonePermissionProvider().currentStatus()
     @State private var relayUpdateCount = 0
 
     var body: some View {
         List {
-            accountSection
-            planSection
-            profileMemorySection
-            preferencesSection
-            privacySection
-            audioSection
-            approvalsSection
-            diagnosticsSection
-            developerSection
+            Section {
+                YouHeroRow(
+                    title: appState.account?.displayLabel ?? "NearMind is yours",
+                    subtitle: appState.account?.email ?? "Private assistant settings and memory live here."
+                )
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
+            Section {
+                NavigationLink {
+                    YouAccountView()
+                } label: {
+                    ProfileRow(
+                        title: "Account",
+                        subtitle: accountSubtitle,
+                        systemImage: "person.crop.circle"
+                    )
+                }
+
+                NavigationLink {
+                    YouMemoryView()
+                } label: {
+                    ProfileRow(
+                        title: "Memory",
+                        subtitle: "What NearMind knows and what still needs review",
+                        systemImage: "person.text.rectangle"
+                    )
+                }
+
+                NavigationLink {
+                    YouPrivacyView()
+                } label: {
+                    ProfileRow(
+                        title: "Privacy",
+                        subtitle: "Storage, exports, retention, and deletion requests",
+                        systemImage: "lock.shield"
+                    )
+                }
+
+                NavigationLink {
+                    YouRequestsView(client: relayClient)
+                } label: {
+                    ProfileRow(
+                        title: "Requests",
+                        subtitle: relaySubtitle,
+                        systemImage: "arrow.left.arrow.right"
+                    )
+                }
+
+                NavigationLink {
+                    YouPreferencesView()
+                } label: {
+                    ProfileRow(
+                        title: "Preferences",
+                        subtitle: appState.ttsMutedPreference ? "Spoken responses muted" : "Spoken responses on",
+                        systemImage: "slider.horizontal.3"
+                    )
+                }
+
+                NavigationLink {
+                    YouAudioView(microphoneStatus: microphoneStatus)
+                } label: {
+                    ProfileRow(
+                        title: "Audio",
+                        subtitle: "Microphone permission, output route, and local TTS",
+                        systemImage: "speaker.wave.2"
+                    )
+                }
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+
+            Section {
+                NavigationLink {
+                    YouDeveloperView()
+                } label: {
+                    ProfileRow(
+                        title: "Developer",
+                        subtitle: "Internal tools",
+                        systemImage: "hammer"
+                    )
+                }
+            }
+            .listRowBackground(NearMindTheme.elevatedBackground)
         }
         .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
         .tint(NearMindTheme.accentMint)
-        .navigationTitle("Profile")
+        .navigationTitle("You")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             appState.refreshAuthStatus()
@@ -46,210 +117,11 @@ struct ProfileView: View {
         }
     }
 
-    private var accountSection: some View {
-        Section(ProfileSection.account.rawValue) {
-            NavigationLink {
-                AccountView()
-            } label: {
-                ProfileRow(
-                    title: appState.account?.displayLabel ?? "NearMind account",
-                    subtitle: appState.account?.email ?? "Account, sign out, and deletion request",
-                    systemImage: "person.crop.circle"
-                )
-            }
-            Button(role: .destructive) {
-                Task { await appState.signOut() }
-            } label: {
-                ProfileRow(title: "Sign out", subtitle: "Clears the Keychain token from this device", systemImage: "rectangle.portrait.and.arrow.right")
-            }
+    private var accountSubtitle: String {
+        if let plan = appState.account?.plan.displayName {
+            return "\(plan) · Account and deletion request"
         }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var planSection: some View {
-        Section(ProfileSection.plan.rawValue) {
-            PlanStatusView(plan: appState.account?.plan, billing: appState.billingStatus)
-                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var profileMemorySection: some View {
-        Section(ProfileSection.profileMemory.rawValue) {
-            NavigationLink {
-                ProfileMemoryView()
-            } label: {
-                ProfileRow(title: "What NearMind knows", subtitle: "Confirmed facts and profile context", systemImage: "person.text.rectangle")
-            }
-            NavigationLink {
-                PendingFactsView()
-            } label: {
-                ProfileRow(title: "Pending facts", subtitle: "Review candidates before they become memory", systemImage: "tray.full")
-            }
-
-            NavigationLink {
-                RelayIdentityView(client: relayClient)
-            } label: {
-                ProfileRow(title: "Relay Identity", subtitle: "Private professional identity for agent requests", systemImage: "person.crop.circle")
-            }
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var preferencesSection: some View {
-        Section(ProfileSection.preferences.rawValue) {
-            Toggle(isOn: Binding(
-                get: { appState.ttsMutedPreference },
-                set: { appState.setTTSMutedPreference($0) }
-            )) {
-                ProfileRow(title: "Voice replies", subtitle: appState.ttsMutedPreference ? "Muted" : "Native TTS enabled", systemImage: "speaker.wave.2")
-            }
-
-            Picker("Default Live mode", selection: Binding(
-                get: { appState.defaultAssistPolicy },
-                set: { appState.setDefaultAssistPolicy($0) }
-            )) {
-                ForEach(AssistPolicy.allCases) { policy in
-                    Text(policy.profileTitle).tag(policy)
-                }
-            }
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var privacySection: some View {
-        Section(ProfileSection.privacyData.rawValue) {
-            NavigationLink {
-                ProfilePrivacyDataView()
-            } label: {
-                ProfileRow(title: "Privacy controls", subtitle: "Consent, retention, logs, and local data", systemImage: "lock.shield")
-            }
-
-            NavigationLink {
-                StorageView()
-            } label: {
-                ProfileRow(title: "Storage", subtitle: "Long-term storage, exports, and deletion requests", systemImage: "archivebox")
-            }
-
-            NavigationLink {
-                DeleteAccountView()
-            } label: {
-                ProfileRow(title: "Request account deletion", subtitle: appState.account?.deletionStatus ?? "Sends a backend deletion request", systemImage: "person.crop.circle.badge.xmark")
-            }
-
-            Button(role: .destructive) {
-                clearToken()
-            } label: {
-                ProfileRow(title: "Clear local token", subtitle: "Removes the test JWT from Keychain", systemImage: "key.slash")
-            }
-
-            Button(role: .destructive) {
-                appState.clearEvents()
-                statusMessage = "Local logs cleared."
-            } label: {
-                ProfileRow(title: "Clear local logs", subtitle: "Clears local debug entries only", systemImage: "trash")
-            }
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var audioSection: some View {
-        Section(ProfileSection.audio.rawValue) {
-            LabeledContent("Microphone", value: microphoneStatus.rawValue)
-            ProfileRow(title: "Audio route", subtitle: "Native speech uses the current output route", systemImage: "speaker.wave.3")
-            ProfileRow(title: "Recording", subtitle: "No hidden or background always-listening mode", systemImage: "mic.slash")
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var approvalsSection: some View {
-        Section(ProfileSection.approvals.rawValue) {
-            NavigationLink {
-                RelayInboxView(client: relayClient)
-            } label: {
-                ProfileRow(title: "Agent Requests", subtitle: relaySubtitle, systemImage: "arrow.left.arrow.right")
-            }
-            NavigationLink {
-                RelayContactListView(client: relayClient)
-            } label: {
-                ProfileRow(title: "Trusted Contacts", subtitle: "People your agent can draft controlled requests for", systemImage: "person.2")
-            }
-            ProfileRow(title: "Sensitive changes", subtitle: "Chat proposes actions; you approve before changes happen", systemImage: "checkmark.shield")
-            ProfileRow(title: "Memory deletion", subtitle: "Disabled from chat in v0.5; review is required", systemImage: "exclamationmark.triangle")
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var diagnosticsSection: some View {
-        Section(ProfileSection.diagnostics.rawValue) {
-            NavigationLink {
-                ProfileDiagnosticsView()
-            } label: {
-                ProfileRow(title: "Diagnostics", subtitle: "Backend endpoints, app version, and health context", systemImage: "stethoscope")
-            }
-        }
-        .listRowBackground(NearMindTheme.cardSurface)
-    }
-
-    private var developerSection: some View {
-        Section(ProfileSection.developer.rawValue) {
-            LabeledContent("Token status", value: tokenStatusText)
-
-            SecureField("Paste test JWT", text: $token)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-
-            Text("Paste a test JWT generated by the backend. NearMind stores it in Keychain only.")
-                .font(.footnote)
-                .foregroundStyle(NearMindTheme.textSecondary)
-
-            Button {
-                saveToken()
-            } label: {
-                Label("Save token to Keychain", systemImage: "key")
-            }
-            .disabled(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-            NavigationLink {
-                LiveSmokeView()
-            } label: {
-                ProfileRow(title: "Typed Live Smoke", subtitle: "Developer protocol test without microphone", systemImage: "keyboard")
-            }
-
-            NavigationLink {
-                DebugEventLogView()
-            } label: {
-                ProfileRow(title: "Debug event log", subtitle: "Token and raw audio payloads are not logged", systemImage: "doc.text.magnifyingglass")
-            }
-
-            if let statusMessage {
-                Text(statusMessage)
-                    .font(.footnote)
-                    .foregroundStyle(NearMindTheme.textSecondary)
-            }
-        }
-        .listRowBackground(NearMindTheme.elevatedBackground)
-    }
-
-    private func saveToken() {
-        do {
-            try appState.environment.tokenStore.saveToken(token.trimmingCharacters(in: .whitespacesAndNewlines))
-            token = ""
-            statusMessage = "Token saved."
-            appState.refreshAuthStatus()
-        } catch {
-            statusMessage = error.localizedDescription
-        }
-    }
-
-    private func clearToken() {
-        do {
-            try appState.environment.tokenStore.clearToken()
-            statusMessage = "Token cleared."
-            appState.refreshAuthStatus()
-        } catch {
-            statusMessage = error.localizedDescription
-        }
+        return "Account, plan, sign out, and deletion request"
     }
 
     private var relayClient: APIClient {
@@ -273,16 +145,30 @@ struct ProfileView: View {
             relayUpdateCount = 0
         }
     }
+}
 
-    private var tokenStatusText: String {
-        switch appState.tokenStatus {
-        case .missing:
-            return "missing"
-        case .stored:
-            return "stored"
-        case .invalid:
-            return "invalid"
+private struct YouHeroRow: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            NearMindLogoMark(size: 42)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(NearMindTheme.textPrimary)
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -307,6 +193,280 @@ struct ProfileRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+private struct YouAccountView: View {
+    var body: some View {
+        AccountView()
+            .navigationTitle("Account")
+    }
+}
+
+private struct YouMemoryView: View {
+    var body: some View {
+        List {
+            Section("Memory") {
+                NavigationLink {
+                    ProfileMemoryView()
+                } label: {
+                    ProfileRow(title: "What NearMind knows", subtitle: "Confirmed facts and profile context", systemImage: "person.text.rectangle")
+                }
+                NavigationLink {
+                    PendingFactsView()
+                } label: {
+                    ProfileRow(title: "Pending facts", subtitle: "Review candidates before they become memory", systemImage: "tray.full")
+                }
+                ProfileRow(title: "Delete memory", subtitle: "Requires review. NearMind does not delete memory directly from chat.", systemImage: "exclamationmark.triangle")
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(NearMindTheme.background.ignoresSafeArea())
+        .navigationTitle("Memory")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct YouPrivacyView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var statusMessage: String?
+
+    var body: some View {
+        List {
+            Section("Privacy") {
+                NavigationLink {
+                    ProfilePrivacyDataView()
+                } label: {
+                    ProfileRow(title: "Consent-first design", subtitle: "Live Assist starts only when you choose.", systemImage: "hand.raised")
+                }
+
+                NavigationLink {
+                    StorageView()
+                } label: {
+                    ProfileRow(title: "Storage", subtitle: "Saved data, exports, archived reports, and deletion requests", systemImage: "archivebox")
+                }
+
+                NavigationLink {
+                    DeleteAccountView()
+                } label: {
+                    ProfileRow(title: "Account deletion", subtitle: appState.account?.deletionStatus ?? "Sends a backend deletion request", systemImage: "person.crop.circle.badge.xmark")
+                }
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+
+            Section("Local data") {
+                Button(role: .destructive) {
+                    appState.clearEvents()
+                    statusMessage = "Local logs cleared."
+                } label: {
+                    ProfileRow(title: "Clear local logs", subtitle: "Clears local debug entries only", systemImage: "trash")
+                }
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(NearMindTheme.textSecondary)
+                }
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(NearMindTheme.background.ignoresSafeArea())
+        .navigationTitle("Privacy")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct YouRequestsView: View {
+    let client: RelayAPIClientProtocol
+
+    var body: some View {
+        List {
+            Section("Requests") {
+                NavigationLink {
+                    RelayInboxView(client: client)
+                } label: {
+                    ProfileRow(title: "Requests from people", subtitle: "Inbox, sent requests, drafts, and approvals", systemImage: "arrow.left.arrow.right")
+                }
+                NavigationLink {
+                    RelayContactListView(client: client)
+                } label: {
+                    ProfileRow(title: "Trusted contacts", subtitle: "People your agent can draft controlled requests for", systemImage: "person.2")
+                }
+                NavigationLink {
+                    RelayIdentityView(client: client)
+                } label: {
+                    ProfileRow(title: "Your request identity", subtitle: "Private professional identity for agent requests", systemImage: "person.crop.circle")
+                }
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+
+            Section("Control") {
+                ProfileRow(title: "Human approval required", subtitle: "NearMind drafts requests; you approve before anything is sent.", systemImage: "checkmark.shield")
+                ProfileRow(title: "No external send in v0", subtitle: "Requests stay inside the controlled approval flow.", systemImage: "lock")
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(NearMindTheme.background.ignoresSafeArea())
+        .navigationTitle("Requests")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct YouPreferencesView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        List {
+            Section("Assistant") {
+                Toggle(isOn: Binding(
+                    get: { appState.ttsMutedPreference },
+                    set: { appState.setTTSMutedPreference($0) }
+                )) {
+                    ProfileRow(title: "Spoken responses", subtitle: appState.ttsMutedPreference ? "Muted" : "Native TTS enabled", systemImage: "speaker.wave.2")
+                }
+                .accessibilityHint("Turns local spoken responses on or off")
+
+                Picker("Default Live mode", selection: Binding(
+                    get: { appState.defaultAssistPolicy },
+                    set: { appState.setDefaultAssistPolicy($0) }
+                )) {
+                    ForEach(AssistPolicy.allCases) { policy in
+                        Text(policy.profileTitle).tag(policy)
+                    }
+                }
+
+                ProfileRow(title: "Answer length", subtitle: "NearMind will tune this later as a local preference.", systemImage: "text.alignleft")
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(NearMindTheme.background.ignoresSafeArea())
+        .navigationTitle("Preferences")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct YouAudioView: View {
+    let microphoneStatus: MicrophonePermissionStatus
+
+    var body: some View {
+        List {
+            Section("Audio") {
+                LabeledContent("Microphone", value: microphoneStatus.rawValue)
+                ProfileRow(title: "Audio route", subtitle: "Native speech uses the current output route", systemImage: "speaker.wave.3")
+                ProfileRow(title: "Recording", subtitle: "No hidden or background always-listening mode", systemImage: "mic.slash")
+            }
+            .listRowBackground(NearMindTheme.cardSurface)
+        }
+        .scrollContentBackground(.hidden)
+        .background(NearMindTheme.background.ignoresSafeArea())
+        .navigationTitle("Audio")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct YouDeveloperView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var token = ""
+    @State private var statusMessage: String?
+
+    var body: some View {
+        List {
+            Section("Developer token") {
+                LabeledContent("Token status", value: tokenStatusText)
+
+                SecureField("Paste test JWT", text: $token)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                Text("Paste a test JWT generated by the backend. NearMind stores it in Keychain only.")
+                    .font(.footnote)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+
+                Button {
+                    saveToken()
+                } label: {
+                    Label("Save token to Keychain", systemImage: "key")
+                }
+                .disabled(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button(role: .destructive) {
+                    clearToken()
+                } label: {
+                    Label("Clear local token", systemImage: "key.slash")
+                }
+            }
+            .listRowBackground(NearMindTheme.elevatedBackground)
+
+            Section("Internal tools") {
+                NavigationLink {
+                    LiveSmokeView()
+                } label: {
+                    ProfileRow(title: "Typed Live Smoke", subtitle: "Developer protocol test without microphone", systemImage: "keyboard")
+                }
+
+                NavigationLink {
+                    DebugEventLogView()
+                } label: {
+                    ProfileRow(title: "Debug event log", subtitle: "Token and raw audio payloads are not logged", systemImage: "doc.text.magnifyingglass")
+                }
+
+                NavigationLink {
+                    ProfileDiagnosticsView()
+                } label: {
+                    ProfileRow(title: "Diagnostics", subtitle: "Backend endpoints, app version, and health context", systemImage: "stethoscope")
+                }
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(NearMindTheme.textSecondary)
+                }
+            }
+            .listRowBackground(NearMindTheme.elevatedBackground)
+        }
+        .scrollContentBackground(.hidden)
+        .background(NearMindTheme.background.ignoresSafeArea())
+        .navigationTitle("Developer")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            appState.refreshAuthStatus()
+        }
+    }
+
+    private func saveToken() {
+        do {
+            try appState.environment.tokenStore.saveToken(token.trimmingCharacters(in: .whitespacesAndNewlines))
+            token = ""
+            statusMessage = "Token saved."
+            appState.refreshAuthStatus()
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private func clearToken() {
+        do {
+            try appState.environment.tokenStore.clearToken()
+            statusMessage = "Token cleared."
+            appState.refreshAuthStatus()
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private var tokenStatusText: String {
+        switch appState.tokenStatus {
+        case .missing:
+            return "missing"
+        case .stored:
+            return "stored"
+        case .invalid:
+            return "invalid"
+        }
     }
 }
 

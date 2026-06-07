@@ -22,10 +22,11 @@ struct ChatMessage: Identifiable, Equatable {
 
 enum ChatQuickAction: String, CaseIterable, Identifiable {
     case today = "What should I do today?"
-    case meetingPrep = "Prepare me for a meeting"
-    case startLive = "Start Live Assist"
+    case meetingPrep = "Prepare me"
+    case startLive = "Start Live"
     case promises = "What did I promise?"
     case memory = "Show my memory"
+    case askSomeone = "Ask someone"
 
     var id: String { rawValue }
 }
@@ -34,6 +35,7 @@ struct ChatApproval: Identifiable, Equatable {
     enum Kind: Equatable {
         case openLive
         case muteVoiceReplies
+        case unmuteVoiceReplies
         case openProfileMemory
     }
 
@@ -49,6 +51,17 @@ struct ChatApproval: Identifiable, Equatable {
     let confirmLabel: String
     let cancelLabel: String
     let riskLevel: RiskLevel?
+}
+
+struct ChatBriefingSummary: Equatable {
+    let openTaskCount: Int
+    let relayRequestCount: Int
+    let pendingApprovalCount: Int
+    let recentSessionTitle: String?
+
+    var hasContent: Bool {
+        openTaskCount > 0 || relayRequestCount > 0 || pendingApprovalCount > 0 || recentSessionTitle != nil
+    }
 }
 
 struct ChatMemorySummary: Equatable {

@@ -46,8 +46,8 @@ Typed live smoke must not start microphone capture, native TTS, push notificatio
 4. Tap Continue with Email and confirm the app says email sign-in is not enabled in this alpha.
 5. Tap Continue with Apple only on a signed-in simulator/device. If backend Apple auth is disabled, confirm a clear not-enabled message appears.
 6. Tap Use test token and paste a valid backend JWT.
-7. Confirm the app enters Chat/Live/Sessions/Profile.
-8. Open Profile and confirm Account and Plan sections appear above developer tools.
+7. Confirm the app enters Chat/Live/Sessions/You.
+8. Open You and confirm Account appears above Developer.
 9. Confirm Plan says Internal Alpha and billing is not enabled.
 10. Open Account and tap Sign out. Confirm the app returns to Auth Welcome and the local token is cleared.
 11. Sign in again with a test token.
@@ -60,7 +60,7 @@ Typed live smoke must not start microphone capture, native TTS, push notificatio
 
 Conversation test:
 
-1. Paste a valid test JWT in Profile > Developer.
+1. Paste a valid test JWT in You > Developer.
 2. Open Live.
 3. Select `conversation_agent`.
 4. Enter situation:
@@ -70,7 +70,7 @@ Bank loan meeting preparation.
 ```
 
 5. Check consent.
-6. Tap Start Voice Session.
+6. Tap Start Live Assist.
 7. Grant microphone permission when iOS prompts.
 8. Say:
 
@@ -88,7 +88,7 @@ Whisper test:
 
 1. Select `whisper_copilot`.
 2. Check consent.
-3. Tap Start Voice Session.
+3. Tap Start Live Assist.
 4. Say:
 
 ```text
@@ -138,7 +138,7 @@ Use `IOS_REAL_DEVICE_SMOKE.md` for the full physical iPhone checklist. The Live 
 
 1. Launch NearMind in an iOS simulator.
 2. Complete onboarding.
-3. Open Profile.
+3. Open You.
 4. Paste a valid test JWT.
 5. Save the token to Keychain.
 6. Open Live.
@@ -173,41 +173,60 @@ The APR is 9.4 percent and there is also an arrangement fee.
 2. Confirm the assistant welcome says:
 
 ```text
-Tell me what’s happening, or ask me what needs attention today.
+Tell me what’s happening, or ask what needs attention.
 ```
 
-3. Tap `Start Live Assist`.
-4. Confirm an approval card appears and microphone recording does not start.
-5. Tap `Open Live` and confirm the app switches to Live without starting a session.
-6. Return to Chat and ask:
+3. Confirm the tabs are Chat, Live, Sessions, and You.
+4. Tap `Start Live`.
+5. Confirm an approval card appears and microphone recording does not start.
+6. Tap `Open Live` and confirm the app switches to Live without starting a session.
+7. Return to Chat and ask:
 
 ```text
 Mute voice replies
 ```
 
-7. Confirm an approval card appears; tap Confirm and verify Profile shows voice replies muted.
-8. Ask:
+8. Confirm an approval card appears; tap Mute and verify You > Preferences shows spoken responses muted.
+9. Ask:
 
 ```text
 Delete my memory
 ```
 
-9. Confirm NearMind does not delete anything and offers to open Profile & Memory.
-10. Remove the token, ask an unknown question, and confirm Chat says to add a test token in Profile.
-11. Paste a token in Profile > Developer and ask:
+10. Confirm NearMind does not delete anything and offers to open You → Memory.
+11. Remove the token, ask an unknown question, and confirm Chat says to sign in or add a test token in You → Developer.
+12. Paste a token in You > Developer and ask:
 
 ```text
 Ask Steve's agent if he is available for an investor call next week.
 ```
 
-12. Confirm NearMind opens the Relay composer instead of sending automatically.
+13. Confirm NearMind opens the request composer instead of sending automatically.
+14. Ask:
+
+```text
+What should I do today?
+```
+
+15. Confirm Chat uses mobile sync data or shows a quiet empty state.
+16. Tap the Chat mic button and confirm it does not start recording; use Live for voice sessions.
+
+## Assistant-First UX v0.6
+
+1. Confirm You top level shows Account, Memory, Privacy, Requests, Preferences, Audio, and Developer.
+2. Confirm Developer is the final/lower-priority section.
+3. Open You > Privacy > Storage and confirm provider details are behind Technical details.
+4. Open You > Requests and confirm user-facing labels say Requests from people, Sent, Drafts, and Needs approval.
+5. Open Live with no active session and confirm only context, consent, Start Live Assist, and More options are primary.
+6. Start a consented Live session and confirm Stop & Discard remains visible during the active session.
+7. Open a saved session and confirm Summary/Key Moments/Commitments/Follow-ups appear before Diagnostics.
 
 ## Relay Agent Requests v0
 
-1. Paste a valid test JWT in Profile > Developer.
-2. Open Profile > Agent Requests.
-3. Confirm Inbox, Outbox, Drafts, and Approvals tabs are visible.
-4. Tap Draft a Relay request.
+1. Paste a valid test JWT in You > Developer.
+2. Open You > Requests.
+3. Confirm Requests from people, Sent, Drafts, and Needs approval tabs are visible.
+4. Tap Draft a request.
 5. Enter recipient:
 
 ```text
@@ -231,12 +250,5 @@ Ask if next week works for an investor call.
 Ask this investor if they want the deck.
 ```
 
-13. Confirm Chat opens the Relay composer and does not send automatically.
+13. Confirm Chat opens the request composer and does not send automatically.
 14. Open Debug Log and confirm no token, raw audio, provider key, or client `userId` appears.
-
-```text
-What should I do today?
-```
-
-12. Confirm Chat uses mobile sync data or shows a quiet empty state.
-13. Tap the Chat mic button and confirm it does not start recording; use Live for voice sessions.

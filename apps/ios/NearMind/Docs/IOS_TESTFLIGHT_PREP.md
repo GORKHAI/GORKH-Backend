@@ -20,7 +20,7 @@ Review the generated icon visually before TestFlight. The in-app `NearMindLogo.i
 
 ## UI Status
 
-The beta app shell uses native tabs for Chat, Live, Sessions, and Profile. Chat is the default product home, Live is the explicit consent-based voice screen, and debug/developer tools are nested under Profile. Before TestFlight, review the tab flow on a physical iPhone and confirm the main experience does not expose raw diagnostics by default.
+The beta app shell uses native tabs for Chat, Live, Sessions, and You. Chat is the default product home, Live is the explicit consent-based voice screen, and debug/developer tools are nested under You > Developer. Before TestFlight, review the tab flow on a physical iPhone and confirm the main experience does not expose raw diagnostics by default.
 
 ## Auth And Account Status
 
@@ -68,13 +68,13 @@ NearMind uses the microphone only when you start a Live Assist session, so it ca
 - Signing team must be configured locally.
 - Sessions and Today depend on currently available mobile sync data and show empty states when the backend has no saved data.
 - Background recording is intentionally disabled.
-- Chat can propose sensitive actions, but v0.5 only performs local approved preference changes and navigation.
+- Chat can propose sensitive actions, but v0.6 only performs local approved preference changes and navigation.
 - Calendar/Gmail UI, Brain Console, push notifications, analytics, and autonomous actions are not included in this milestone.
 - Relay v0 is an in-app, human-approved request workflow only. It does not send email externally, expose public discovery, or share memory/profile/calendar/email data automatically.
 - Sign in with Apple must be enabled/configured server-side before public TestFlight login can rely on it.
 ## Privacy & Storage
 
-- Profile includes a Privacy & Data → Storage screen.
+- You includes Privacy → Storage.
 - Storage usage and object lists come from backend-owned `/storage/*` APIs.
 - R2 credentials are never stored in the app.
 - Signed download URLs are requested from the backend and expire quickly.

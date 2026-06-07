@@ -3,8 +3,8 @@ import XCTest
 
 final class UIArchitectureTests: XCTestCase {
     func testRootTabStructure() {
-        XCTAssertEqual(AppTab.allCases.map(\.title), ["Chat", "Live", "Sessions", "Profile"])
-        XCTAssertEqual(AppTab.allCases.map(\.systemImage), ["message", "waveform", "clock", "person.crop.circle"])
+        XCTAssertEqual(AppTab.allCases.map(\.title), ["Chat", "Live", "Sessions", "You"])
+        XCTAssertEqual(AppTab.allCases.map(\.systemImage), ["bubble.left.and.bubble.right", "mic.circle", "clock", "person.crop.circle"])
     }
 
     func testOnboardingProgressionContent() {
@@ -58,6 +58,7 @@ final class UIArchitectureTests: XCTestCase {
             "retentionPolicy": JSONValue("discard_on_stop"),
             "createdAt": JSONValue("2026-06-05T09:00:00Z"),
             "cues": JSONValue([JSONValue("Ask whether the APR includes fees.")]),
+            "commitments": JSONValue([JSONValue("Send updated terms.")]),
             "followUps": JSONValue([JSONValue("Compare prepayment penalties.")])
         ])
 
@@ -67,22 +68,21 @@ final class UIArchitectureTests: XCTestCase {
         XCTAssertEqual(item?.title, "APR review")
         XCTAssertEqual(item?.retentionStatus, .discarded)
         XCTAssertEqual(item?.cues, ["Ask whether the APR includes fees."])
+        XCTAssertEqual(item?.commitments, ["Send updated terms."])
         XCTAssertEqual(item?.followUps, ["Compare prepayment penalties."])
         XCTAssertNotNil(item?.date)
     }
 
-    func testProfileSectionsMoveDeveloperToolsDeeper() {
-        XCTAssertEqual(ProfileSection.allCases.map(\.rawValue), [
+    func testYouSectionsKeepDeveloperToolsLast() {
+        XCTAssertEqual(YouSection.allCases.map(\.rawValue), [
             "Account",
-            "Plan",
-            "Profile & Memory",
+            "Memory",
+            "Privacy",
+            "Requests",
             "Preferences",
-            "Privacy & Data",
             "Audio",
-            "Approvals",
-            "Diagnostics",
             "Developer"
         ])
-        XCTAssertEqual(ProfileSection.allCases.last, .developer)
+        XCTAssertEqual(YouSection.allCases.last, .developer)
     }
 }

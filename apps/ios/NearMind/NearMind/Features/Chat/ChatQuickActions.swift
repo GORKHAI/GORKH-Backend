@@ -19,6 +19,7 @@ struct ChatQuickActions: View {
                             .overlay(Capsule().stroke(NearMindTheme.border, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint("Adds this request to the chat")
                 }
             }
             .padding(.horizontal, NearMindTheme.pagePadding)

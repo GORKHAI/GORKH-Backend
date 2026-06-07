@@ -8,14 +8,20 @@ struct StorageView: View {
     @State private var message: String?
     @State private var isLoading = false
     @State private var latestDownloadURL: String?
+    @State private var showTechnicalDetails = false
 
     var body: some View {
         List {
-            Section("Long-term storage") {
-                LabeledContent("Provider", value: status?.provider.uppercased() ?? "Loading")
-                LabeledContent("Configured", value: status?.configured == true ? "Yes" : "No")
-                LabeledContent("Fair-use limits", value: "Apply")
-                LabeledContent("Raw audio", value: status?.audioSaveDefault == true ? "Opt-in enabled" : "Off by default")
+            Section("Saved data") {
+                ProfileRow(title: "Long-term storage", subtitle: "Saved sessions, reports, exports, and documents use fair-use limits.", systemImage: "archivebox")
+                ProfileRow(title: "Audio recordings", subtitle: status?.audioSaveDefault == true ? "Opt-in storage is enabled." : "Off by default.", systemImage: "mic.slash")
+                DisclosureGroup(isExpanded: $showTechnicalDetails) {
+                    LabeledContent("Provider", value: status?.provider.uppercased() ?? "Loading")
+                    LabeledContent("Configured", value: status?.configured == true ? "Yes" : "No")
+                } label: {
+                    Label("Technical details", systemImage: "server.rack")
+                }
+                .foregroundStyle(NearMindTheme.textPrimary)
             }
             .listRowBackground(NearMindTheme.cardSurface)
 
@@ -74,6 +80,7 @@ struct StorageView: View {
                 } label: {
                     Label("Request data deletion", systemImage: "trash")
                 }
+                .accessibilityHint("Creates a backend deletion request for review")
 
                 if let latestDownloadURL {
                     Text("Download link ready. It expires quickly and should be opened only from a trusted device.")
@@ -169,4 +176,3 @@ private func formatBytes(_ bytes: Double) -> String {
     formatter.countStyle = .file
     return formatter.string(fromByteCount: Int64(bytes))
 }
-

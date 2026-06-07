@@ -89,7 +89,7 @@ struct RelayComposerView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
-        .navigationTitle("New Relay Request")
+        .navigationTitle("New Request")
         .navigationBarTitleDisplayMode(.inline)
     }
 

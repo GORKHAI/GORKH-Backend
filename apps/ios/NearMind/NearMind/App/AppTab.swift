@@ -17,16 +17,16 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .sessions:
             return "Sessions"
         case .profile:
-            return "Profile"
+            return "You"
         }
     }
 
     var systemImage: String {
         switch self {
         case .chat:
-            return "message"
+            return "bubble.left.and.bubble.right"
         case .live:
-            return "waveform"
+            return "mic.circle"
         case .sessions:
             return "clock"
         case .profile:

@@ -10,7 +10,7 @@ struct RelayContactListView: View {
     var body: some View {
         List {
             if viewModel.contacts.isEmpty && !viewModel.isLoading {
-                NativeEmptyRow(title: "No trusted contacts", subtitle: "Contacts are created when you draft requests or add them through Relay.")
+                NativeEmptyRow(title: "No trusted contacts", subtitle: "Contacts are created when you draft private requests.")
             } else {
                 ForEach(viewModel.contacts) { contact in
                     VStack(alignment: .leading, spacing: 4) {
@@ -54,7 +54,7 @@ struct RelayIdentityView: View {
 
     var body: some View {
         List {
-            Section("Relay identity") {
+            Section("Request identity") {
                 LabeledContent("Name", value: identity["displayName"]?.stringValue ?? "Not set")
                 LabeledContent("Visibility", value: identity["profileVisibility"]?.stringValue ?? "private")
                 LabeledContent("Enabled", value: (identity["relayEnabled"]?.boolValue ?? true) ? "Yes" : "No")
@@ -62,8 +62,8 @@ struct RelayIdentityView: View {
             .listRowBackground(NearMindTheme.cardSurface)
 
             Section("Privacy") {
-                ProfileRow(title: "Private by default", subtitle: "Profile and memory are never exposed automatically.", systemImage: "lock")
-                ProfileRow(title: "Limited Relay identity", subtitle: "Only your display identity is used for controlled requests.", systemImage: "person.crop.circle.badge.checkmark")
+                ProfileRow(title: "Private by default", subtitle: "Memory and profile details are never exposed automatically.", systemImage: "lock")
+                ProfileRow(title: "Limited request identity", subtitle: "Only your display identity is used for controlled requests.", systemImage: "person.crop.circle.badge.checkmark")
             }
             .listRowBackground(NearMindTheme.cardSurface)
 
@@ -76,7 +76,7 @@ struct RelayIdentityView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
-        .navigationTitle("Relay Identity")
+        .navigationTitle("Request Identity")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await load()

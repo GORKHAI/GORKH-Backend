@@ -38,5 +38,6 @@ struct ApprovalCardView: View {
         .padding(16)
         .background(NearMindTheme.cardSurface, in: RoundedRectangle(cornerRadius: NearMindTheme.radius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: NearMindTheme.radius).stroke(NearMindTheme.border, lineWidth: 1))
+        .accessibilityElement(children: .contain)
     }
 }

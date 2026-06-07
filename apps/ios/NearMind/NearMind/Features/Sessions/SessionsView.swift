@@ -78,9 +78,10 @@ struct SessionRow: View {
                         .foregroundStyle(NearMindTheme.textPrimary)
                         .lineLimit(2)
                     Spacer(minLength: 8)
-                    Text(item.retentionStatus.title)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(item.retentionStatus == .discarded ? NearMindTheme.warning : NearMindTheme.success)
+                    MiniStatusBadge(
+                        text: item.retentionStatus.title,
+                        color: item.retentionStatus == .discarded ? NearMindTheme.warning : NearMindTheme.success
+                    )
                 }
                 Text(item.formattedDate)
                     .font(.caption)
@@ -89,9 +90,15 @@ struct SessionRow: View {
                     .font(.footnote)
                     .foregroundStyle(NearMindTheme.textSecondary)
                     .lineLimit(2)
+                if !item.followUps.isEmpty || !item.cues.isEmpty {
+                    Text("\(item.cues.count) key moment\(item.cues.count == 1 ? "" : "s") · \(item.followUps.count) follow-up\(item.followUps.count == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .foregroundStyle(NearMindTheme.textSecondary)
+                }
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -110,19 +117,25 @@ struct SessionDetailView: View {
                     .padding(.bottom, 8)
             }
 
-            DetailListSection(title: "Key Cues", rows: session.cues, emptyTitle: "No cues saved")
+            DetailListSection(title: "Key Moments", rows: session.cues, emptyTitle: "No key moments saved")
+            DetailListSection(title: "Commitments", rows: session.commitments, emptyTitle: "No commitments saved")
             DetailListSection(title: "Follow-ups", rows: session.followUps, emptyTitle: "No follow-ups saved")
             DetailListSection(title: "Transcript Snippets", rows: session.transcriptSnippets, emptyTitle: "No transcript snippets")
 
-            Section("Diagnostics") {
-                if session.diagnostics.isEmpty {
-                    NativeEmptyRow(title: "No diagnostics available", subtitle: "Latency and technical details appear when available.")
-                } else {
-                    ForEach(session.diagnostics.indices, id: \.self) { index in
-                        Text(session.diagnostics[index])
-                            .font(.footnote)
-                            .foregroundStyle(NearMindTheme.textSecondary)
+            Section {
+                DisclosureGroup(isExpanded: $showDiagnostics) {
+                    if session.diagnostics.isEmpty {
+                        NativeEmptyRow(title: "No diagnostics available", subtitle: "Latency and technical details appear when available.")
+                    } else {
+                        ForEach(session.diagnostics.indices, id: \.self) { index in
+                            Text(session.diagnostics[index])
+                                .font(.footnote)
+                                .foregroundStyle(NearMindTheme.textSecondary)
+                        }
                     }
+                } label: {
+                    Label("Diagnostics", systemImage: "stethoscope")
+                        .foregroundStyle(NearMindTheme.textPrimary)
                 }
             }
         }

@@ -25,7 +25,7 @@ struct RelayRequestDetailView: View {
                 Section("Sender approval") {
                     RelayApprovalCardView(
                         title: "Send this private request?",
-                        summary: "No external email is sent. Existing NearMind users receive an in-app Relay request; email-only contacts stay staged.",
+                        summary: "No external email is sent. Existing NearMind users receive an in-app request; email-only contacts stay staged.",
                         riskLevel: request.riskLevel,
                         confirmLabel: "Send Request",
                         cancelLabel: "Cancel Draft",
@@ -56,7 +56,7 @@ struct RelayRequestDetailView: View {
 
             Section("Messages") {
                 if viewModel.messages.isEmpty {
-                    NativeEmptyRow(title: "No messages yet", subtitle: "Relay messages are private and audited.")
+                    NativeEmptyRow(title: "No messages yet", subtitle: "Request messages are private and audited.")
                 } else {
                     ForEach(viewModel.messages) { message in
                         VStack(alignment: .leading, spacing: 4) {
@@ -73,7 +73,7 @@ struct RelayRequestDetailView: View {
             .listRowBackground(NearMindTheme.cardSurface)
 
             Section("Privacy") {
-                ProfileRow(title: "No automatic sharing", subtitle: "Memory, calendar, email, and profile data are not shared by Relay v0.", systemImage: "lock.shield")
+                ProfileRow(title: "No automatic sharing", subtitle: "Memory, calendar, email, and profile data are not shared automatically.", systemImage: "lock.shield")
                 ProfileRow(title: "Audited actions", subtitle: "Drafts, approvals, rejects, and blocks are recorded for the owner.", systemImage: "list.bullet.clipboard")
             }
             .listRowBackground(NearMindTheme.cardSurface)
@@ -87,7 +87,7 @@ struct RelayRequestDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
-        .navigationTitle("Relay Request")
+        .navigationTitle("Request")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.select(request)

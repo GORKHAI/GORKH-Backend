@@ -3,10 +3,11 @@ import Foundation
 @MainActor
 final class ChatViewModel: ObservableObject {
     @Published private(set) var messages: [ChatMessage] = [
-        ChatMessage(role: .assistant, text: "Tell me what’s happening, or ask me what needs attention today.")
+        ChatMessage(role: .assistant, text: "Tell me what’s happening, or ask what needs attention.")
     ]
     @Published var inputText = ""
     @Published private(set) var pendingApproval: ChatApproval?
+    @Published private(set) var briefing: ChatBriefingSummary?
     @Published private(set) var isLoading = false
     @Published private(set) var statusText = "Private assistant"
 
@@ -29,7 +30,10 @@ final class ChatViewModel: ObservableObject {
         self.openProfile = openProfile
         self.openRelayComposer = openRelayComposer
         appState.refreshAuthStatus()
-        statusText = appState.tokenStatus == .stored ? "Private assistant" : "Add token in Profile"
+        statusText = "Private assistant"
+        if appState.tokenStatus == .stored {
+            Task { await loadBriefing() }
+        }
     }
 
     func submitInput() {
@@ -61,9 +65,12 @@ final class ChatViewModel: ObservableObject {
             openLive?()
         case .muteVoiceReplies:
             appState?.setTTSMutedPreference(true)
-            appendAssistant("Spoken responses are muted. You can turn them back on in Profile.")
+            appendAssistant("Spoken responses are muted. I’ll keep showing text.")
+        case .unmuteVoiceReplies:
+            appState?.setTTSMutedPreference(false)
+            appendAssistant("Spoken responses are back on. Live still requires consent before microphone use.")
         case .openProfileMemory:
-            appendAssistant("Opening Profile & Memory. Deletion still requires review; no memory was deleted.")
+            appendAssistant("Opening You. Memory deletion still requires review; no memory was deleted.")
             openProfile?()
         }
     }
@@ -86,12 +93,24 @@ final class ChatViewModel: ObservableObject {
             return
         }
 
+        if normalized.contains("unmute voice") || normalized.contains("turn on spoken") || normalized.contains("speak responses") {
+            pendingApproval = ChatApproval(
+                kind: .unmuteVoiceReplies,
+                title: "Unmute spoken responses?",
+                explanation: "NearMind will use local iOS speech for short responses when Live or chat voice output supports it.",
+                confirmLabel: "Unmute",
+                cancelLabel: "Cancel",
+                riskLevel: .low
+            )
+            return
+        }
+
         if normalized.contains("mute voice") || normalized.contains("turn off spoken") || normalized.contains("mute spoken") {
             pendingApproval = ChatApproval(
                 kind: .muteVoiceReplies,
-                title: "Turn off spoken responses?",
-                explanation: "NearMind will keep showing text and cues, but native TTS will stay muted until you turn it back on.",
-                confirmLabel: "Confirm",
+                title: "Mute spoken responses?",
+                explanation: "NearMind will keep showing text, but won’t speak responses aloud.",
+                confirmLabel: "Mute",
                 cancelLabel: "Cancel",
                 riskLevel: .low
             )
@@ -102,17 +121,17 @@ final class ChatViewModel: ObservableObject {
             pendingApproval = ChatApproval(
                 kind: .openProfileMemory,
                 title: "Memory deletion requires review",
-                explanation: "NearMind will not delete memory from chat in this beta. Open Profile & Memory to review what exists.",
-                confirmLabel: "Open Profile",
+                explanation: "NearMind will not delete memory from chat in this beta. Open You → Memory to review what exists.",
+                confirmLabel: "Open You",
                 cancelLabel: "Cancel",
                 riskLevel: .sensitive
             )
-            appendAssistant("Memory deletion requires review. Open Profile & Memory?")
+            appendAssistant("Memory deletion requires review. Open You → Memory?")
             return
         }
 
         guard hasToken else {
-            appendAssistant("Add a test token in Profile to chat with your assistant.")
+            appendAssistant("Sign in or add a test token in You → Developer to chat with NearMind.")
             return
         }
 
@@ -133,6 +152,25 @@ final class ChatViewModel: ObservableObject {
         }
 
         await runAssistantQuery(text)
+    }
+
+    private func loadBriefing() async {
+        guard let service else { return }
+        do {
+            let items = try await service.fetchTodayItems()
+            let content = TodayViewModel.makeContent(from: items)
+            let relayCount = items.filter { $0.type.hasPrefix("relay_") }.count
+            let approvalCount = items.filter { $0.type == "relay_approval_needed" || $0.type.contains("approval") }.count
+            let summary = ChatBriefingSummary(
+                openTaskCount: content.openTaskCount,
+                relayRequestCount: relayCount,
+                pendingApprovalCount: approvalCount,
+                recentSessionTitle: content.recentSessions.first?.title
+            )
+            briefing = summary.hasContent ? summary : nil
+        } catch {
+            briefing = nil
+        }
     }
 
     private var hasToken: Bool {
@@ -225,7 +263,7 @@ final class ChatViewModel: ObservableObject {
         ChatApproval(
             kind: .openLive,
             title: "Open Live Assist?",
-            explanation: "Live Assist requires microphone consent. Opening Live will not start recording.",
+            explanation: "Live Assist needs microphone consent. Opening Live will not start recording.",
             confirmLabel: "Open Live",
             cancelLabel: "Cancel",
             riskLevel: .low

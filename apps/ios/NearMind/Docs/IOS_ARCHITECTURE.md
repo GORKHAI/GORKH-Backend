@@ -8,7 +8,7 @@ NearMind is the native SwiftUI consumer iOS app scaffold for the GORKH Brain bac
 NearMind/
   Audio/            Microphone permission, route monitoring, PCM16 streaming, native TTS
   App/              App state, tab routing, environment, production config
-  Features/         Onboarding, Auth, Chat, Live Assist, Sessions, Profile, Account, Live Smoke, Debug
+  Features/         Onboarding, Auth, Chat, Live Assist, Sessions, You, Account, Live Smoke, Debug
   Networking/       API client, endpoint routing, WebSocket gateway client
   Protocol/         Codable client/server protocol and mobile errors
   Security/         Keychain and token storage abstractions
@@ -23,7 +23,7 @@ NearMind/
 
 ## Token Storage
 
-After onboarding, the app shows Auth Welcome when no Keychain JWT exists. It accepts Sign in with Apple readiness, Email readiness, or a small internal test-token path. The app accepts a test JWT in Profile > Developer and stores it through `TokenStoreProtocol`.
+After onboarding, the app shows Auth Welcome when no Keychain JWT exists. It accepts Sign in with Apple readiness, Email readiness, or a small internal test-token path. The app accepts a test JWT in You > Developer and stores it through `TokenStoreProtocol`.
 The production implementation is `KeychainTokenStore`, backed by `KeychainStore`.
 JWTs are not written to `UserDefaults`, logs, debug event rows, or source files.
 
@@ -36,9 +36,9 @@ NearMind now uses a native chat-first four-tab structure after onboarding:
 - Chat: default home and primary interface. Users ask NearMind for help, today context, memory summaries, or to open consented Live Assist.
 - Live: the focused real-time voice-session screen for context, consent, microphone/TTS controls, and live transcript/cue display.
 - Sessions: saved-session browse and detail UI with summaries, cues, follow-ups, transcript snippets, and secondary diagnostics.
-- Profile: profile and memory, preferences, privacy/data controls, audio settings, approvals, diagnostics, and developer tools.
+- You: account, memory, privacy/data controls, requests, preferences, audio settings, and de-emphasized developer tools.
 
-Developer-heavy surfaces are intentionally not shown on the default home screen. Typed Live Smoke and the raw debug event log are available through Profile > Developer.
+Developer-heavy surfaces are intentionally not shown on the default home screen. Typed Live Smoke and the raw debug event log are available through You > Developer.
 
 ## HTTP Flow
 
@@ -121,7 +121,7 @@ It does not include `userId`; identity is derived from the Bearer token.
 
 ## Audio Capture
 
-Live Assist uses `AVAudioSession` and `AVAudioEngine` only after the user taps Start Voice Session and grants microphone permission. Microphone permission uses the iOS 17+ `AVAudioApplication` APIs. The sequence is:
+Live Assist uses `AVAudioSession` and `AVAudioEngine` only after the user taps Start Live Assist and grants microphone permission. Microphone permission uses the iOS 17+ `AVAudioApplication` APIs. The sequence is:
 
 1. Verify JWT status is stored.
 2. Verify the consent checkbox is enabled.
@@ -147,18 +147,19 @@ Native TTS routes through the current system output. Earbuds are supported, but 
 
 `voice_cancel_speech` stops current local speech. The Simulate Barge-In button sends `speech_started`, stops local TTS, and then sends `speech_ended` after a short delay.
 
-## Chat-First UX
+## Assistant-First UX
 
-The Chat tab is the app center in v0.5. `ChatViewModel` handles safe local intent routing before backend calls:
+The Chat tab is the app center in v0.6. `ChatViewModel` handles safe local intent routing before backend calls:
 
-- “Start Live Assist” creates an approval card and switches to Live only after the user confirms. It never starts the microphone.
-- “Mute voice replies” creates a local approval card and updates the non-sensitive native TTS mute preference only after confirmation.
-- “Delete my memory” does not execute deletion from chat. It routes the user to Profile & Memory for review.
+- “Start Live” creates an approval card and switches to Live only after the user confirms. It never starts the microphone.
+- “Mute voice replies” and “Unmute voice replies” create local approval cards and update only the non-sensitive native TTS preference.
+- “Delete my memory” does not execute deletion from chat. It routes the user to You > Memory for review.
+- “Ask someone” or “Ask Steve...” opens the private request composer. Nothing is sent automatically.
 - “What should I do today?” reads mobile sync data when a token is available.
 - “What do you remember about me?” reads the profile review endpoint when available.
 - Unknown text uses `POST /brain/query` if a token is stored, with profile context allowed and profile mutation disabled.
 
-Chat messages redact JWT-shaped strings before displaying or storing local message state. Sensitive external actions are not executed from chat in v0.5.
+Chat messages redact JWT-shaped strings before displaying or storing local message state. Sensitive external actions are not executed from chat in v0.6.
 
 ## Auth And Account Shell
 
@@ -166,13 +167,13 @@ Auth v0 introduces `AuthWelcomeView`, `AuthViewModel`, `AppleSignInButtonView`, 
 
 `AppState` loads auth status from Keychain, fetches `/account/me` after launch when a token exists, and clears account state when the token is removed. Sign out calls `/account/sign-out` when possible and always clears the local Keychain token afterward.
 
-Profile now has consumer-facing Account and Plan sections. Plan status is read-only: Internal Alpha, billing disabled, and subscriptions coming later. There is no StoreKit, purchase button, price, fake paywall, or payment link in this milestone.
+The You tab replaces Profile as the personal settings hub. It shows only high-level Account, Memory, Privacy, Requests, Preferences, Audio, and Developer rows at the top level. Plan status is read-only: Internal Alpha, billing disabled, and subscriptions coming later. There is no StoreKit, purchase button, price, fake paywall, or payment link in this milestone.
 
 ## Relay Architecture
 
 NearMind Relay v0 is exposed in `Features/Relay`. It is a private agent request inbox/outbox, not a public social layer. The iOS app can:
 
-- Open Agent Requests from Profile.
+- Open Requests from You.
 - Browse Inbox, Outbox, Drafts, and Pending approvals.
 - Draft a request to a named/email contact.
 - Approve sender-side send.
@@ -196,8 +197,8 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 
 - Native SwiftUI app shell
 - Consent-first onboarding
-- Native Chat, Live, Sessions, and Profile tabs
-- Debug Log and Typed Live Smoke screens behind Profile > Developer
+- Native Chat, Live, Sessions, and You tabs
+- Debug Log and Typed Live Smoke screens behind You > Developer
 - Keychain-backed JWT storage
 - Production URL configuration
 - Typed WebSocket session commands
@@ -207,8 +208,9 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - v0.2 branding, logo asset, consent-gated PCM16 microphone streaming, native TTS, barge-in, and lifecycle stop behavior
 - v0.3 AppIcon generation, real-device scripts, audio route UI, real-device smoke checklist, and latency display
 - v0.4 consumer UI redesign with tab navigation, compact onboarding, Today home, Sessions browse/detail, and diagnostics separation
-- v0.5 chat-first UX with approval cards, Profile tab, text assistant routing, and no hidden recording from chat
-- Relay v0 agent requests under Profile, Chat composer handoff, mobile-sync decoding, and sender/receiver approval controls
+- v0.5 chat-first UX with approval cards, text assistant routing, and no hidden recording from chat
+- v0.6 assistant-first UX polish with You tab, simplified Live flow, hidden developer surfaces, and human approval cards
+- Relay v0 agent requests under You > Requests, Chat composer handoff, mobile-sync decoding, and sender/receiver approval controls
 - Auth/account/plan shell v0 with Auth Welcome, Apple/email readiness, account profile, sign out, deletion request, and status-only Internal Alpha plan
 
 ## Intentionally Not Implemented Yet
@@ -226,4 +228,4 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 
 ## Next Milestone
 
-The next recommended milestone is Chat Voice Input v0.6: add explicit consent-gated short-form voice dictation for Chat, while keeping Live as the only streaming microphone mode.
+The next recommended milestone is a real-device UX pass: capture iPhone screenshots/video for onboarding, auth, Chat, Live inactive/active, Sessions, and You, then tune spacing and copy from physical-device evidence.

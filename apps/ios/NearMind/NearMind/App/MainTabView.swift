@@ -35,7 +35,7 @@ struct MainTabView: View {
             .tag(AppTab.sessions)
 
             NavigationStack {
-                ProfileView()
+                YouView()
             }
             .tabItem {
                 Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage)

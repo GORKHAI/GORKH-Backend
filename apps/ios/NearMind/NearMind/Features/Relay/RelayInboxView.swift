@@ -42,7 +42,7 @@ struct RelayInboxView: View {
             NavigationLink {
                 RelayComposerView(viewModel: viewModel)
             } label: {
-                ProfileRow(title: "Draft a Relay request", subtitle: "Create a private request and approve before sending", systemImage: "square.and.pencil")
+                ProfileRow(title: "Draft a request", subtitle: "Create a private request and approve before sending", systemImage: "square.and.pencil")
             }
 
             if let statusMessage = viewModel.statusMessage {
@@ -54,7 +54,7 @@ struct RelayInboxView: View {
         }
         .scrollContentBackground(.hidden)
         .background(NearMindTheme.background.ignoresSafeArea())
-        .navigationTitle("Agent Requests")
+        .navigationTitle("Requests")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load()
@@ -89,20 +89,20 @@ private enum RelayListTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .inbox:
-            return "Inbox"
+            return "From people"
         case .outbox:
-            return "Outbox"
+            return "Sent"
         case .drafts:
             return "Drafts"
         case .pending:
-            return "Approvals"
+            return "Needs approval"
         }
     }
 
     var emptyTitle: String {
         switch self {
         case .inbox:
-            return "No incoming requests"
+            return "No requests from people"
         case .outbox:
             return "No sent requests"
         case .drafts:
