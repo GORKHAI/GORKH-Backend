@@ -144,7 +144,7 @@ private struct ChatBriefingCard: View {
             if summary.relayRequestCount > 0 {
                 briefingRow("\(summary.relayRequestCount) request update\(summary.relayRequestCount == 1 ? "" : "s")", systemImage: "arrow.left.arrow.right")
             }
-            if let recentSessionTitle = summary.recentSessionTitle {
+            if let recentSessionTitle = summary.displayRecentSessionTitle {
                 briefingRow("Recent: \(recentSessionTitle)", systemImage: "clock")
             }
         }

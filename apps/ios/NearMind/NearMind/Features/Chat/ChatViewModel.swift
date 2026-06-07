@@ -52,8 +52,8 @@ final class ChatViewModel: ObservableObject {
     }
 
     func handleMicTapped() {
-        pendingApproval = Self.openLiveApproval()
-        appendAssistant("Voice chat is coming next. Use Live for consented voice sessions.")
+        pendingApproval = Self.openVoiceChatApproval()
+        appendAssistant("Voice chat needs consent first. Open Talk to NearMind?")
     }
 
     func confirmApproval() {
@@ -62,6 +62,11 @@ final class ChatViewModel: ObservableObject {
         switch approval.kind {
         case .openLive:
             appendAssistant("Opening Live Assist. The microphone will stay off until you consent and start a session.")
+            appState?.requestLiveLaunch(.liveAssist)
+            openLive?()
+        case .openVoiceChat:
+            appendAssistant("Opening Talk to NearMind. The microphone will stay off until you consent and tap Start.")
+            appState?.requestLiveLaunch(.voiceChat)
             openLive?()
         case .muteVoiceReplies:
             appState?.setTTSMutedPreference(true)
@@ -90,6 +95,12 @@ final class ChatViewModel: ObservableObject {
         if normalized.contains("start live") || normalized.contains("live assist") {
             pendingApproval = Self.openLiveApproval()
             appendAssistant("Live Assist requires microphone consent. Open Live?")
+            return
+        }
+
+        if normalized.contains("voice chat") || normalized.contains("talk to nearmind") || normalized.contains("talk with nearmind") {
+            pendingApproval = Self.openVoiceChatApproval()
+            appendAssistant("Voice chat requires microphone consent. Open Talk to NearMind?")
             return
         }
 
@@ -198,7 +209,9 @@ final class ChatViewModel: ObservableObject {
                 lines.append("\(content.openTaskCount) open task\(content.openTaskCount == 1 ? "" : "s") need attention.")
             }
             if let recent = content.recentSessions.first {
-                lines.append("Recent session: \(recent.title).")
+                let title = recent.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                let displayTitle = title.lowercased() == "session" || title.isEmpty ? "your latest saved session" : title
+                lines.append("Recent session: \(displayTitle).")
             }
             appendAssistant(lines.joined(separator: "\n"))
         } catch {
@@ -265,6 +278,17 @@ final class ChatViewModel: ObservableObject {
             title: "Open Live Assist?",
             explanation: "Live Assist needs microphone consent. Opening Live will not start recording.",
             confirmLabel: "Open Live",
+            cancelLabel: "Cancel",
+            riskLevel: .low
+        )
+    }
+
+    private static func openVoiceChatApproval() -> ChatApproval {
+        ChatApproval(
+            kind: .openVoiceChat,
+            title: "Talk to NearMind?",
+            explanation: "This opens a general voice conversation. The microphone stays off until you consent and tap Start.",
+            confirmLabel: "Open Voice",
             cancelLabel: "Cancel",
             riskLevel: .low
         )

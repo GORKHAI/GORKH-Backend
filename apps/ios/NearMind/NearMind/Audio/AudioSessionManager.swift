@@ -122,11 +122,17 @@ final class AudioSessionManager: AudioSessionManaging {
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.allowBluetoothHFP, .allowBluetoothA2DP, .defaultToSpeaker]
+            options: [.allowBluetoothHFP, .defaultToSpeaker]
         )
-        try session.setPreferredSampleRate(16_000)
-        try session.setPreferredInputNumberOfChannels(1)
         try session.setActive(true, options: [])
+
+        // Device audio routes can reject preferences such as 16 kHz or mono input
+        // with OSStatus -50. Keep the session alive and let AVAudioConverter handle
+        // resampling/downmixing from the actual hardware format.
+        try? session.setPreferredSampleRate(16_000)
+        if session.maximumInputNumberOfChannels >= 1 {
+            try? session.setPreferredInputNumberOfChannels(1)
+        }
     }
 
     func deactivate() {

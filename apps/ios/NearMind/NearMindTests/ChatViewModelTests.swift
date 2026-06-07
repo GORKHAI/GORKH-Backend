@@ -30,6 +30,37 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingApproval?.kind, .openLive)
         viewModel.confirmApproval()
         XCTAssertTrue(openedLive)
+        XCTAssertEqual(appState.consumeLiveLaunchIntent(), .liveAssist)
+    }
+
+    func testMicButtonCreatesVoiceChatApprovalAndConfirmOpensLive() {
+        let store = ChatTestTokenStore(token: "test.jwt")
+        let appState = makeAppState(tokenStore: store)
+        let viewModel = ChatViewModel()
+        var openedLive = false
+        viewModel.configure(appState: appState, service: MockChatService(), openLive: { openedLive = true })
+
+        viewModel.handleMicTapped()
+
+        XCTAssertEqual(viewModel.pendingApproval?.kind, .openVoiceChat)
+        XCTAssertEqual(viewModel.pendingApproval?.confirmLabel, "Open Voice")
+
+        viewModel.confirmApproval()
+
+        XCTAssertTrue(openedLive)
+        XCTAssertEqual(appState.consumeLiveLaunchIntent(), .voiceChat)
+        XCTAssertTrue(viewModel.messages.last?.text.contains("microphone will stay off") == true)
+    }
+
+    func testVoiceChatCommandCreatesApprovalWithoutStartingMicrophone() async {
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        let viewModel = ChatViewModel()
+        viewModel.configure(appState: appState, service: MockChatService())
+
+        await viewModel.send("I want to talk to NearMind")
+
+        XCTAssertEqual(viewModel.pendingApproval?.kind, .openVoiceChat)
+        XCTAssertNil(appState.consumeLiveLaunchIntent())
     }
 
     func testMuteVoiceRepliesRequiresApprovalAndStoresLocalPreference() async {

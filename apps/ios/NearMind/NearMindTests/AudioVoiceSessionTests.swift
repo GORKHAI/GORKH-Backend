@@ -55,6 +55,17 @@ final class AudioVoiceSessionTests: XCTestCase {
         XCTAssertEqual(AudioRouteInfo.kind(for: AVAudioSession.Port.bluetoothHFP.rawValue), .bluetooth)
     }
 
+    func testGenericRecentSessionTitleIsHumanized() {
+        let summary = ChatBriefingSummary(
+            openTaskCount: 0,
+            relayRequestCount: 0,
+            pendingApprovalCount: 0,
+            recentSessionTitle: "Session"
+        )
+
+        XCTAssertEqual(summary.displayRecentSessionTitle, "Latest saved session")
+    }
+
     @MainActor
     func testTTSManagerHandlesSpeakRequest() {
         let synth = MockSpeechSynthesizer()
@@ -143,6 +154,27 @@ final class AudioVoiceSessionTests: XCTestCase {
     }
 
     @MainActor
+    func testVoiceChatLaunchIntentUsesGeneralConversationDefaults() {
+        let environment = makeEnvironment(token: "test.jwt")
+        let appState = AppState(environment: environment)
+        let viewModel = LiveAssistViewModel(
+            gatewayClient: MockGatewayVoiceClient(),
+            audioStreamer: MockAudioStreamer(),
+            speechOutput: SpeechOutputManager(synthesizer: MockSpeechSynthesizer()),
+            microphonePermissionProvider: MockMicrophonePermissionProvider(status: .granted),
+            audioSessionManager: MockAudioSessionManager()
+        )
+
+        viewModel.configure(environment: environment, appState: appState)
+        viewModel.applyLaunchIntent(.voiceChat)
+
+        XCTAssertEqual(viewModel.policy, .conversationAgent)
+        XCTAssertEqual(viewModel.situationDescription, "Open conversation with NearMind.")
+        XCTAssertEqual(viewModel.title, "Voice chat with NearMind")
+        XCTAssertFalse(viewModel.isMicrophoneRunning)
+    }
+
+    @MainActor
     func testStopClearsActiveAudioState() async throws {
         let gateway = MockGatewayVoiceClient()
         let audio = MockAudioStreamer()
@@ -221,7 +253,8 @@ final class AudioVoiceSessionTests: XCTestCase {
             audioSessionManager: MockAudioSessionManager()
         )
         let environment = makeEnvironment(token: "test.jwt")
-        viewModel.configure(environment: environment, appState: AppState(environment: environment))
+        let appState = AppState(environment: environment)
+        viewModel.configure(environment: environment, appState: appState)
         viewModel.hasConsent = true
 
         viewModel.startVoiceSession()
@@ -229,6 +262,7 @@ final class AudioVoiceSessionTests: XCTestCase {
 
         XCTAssertTrue(audio.didStop)
         XCTAssertFalse(viewModel.isMicrophoneRunning)
+        XCTAssertEqual(viewModel.status, AudioStreamingError.conversionFailed.localizedDescription)
     }
 
     @MainActor

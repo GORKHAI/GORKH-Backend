@@ -4,6 +4,7 @@ enum VoiceSessionError: Error, LocalizedError, Equatable {
     case missingToken
     case missingConsent
     case microphoneDenied
+    case gatewayError(String)
     case startAckMissing(String)
 
     var errorDescription: String? {
@@ -14,6 +15,8 @@ enum VoiceSessionError: Error, LocalizedError, Equatable {
             return "Check consent before starting a voice session."
         case .microphoneDenied:
             return "Microphone permission is required for a voice session."
+        case .gatewayError(let detail):
+            return detail
         case .startAckMissing(let eventName):
             return "Expected gateway_ack before microphone start, received \(eventName)."
         }
@@ -23,8 +26,8 @@ enum VoiceSessionError: Error, LocalizedError, Equatable {
 @MainActor
 final class LiveAssistViewModel: ObservableObject {
     @Published var policy: AssistPolicy = .conversationAgent
-    @Published var situationDescription = "Bank loan meeting preparation."
-    @Published var title = "NearMind voice session"
+    @Published var situationDescription = "Open conversation with NearMind."
+    @Published var title = "Voice chat with NearMind"
     @Published var hasConsent = false
     @Published var typedUserText = ""
     @Published var typedTranscript = ""
@@ -126,6 +129,23 @@ final class LiveAssistViewModel: ObservableObject {
         )
     }
 
+    func applyLaunchIntent(_ intent: LiveLaunchIntent?) {
+        guard let intent, !isSessionActive, !isMicrophoneRunning else { return }
+        switch intent {
+        case .voiceChat:
+            policy = .conversationAgent
+            situationDescription = "Open conversation with NearMind."
+            title = "Voice chat with NearMind"
+        case .liveAssist:
+            policy = .conversationAgent
+            if situationDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                situationDescription == "Open conversation with NearMind." {
+                situationDescription = "Tell NearMind what is happening."
+            }
+            title = "Live Assist session"
+        }
+    }
+
     func connect() {
         run {
             try await self.connectGatewayClient()
@@ -161,6 +181,9 @@ final class LiveAssistViewModel: ObservableObject {
             )
             self.status = "Starting voice session"
             let event = try await self.client?.sendStartAndWaitForAck(payload, timeout: 12)
+            if case .gatewayError(let payload) = event {
+                throw VoiceSessionError.gatewayError(Self.gatewayErrorDescription(payload))
+            }
             guard let event, case .gatewayAck = event else {
                 throw VoiceSessionError.startAckMissing(event?.displayName ?? "none")
             }
@@ -523,9 +546,10 @@ final class LiveAssistViewModel: ObservableObject {
             do {
                 try await operation()
             } catch {
-                status = error.localizedDescription
-                stopLocalAudio(reason: "Operation failed")
-                appState?.appendLocal(message: status)
+                let message = error.localizedDescription
+                stopLocalAudio(reason: message)
+                status = message
+                appState?.appendLocal(message: message)
             }
         }
     }
@@ -542,5 +566,14 @@ final class LiveAssistViewModel: ObservableObject {
                 appState?.appendLocal(message: status)
             }
         }
+    }
+
+    private static func gatewayErrorDescription(_ payload: [String: JSONValue]) -> String {
+        let code = payload["code"]?.stringValue ?? "gateway_error"
+        let message = payload["message"]?.stringValue ?? payload["detail"]?.stringValue
+        if let message, !message.isEmpty {
+            return "\(code): \(message)"
+        }
+        return code
     }
 }

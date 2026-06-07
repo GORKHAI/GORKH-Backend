@@ -34,6 +34,7 @@ enum ChatQuickAction: String, CaseIterable, Identifiable {
 struct ChatApproval: Identifiable, Equatable {
     enum Kind: Equatable {
         case openLive
+        case openVoiceChat
         case muteVoiceReplies
         case unmuteVoiceReplies
         case openProfileMemory
@@ -61,6 +62,15 @@ struct ChatBriefingSummary: Equatable {
 
     var hasContent: Bool {
         openTaskCount > 0 || relayRequestCount > 0 || pendingApprovalCount > 0 || recentSessionTitle != nil
+    }
+
+    var displayRecentSessionTitle: String? {
+        guard let title = recentSessionTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty
+        else {
+            return nil
+        }
+        return title.lowercased() == "session" ? "Latest saved session" : title
     }
 }
 

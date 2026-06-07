@@ -22,6 +22,7 @@ final class AppState: ObservableObject {
     @Published var account: AccountProfile?
     @Published var billingStatus: BillingStatus?
     @Published var defaultAssistPolicy: AssistPolicy = .conversationAgent
+    @Published private(set) var pendingLiveLaunchIntent: LiveLaunchIntent?
 
     let environment: AppEnvironment
 
@@ -135,6 +136,16 @@ final class AppState: ObservableObject {
         defaultAssistPolicy = policy
         UserDefaults.standard.set(policy.rawValue, forKey: DefaultsKey.defaultAssistPolicy)
     }
+
+    func requestLiveLaunch(_ intent: LiveLaunchIntent) {
+        pendingLiveLaunchIntent = intent
+    }
+
+    func consumeLiveLaunchIntent() -> LiveLaunchIntent? {
+        let intent = pendingLiveLaunchIntent
+        pendingLiveLaunchIntent = nil
+        return intent
+    }
 }
 
 struct DebugEvent: Identifiable, Equatable {
@@ -142,4 +153,9 @@ struct DebugEvent: Identifiable, Equatable {
     let timestamp: Date
     let title: String
     let rawJSON: String?
+}
+
+enum LiveLaunchIntent: Equatable {
+    case voiceChat
+    case liveAssist
 }

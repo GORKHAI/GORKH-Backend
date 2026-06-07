@@ -4,7 +4,7 @@ struct LiveAssistView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = LiveAssistViewModel()
-    @State private var situationType = "Meeting"
+    @State private var situationType = "Just talk"
     @State private var showDiagnostics = false
     @State private var showMoreOptions = false
     @State private var showLiveNotes = false
@@ -13,8 +13,8 @@ struct LiveAssistView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: NearMindTheme.sectionSpacing) {
                 AppHeader(
-                    title: "Live Assist",
-                    subtitle: isActiveExperience ? "Real-time help is active." : "Real-time help when you choose."
+                    title: screenTitle,
+                    subtitle: isActiveExperience ? "Voice session is active." : "Talk with your assistant when you choose."
                 )
 
                 if isActiveExperience {
@@ -32,6 +32,13 @@ struct LiveAssistView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             viewModel.configure(environment: appState.environment, appState: appState)
+            let intent = appState.consumeLiveLaunchIntent()
+            viewModel.applyLaunchIntent(intent)
+            if intent == .voiceChat {
+                situationType = "Just talk"
+            } else if intent == .liveAssist {
+                situationType = "Moment"
+            }
         }
         .onDisappear {
             viewModel.endViewSession()
@@ -47,6 +54,9 @@ struct LiveAssistView: View {
         .onChange(of: viewModel.policy) { _, policy in
             appState.setDefaultAssistPolicy(policy)
         }
+        .onChange(of: situationType) { _, value in
+            applySituationPreset(value)
+        }
     }
 
     private var isActiveExperience: Bool {
@@ -58,7 +68,7 @@ struct LiveAssistView: View {
             NativeCard {
                 VStack(alignment: .leading, spacing: 14) {
                     Picker("Situation", selection: $situationType) {
-                        ForEach(["Meeting", "Decision", "Conversation", "Negotiation"], id: \.self) { value in
+                        ForEach(["Just talk", "Moment", "Meeting", "Decision", "Conversation", "Negotiation"], id: \.self) { value in
                             Text(value).tag(value)
                         }
                     }
@@ -73,7 +83,7 @@ struct LiveAssistView: View {
                             .textFieldStyle(.roundedBorder)
                     }
 
-                    Toggle("I consent to start Live Assist for this session", isOn: $viewModel.hasConsent)
+                    Toggle("I consent to start this voice session", isOn: $viewModel.hasConsent)
                         .toggleStyle(.switch)
                         .tint(NearMindTheme.accentMint)
                         .font(.subheadline)
@@ -118,7 +128,7 @@ struct LiveAssistView: View {
 
             NativeCard {
                 PrimaryButton(
-                    "Start Live Assist",
+                    startButtonTitle,
                     systemImage: "mic.circle",
                     isDisabled: !viewModel.canStartVoiceSession
                 ) {
@@ -344,6 +354,42 @@ struct LiveAssistView: View {
             return "Connecting to the gateway."
         }
         return "Microphone starts only after the gateway confirms the session."
+    }
+
+    private var screenTitle: String {
+        situationType == "Just talk" ? "Talk to NearMind" : "Live Assist"
+    }
+
+    private var startButtonTitle: String {
+        situationType == "Just talk" ? "Start Voice Chat" : "Start Live Assist"
+    }
+
+    private func applySituationPreset(_ value: String) {
+        guard !viewModel.isSessionActive, !viewModel.isMicrophoneRunning else { return }
+        switch value {
+        case "Just talk":
+            viewModel.policy = .conversationAgent
+            viewModel.situationDescription = "Open conversation with NearMind."
+            viewModel.title = "Voice chat with NearMind"
+        case "Moment":
+            viewModel.policy = .conversationAgent
+            viewModel.situationDescription = "Tell NearMind what is happening."
+            viewModel.title = "Live Assist session"
+        case "Meeting":
+            viewModel.policy = .conversationAgent
+            viewModel.situationDescription = "Help me prepare for or navigate this meeting."
+            viewModel.title = "Meeting assist"
+        case "Decision":
+            viewModel.policy = .conversationAgent
+            viewModel.situationDescription = "Help me think through this decision."
+            viewModel.title = "Decision assist"
+        case "Conversation", "Negotiation":
+            viewModel.policy = .whisperCopilot
+            viewModel.situationDescription = "Listen for important details and give short private cues."
+            viewModel.title = "\(value) copilot"
+        default:
+            break
+        }
     }
 
     private func labeledTextField(_ title: String, text: Binding<String>, prompt: String) -> some View {

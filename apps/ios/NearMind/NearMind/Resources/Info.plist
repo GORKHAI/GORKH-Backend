@@ -20,5 +20,7 @@
 	<string>1</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>NearMind uses the microphone only when you start a Live Assist session, so it can transcribe your voice and provide real-time help.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
 </dict>
 </plist>
