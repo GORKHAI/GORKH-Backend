@@ -63,3 +63,8 @@ There is no StoreKit, purchase button, price, paywall, or external payment link.
 ## Developer Token
 
 Developer test-token paste remains under Profile > Developer and as a small link on the auth welcome screen. It is for internal alpha testing only and stores the token in Keychain.
+## Storage Controls
+
+Profile → Privacy & Data → Storage shows long-term storage usage, saved object counts, export request controls, and data deletion request routing.
+
+The iOS app never receives or stores R2 credentials. It only calls authenticated backend APIs and receives owner-only signed download URLs when available.

@@ -147,6 +147,9 @@ import { registerRelayRoutes } from "./relay/requests.js";
 import { registerAccountRoutes } from "./auth/account.js";
 import { registerAppleAuthRoutes } from "./auth/apple.js";
 import { registerEmailAuthRoutes } from "./auth/email-auth.js";
+import { registerStorageRoutes } from "./storage/routes.js";
+import { storageProviderStatus } from "./storage/provider.js";
+import { archiveResearchReport } from "./storage/lifecycle.js";
 
 const devUserBody = z.object({
   email: z.string().email(),
@@ -274,6 +277,7 @@ export async function buildServer() {
       deepgram: Boolean(config.DEEPGRAM_API_KEY),
       voyage: Boolean(config.VOYAGE_API_KEY),
       research: researchProviderStatus(),
+      storage: storageProviderStatus(),
     };
   }
 
@@ -281,6 +285,7 @@ export async function buildServer() {
   registerEmailAuthRoutes(app);
   registerAccountRoutes(app, requireAuth);
   registerRelayRoutes(app, requireAuth);
+  registerStorageRoutes(app, requireAuth);
 
   if (config.NODE_ENV !== "production") {
     app.post("/dev/users", async (request, reply) => {
@@ -1474,6 +1479,7 @@ export async function buildServer() {
           confidence: answer.confidence,
           limitations: answer.limitations ?? null,
         }).returning({ id: researchAnswers.id });
+        await archiveResearchReport(userId, query.id).catch(() => null);
         if (config.RESEARCH_EVALUATION_ENABLED) {
           const evaluation = evaluateResearchAnswerQuality({
             query: body.text,

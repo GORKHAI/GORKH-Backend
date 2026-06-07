@@ -10,6 +10,7 @@ enum APIClientError: Error, Equatable, LocalizedError {
     case httpStatus(Int, MobileError?)
     case missingSessionID
     case missingRelayRequestID
+    case missingStorageObjectID
     case invalidJSON
 
     var errorDescription: String? {
@@ -25,6 +26,8 @@ enum APIClientError: Error, Equatable, LocalizedError {
             return "A session ID is required for this endpoint."
         case .missingRelayRequestID:
             return "A Relay request ID is required for this endpoint."
+        case .missingStorageObjectID:
+            return "A storage object ID is required for this endpoint."
         case .invalidJSON:
             return "The server returned JSON NearMind could not decode."
         }

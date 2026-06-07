@@ -72,3 +72,12 @@ NearMind uses the microphone only when you start a Live Assist session, so it ca
 - Calendar/Gmail UI, Brain Console, push notifications, analytics, and autonomous actions are not included in this milestone.
 - Relay v0 is an in-app, human-approved request workflow only. It does not send email externally, expose public discovery, or share memory/profile/calendar/email data automatically.
 - Sign in with Apple must be enabled/configured server-side before public TestFlight login can rely on it.
+## Privacy & Storage
+
+- Profile includes a Privacy & Data → Storage screen.
+- Storage usage and object lists come from backend-owned `/storage/*` APIs.
+- R2 credentials are never stored in the app.
+- Signed download URLs are requested from the backend and expire quickly.
+- Raw audio is off by default.
+- Discarded sessions must not be archived.
+- Product copy should say long-term storage with fair-use limits, not unlimited storage.

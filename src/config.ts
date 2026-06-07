@@ -127,6 +127,20 @@ const envSchema = z.object({
   ACCOUNT_DELETION_MODE: z.enum(["request", "immediate_disabled"]).default("request"),
   PLAN_DEFAULT: z.enum(["internal_alpha", "free", "pro", "team"]).default("internal_alpha"),
   BILLING_ENABLED: z.coerce.boolean().default(false),
+  STORAGE_PROVIDER: z.enum(["none", "r2"]).default("none"),
+  R2_ACCOUNT_ID: emptyToUndefined(z.string().min(1).optional()),
+  R2_ACCESS_KEY_ID: emptyToUndefined(z.string().min(1).optional()),
+  R2_SECRET_ACCESS_KEY: emptyToUndefined(z.string().min(1).optional()),
+  R2_BUCKET: emptyToUndefined(z.string().min(1).optional()),
+  R2_PUBLIC_BASE_URL: emptyToUndefined(z.string().url().optional()),
+  R2_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  STORAGE_ENCRYPT_OBJECTS: z.coerce.boolean().default(false),
+  STORAGE_OBJECT_KEY_PREFIX: z.string().min(1).default("nearmind"),
+  STORAGE_DEFAULT_RETENTION_DAYS: z.coerce.number().int().positive().default(3650),
+  STORAGE_AUDIO_SAVE_DEFAULT: z.coerce.boolean().default(false),
+  STORAGE_TRANSCRIPT_ARCHIVE_ENABLED: z.coerce.boolean().default(true),
+  STORAGE_EXPORTS_ENABLED: z.coerce.boolean().default(true),
+  STORAGE_MAX_OBJECT_BYTES: z.coerce.number().int().positive().default(25000000),
   CONNECTOR_TOKEN_VAULT: z.enum(["none", "external_ref"]).default("none"),
   TOKEN_VAULT_PROVIDER: z.enum(["none", "encrypted_db"]).default("none"),
   TOKEN_VAULT_ENCRYPTION_KEY: emptyToUndefined(z.string().min(1).optional()),
@@ -176,4 +190,10 @@ export function validateBootConfig(): void {
     throw new Error("REDIS_URL or UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN is not configured");
   }
   requireKey(config.JWT_SECRET, "JWT_SECRET");
+  if (config.STORAGE_PROVIDER === "r2") {
+    requireKey(config.R2_ACCOUNT_ID, "R2_ACCOUNT_ID");
+    requireKey(config.R2_ACCESS_KEY_ID, "R2_ACCESS_KEY_ID");
+    requireKey(config.R2_SECRET_ACCESS_KEY, "R2_SECRET_ACCESS_KEY");
+    requireKey(config.R2_BUCKET, "R2_BUCKET");
+  }
 }

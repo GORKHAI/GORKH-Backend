@@ -3,6 +3,7 @@ import { createActionProposal } from "../actions/proposal.js";
 import { db } from "../db/client.js";
 import { roomSummaries, roomTranscriptSegments, rooms } from "../db/schema.js";
 import { logRoomAuditEvent } from "./audit.js";
+import { archiveRoomSummary } from "../storage/lifecycle.js";
 
 export async function generateRoomSummary(userId: string, roomId: string) {
   const [room] = await db.select().from(rooms).where(and(eq(rooms.id, roomId), eq(rooms.userId, userId))).limit(1);
@@ -41,6 +42,7 @@ export async function generateRoomSummary(userId: string, roomId: string) {
     })
     .returning();
   await logRoomAuditEvent({ roomId: room.id, userId, eventType: "room_summary_generated", payload: { summaryId: created?.id, actionProposalId: actionProposal.id } }).catch(() => null);
+  await archiveRoomSummary(userId, room.id).catch(() => null);
   return { summary: created, actionProposal };
 }
 

@@ -1209,3 +1209,12 @@ GORKH copied architecture patterns only: auditable reflection, declarative skill
 ## Next Milestone
 
 Build the mobile/iOS audio prototype with confirmed profile controls in the app, profile fact review/edit screens, and a research provider live path. After that, add WebRTC transport and evaluate NVIDIA Pipecat/Riva/PersonaPlex on an experimental provider branch.
+### NearMind Hybrid Long-Term Storage
+
+NearMind uses a hybrid storage model for beta readiness:
+
+- Postgres/Neon: metadata, permissions, indexes, memory summaries, audit logs, and selected semantic memory.
+- Cloudflare R2: large durable objects such as saved transcripts, reports, exports, documents, and future opt-in audio.
+- Redis/Upstash: queues, locks, rate limits, cooldowns, and short-lived cache only.
+
+Storage defaults to `STORAGE_PROVIDER=none`. Configure R2 only on backend environments; never expose R2 credentials to iOS or frontend clients. User-facing copy should say long-term storage with fair-use limits, not unlimited storage.

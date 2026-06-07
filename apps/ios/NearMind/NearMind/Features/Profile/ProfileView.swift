@@ -126,6 +126,12 @@ struct ProfileView: View {
             }
 
             NavigationLink {
+                StorageView()
+            } label: {
+                ProfileRow(title: "Storage", subtitle: "Long-term storage, exports, and deletion requests", systemImage: "archivebox")
+            }
+
+            NavigationLink {
                 DeleteAccountView()
             } label: {
                 ProfileRow(title: "Request account deletion", subtitle: appState.account?.deletionStatus ?? "Sends a backend deletion request", systemImage: "person.crop.circle.badge.xmark")

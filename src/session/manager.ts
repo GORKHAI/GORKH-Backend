@@ -35,6 +35,7 @@ import { reflectOnSavedSession } from "../brain/reflection.js";
 import { deleteDailySessionArtifacts, processSavedSessionDailyLife } from "../daily/session-daily.js";
 import { logBrainAuditEvent } from "../brain/audit.js";
 import { cancelSubagentsForSession } from "../subagents/scheduler.js";
+import { archiveSavedSessionTranscript, cleanupDiscardedSessionStorage } from "../storage/lifecycle.js";
 
 export type OutboundEvent =
   | { type: "ack"; sessionId: string; situationBriefId: string | null; internalType: InternalType }
@@ -283,6 +284,7 @@ export async function stopSession(sessionId: string, save: boolean): Promise<str
       await tx.delete(voiceOutputs).where(eq(voiceOutputs.sessionId, sessionId));
     });
     await deleteDailySessionArtifacts(sessionId).catch(() => undefined);
+    await cleanupDiscardedSessionStorage(session.userId, sessionId).catch(() => undefined);
     await clearSession(sessionId);
     live.delete(sessionId);
     return [];
@@ -305,6 +307,11 @@ export async function stopSession(sessionId: string, save: boolean): Promise<str
   } catch (err) {
     session.emit({ type: "error", stage: "daily_life", message: String((err as Error).message ?? err) });
   }
+  try {
+    await archiveSavedSessionTranscript(session.userId, sessionId);
+  } catch (err) {
+    session.emit({ type: "error", stage: "storage_archive", message: String((err as Error).message ?? err) });
+  }
   session.emit({ type: "summary", storedMemoryIds });
   await clearSession(sessionId);
   live.delete(sessionId);
@@ -318,6 +325,7 @@ export async function interruptSession(sessionId: string): Promise<void> {
   session.generation++;
   await cancelSubagentsForSession(sessionId).catch(() => undefined);
   if (session.retentionPolicy === "discard_on_stop") await deleteSessionContent(sessionId);
+  if (session.retentionPolicy === "discard_on_stop") await cleanupDiscardedSessionStorage(session.userId, sessionId).catch(() => undefined);
   await db.update(sessions).set({ status: "interrupted", endedAt: new Date() }).where(eq(sessions.id, sessionId));
   await deleteAdaptiveSessionArtifacts(sessionId);
   await clearSession(sessionId);

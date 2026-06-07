@@ -177,6 +177,22 @@ export type AccountDeletionStatus = "requested" | "canceled" | "completed";
 export type UserPlanCode = "internal_alpha" | "free" | "pro" | "team";
 export type UserPlanStatus = "active" | "inactive" | "canceled" | "billing_not_enabled";
 export type UserPlanSource = "system" | "apple_storekit_future" | "admin";
+export type StorageOwnerType = "session" | "room" | "document" | "email" | "research" | "export" | "memory" | "calendar" | "outreach" | "relay";
+export type StorageObjectType = "transcript" | "audio" | "document" | "attachment" | "export" | "report" | "snapshot" | "summary_json";
+export type StorageProviderName = "r2" | "none";
+export type StorageRetentionPolicy = "temporary" | "standard" | "archive" | "delete_on_discard" | "user_controlled";
+export type StorageObjectStatus = "active" | "archived" | "deleted" | "failed";
+export type StorageEventType =
+  | "created"
+  | "read"
+  | "signed_url_created"
+  | "archived"
+  | "deleted"
+  | "export_requested"
+  | "export_completed"
+  | "export_failed"
+  | "delete_all_requested";
+export type MemorySummaryPeriod = "daily" | "weekly" | "monthly" | "yearly" | "custom";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1664,6 +1680,93 @@ export const voiceLatencyEvents = pgTable(
   }),
 );
 
+export const storageObjects = pgTable(
+  "storage_objects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ownerType: text("owner_type").$type<StorageOwnerType>().notNull(),
+    ownerId: text("owner_id").notNull(),
+    objectType: text("object_type").$type<StorageObjectType>().notNull(),
+    provider: text("provider").$type<StorageProviderName>().notNull(),
+    bucket: text("bucket"),
+    objectKey: text("object_key").notNull(),
+    contentType: text("content_type"),
+    sizeBytes: integer("size_bytes"),
+    checksum: text("checksum"),
+    encryptionKeyRef: text("encryption_key_ref"),
+    sensitivity: text("sensitivity").$type<Sensitivity>().notNull().default("low"),
+    retentionPolicy: text("retention_policy").$type<StorageRetentionPolicy>().notNull().default("standard"),
+    status: text("status").$type<StorageObjectStatus>().notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => ({
+    byOwner: index("storage_objects_by_owner").on(t.userId, t.ownerType, t.ownerId),
+    byUserStatus: index("storage_objects_by_user_status").on(t.userId, t.status),
+    byObjectType: index("storage_objects_by_object_type").on(t.objectType),
+  }),
+);
+
+export const storageUsage = pgTable(
+  "storage_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    totalBytes: numeric("total_bytes").notNull().default("0"),
+    transcriptBytes: numeric("transcript_bytes").notNull().default("0"),
+    audioBytes: numeric("audio_bytes").notNull().default("0"),
+    documentBytes: numeric("document_bytes").notNull().default("0"),
+    exportBytes: numeric("export_bytes").notNull().default("0"),
+    reportBytes: numeric("report_bytes").notNull().default("0"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index("storage_usage_by_user").on(t.userId),
+  }),
+);
+
+export const storageEvents = pgTable(
+  "storage_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    objectId: uuid("object_id").references(() => storageObjects.id, { onDelete: "set null" }),
+    eventType: text("event_type").$type<StorageEventType>().notNull(),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserCreated: index("storage_events_by_user_created").on(t.userId, t.createdAt),
+  }),
+);
+
+export const memorySummaries = pgTable(
+  "memory_summaries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    period: text("period").$type<MemorySummaryPeriod>().notNull(),
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    summary: text("summary").notNull(),
+    sourceObjectIds: jsonb("source_object_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUserPeriodCreated: index("memory_summaries_by_user_period_created").on(t.userId, t.period, t.createdAt),
+  }),
+);
+
 export const agentIdentities = pgTable(
   "agent_identities",
   {
@@ -1865,3 +1968,7 @@ export type EvaluationEvent = typeof evaluationEvents.$inferSelect;
 export type ProviderUsageEvent = typeof providerUsageEvents.$inferSelect;
 export type MobileNotification = typeof mobileNotifications.$inferSelect;
 export type VoiceLatencyEvent = typeof voiceLatencyEvents.$inferSelect;
+export type StorageObject = typeof storageObjects.$inferSelect;
+export type StorageUsage = typeof storageUsage.$inferSelect;
+export type StorageEvent = typeof storageEvents.$inferSelect;
+export type MemorySummary = typeof memorySummaries.$inferSelect;

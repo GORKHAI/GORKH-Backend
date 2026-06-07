@@ -15,6 +15,12 @@ enum Endpoint: Equatable {
     case accountDeleteCancel
     case planMe
     case billingStatus
+    case storageStatus
+    case storageUsage
+    case storageObjects
+    case storageExport
+    case storageDownloadURL(id: String?)
+    case storageDeleteAllRequest
     case mobileSync(cursor: String?)
     case mobileSessionState(sessionID: String?)
     case sessionLatencySummary(sessionID: String?)
@@ -62,6 +68,21 @@ enum Endpoint: Equatable {
             return baseURL.appending(path: "plans/me")
         case .billingStatus:
             return baseURL.appending(path: "billing/status")
+        case .storageStatus:
+            return baseURL.appending(path: "storage/status")
+        case .storageUsage:
+            return baseURL.appending(path: "storage/usage")
+        case .storageObjects:
+            return baseURL.appending(path: "storage/objects")
+        case .storageExport:
+            return baseURL.appending(path: "storage/export")
+        case .storageDownloadURL(let id):
+            guard let id, !id.isEmpty else {
+                throw APIClientError.missingStorageObjectID
+            }
+            return baseURL.appending(path: "storage/objects/\(id)/download-url")
+        case .storageDeleteAllRequest:
+            return baseURL.appending(path: "storage/delete-all-request")
         case .mobileSync(let cursor):
             var components = URLComponents(url: baseURL.appending(path: "mobile/sync"), resolvingAgainstBaseURL: false)!
             if let cursor, !cursor.isEmpty {

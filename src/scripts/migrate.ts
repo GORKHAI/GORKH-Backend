@@ -996,6 +996,60 @@ export async function runMigration(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS storage_objects (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        owner_type text NOT NULL,
+        owner_id text NOT NULL,
+        object_type text NOT NULL,
+        provider text NOT NULL,
+        bucket text,
+        object_key text NOT NULL,
+        content_type text,
+        size_bytes integer,
+        checksum text,
+        encryption_key_ref text,
+        sensitivity text NOT NULL DEFAULT 'low',
+        retention_policy text NOT NULL DEFAULT 'standard',
+        status text NOT NULL DEFAULT 'active',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        archived_at timestamptz,
+        deleted_at timestamptz
+      );
+
+      CREATE TABLE IF NOT EXISTS storage_usage (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        total_bytes numeric NOT NULL DEFAULT 0,
+        transcript_bytes numeric NOT NULL DEFAULT 0,
+        audio_bytes numeric NOT NULL DEFAULT 0,
+        document_bytes numeric NOT NULL DEFAULT 0,
+        export_bytes numeric NOT NULL DEFAULT 0,
+        report_bytes numeric NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS storage_events (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+        object_id uuid REFERENCES storage_objects(id) ON DELETE SET NULL,
+        event_type text NOT NULL,
+        payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS memory_summaries (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        period text NOT NULL,
+        period_start timestamptz,
+        period_end timestamptz,
+        summary text NOT NULL,
+        source_object_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+        status text NOT NULL DEFAULT 'active',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
       CREATE INDEX IF NOT EXISTS transcript_by_session ON transcript_segments(session_id);
       CREATE INDEX IF NOT EXISTS auth_accounts_by_user ON auth_accounts(user_id);
       CREATE INDEX IF NOT EXISTS auth_sessions_by_user ON auth_sessions(user_id);
@@ -1114,6 +1168,12 @@ export async function runMigration(): Promise<void> {
       CREATE INDEX IF NOT EXISTS agent_request_approvals_by_request ON agent_request_approvals(request_id);
       CREATE INDEX IF NOT EXISTS agent_blocks_by_user ON agent_blocks(user_id);
       CREATE INDEX IF NOT EXISTS agent_relay_audit_events_by_user_created ON agent_relay_audit_events(user_id, created_at);
+      CREATE INDEX IF NOT EXISTS storage_objects_by_owner ON storage_objects(user_id, owner_type, owner_id);
+      CREATE INDEX IF NOT EXISTS storage_objects_by_user_status ON storage_objects(user_id, status);
+      CREATE INDEX IF NOT EXISTS storage_objects_by_object_type ON storage_objects(object_type);
+      CREATE INDEX IF NOT EXISTS storage_usage_by_user ON storage_usage(user_id);
+      CREATE INDEX IF NOT EXISTS storage_events_by_user_created ON storage_events(user_id, created_at);
+      CREATE INDEX IF NOT EXISTS memory_summaries_by_user_period_created ON memory_summaries(user_id, period, created_at);
     `);
 
     await pool.query(`

@@ -88,6 +88,37 @@ final class APIClient {
     }
 
     @discardableResult
+    func getStorageStatus() async throws -> APIJSONResponse<StorageStatusResponse> {
+        try await request(.storageStatus, as: StorageStatusResponse.self)
+    }
+
+    @discardableResult
+    func getStorageUsage() async throws -> APIJSONResponse<StorageUsageResponse> {
+        try await request(.storageUsage, as: StorageUsageResponse.self)
+    }
+
+    @discardableResult
+    func getStorageObjects() async throws -> APIJSONResponse<StorageObjectsResponse> {
+        try await request(.storageObjects, as: StorageObjectsResponse.self)
+    }
+
+    @discardableResult
+    func requestStorageExport() async throws -> APIJSONResponse<StorageExportResponse> {
+        try await request(.storageExport, method: .post, body: Data("{}".utf8), as: StorageExportResponse.self)
+    }
+
+    @discardableResult
+    func createStorageDownloadURL(id: String?) async throws -> APIJSONResponse<StorageDownloadURLResponse> {
+        try await request(.storageDownloadURL(id: id), method: .post, body: Data("{}".utf8), as: StorageDownloadURLResponse.self)
+    }
+
+    @discardableResult
+    func requestStorageDeletion(reason: String? = nil) async throws -> APIJSONResponse<StorageDeletionResponse> {
+        let body = try JSONEncoder().encode(StorageDeletionRequest(reason: reason))
+        return try await request(.storageDeleteAllRequest, method: .post, body: body, as: StorageDeletionResponse.self)
+    }
+
+    @discardableResult
     func getMobileSync(cursor: String?) async throws -> APIJSONResponse<MobileSyncResponse> {
         try await request(.mobileSync(cursor: cursor), as: MobileSyncResponse.self)
     }
