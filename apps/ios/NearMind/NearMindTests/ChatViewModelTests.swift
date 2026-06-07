@@ -93,6 +93,43 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertFalse(appState.ttsMutedPreference)
     }
 
+    func testNaturalVoiceCommandRequiresApprovalAndStoresLocalPreference() async {
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        let viewModel = ChatViewModel()
+        viewModel.configure(appState: appState, service: MockChatService())
+
+        await viewModel.send("Make your voice more natural")
+
+        XCTAssertEqual(viewModel.pendingApproval?.kind, .setVoiceOutputMode(.natural))
+        viewModel.confirmApproval()
+        XCTAssertEqual(appState.voiceOutputMode, .natural)
+    }
+
+    func testProfessionalVoiceCommandRequiresApprovalAndStoresLocalPreference() async {
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        let viewModel = ChatViewModel()
+        viewModel.configure(appState: appState, service: MockChatService())
+
+        await viewModel.send("Use professional voice")
+
+        XCTAssertEqual(viewModel.pendingApproval?.kind, .setVoiceCharacter(.professional))
+        viewModel.confirmApproval()
+        XCTAssertEqual(appState.naturalVoiceCharacter, .professional)
+    }
+
+    func testUnsafeCloneVoiceCommandIsRejected() async {
+        let service = MockChatService()
+        let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))
+        let viewModel = ChatViewModel()
+        viewModel.configure(appState: appState, service: service)
+
+        await viewModel.send("Clone my friend voice")
+
+        XCTAssertNil(viewModel.pendingApproval)
+        XCTAssertEqual(service.queryCallCount, 0)
+        XCTAssertTrue(viewModel.messages.last?.text.contains("does not clone") == true)
+    }
+
     func testDeleteMemoryDoesNotCallBackendAndRoutesToProfileApproval() async {
         let service = MockChatService()
         let appState = makeAppState(tokenStore: ChatTestTokenStore(token: "test.jwt"))

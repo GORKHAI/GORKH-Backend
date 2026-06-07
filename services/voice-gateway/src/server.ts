@@ -6,12 +6,14 @@ import { z } from "zod";
 import { tokenFromRequest, verifyGatewayToken } from "./auth.js";
 import { gatewayConfig, isAsrAvailable, validateGatewayBootConfig } from "./config.js";
 import { getGatewaySessionForUser } from "./session.js";
+import { registerTtsRoutes, ttsProviderStatus } from "./tts/routes.js";
 import { attachGatewayVoiceSocket } from "./transport/websocket.js";
 
 export async function buildGatewayServer() {
   validateGatewayBootConfig();
   const app = Fastify({ logger: true });
   await app.register(websocket);
+  registerTtsRoutes(app);
 
   app.get("/health", async () => {
     const backend = await checkBackendHealth();
@@ -36,6 +38,7 @@ export async function buildGatewayServer() {
         strategy: gatewayConfig.VOICE_GATEWAY_OUTPUT_STRATEGY,
         audioGeneratedByGateway: false,
       },
+      tts: ttsProviderStatus(),
       backend: {
         llm: backendHealth?.providers?.llm ?? null,
       },

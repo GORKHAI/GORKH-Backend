@@ -350,12 +350,22 @@ private struct YouPreferencesView: View {
 }
 
 private struct YouAudioView: View {
+    @EnvironmentObject private var appState: AppState
     let microphoneStatus: MicrophonePermissionStatus
 
     var body: some View {
         List {
             Section("Audio") {
                 LabeledContent("Microphone", value: microphoneStatus.rawValue)
+                NavigationLink {
+                    VoiceSettingsView()
+                } label: {
+                    ProfileRow(
+                        title: "Voice settings",
+                        subtitle: "\(appState.voiceOutputMode.displayTitle) · \(appState.naturalVoiceCharacter.displayName)",
+                        systemImage: "waveform.circle"
+                    )
+                }
                 ProfileRow(title: "Audio route", subtitle: "Native speech uses the current output route", systemImage: "speaker.wave.3")
                 ProfileRow(title: "Recording", subtitle: "No hidden or background always-listening mode", systemImage: "mic.slash")
             }

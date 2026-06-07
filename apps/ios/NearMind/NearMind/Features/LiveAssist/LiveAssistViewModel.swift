@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 enum VoiceSessionError: Error, LocalizedError, Equatable {
@@ -68,6 +69,7 @@ final class LiveAssistViewModel: ObservableObject {
     private weak var appState: AppState?
     private var hasReportedAudioSendError = false
     private var routeObserver: NSObjectProtocol?
+    private var speechOutputObservation: AnyCancellable?
     private var realDeviceChecklist = RealDeviceSmokeChecklist()
     private var telemetry = VoiceSessionTelemetry()
 
@@ -113,8 +115,15 @@ final class LiveAssistViewModel: ObservableObject {
             config: environment.config,
             tokenStore: environment.tokenStore
         )
+        speechOutput.configureNaturalVoice(
+            mode: appState.voiceOutputMode,
+            character: appState.naturalVoiceCharacter,
+            fallbackEnabled: appState.naturalVoiceFallbackEnabled,
+            ttsClient: TTSClient(config: environment.config, tokenStore: environment.tokenStore)
+        )
         policy = appState.defaultAssistPolicy
         ttsMuted = appState.ttsMutedPreference
+        observeSpeechOutput()
         observeAudioRouteChanges()
         refreshTokenState()
     }
@@ -493,6 +502,15 @@ final class LiveAssistViewModel: ObservableObject {
         routeObserver = audioSessionManager.observeRouteChanges { [weak self] change in
             self?.handleAudioRouteChange(change)
         }
+    }
+
+    private func observeSpeechOutput() {
+        guard speechOutputObservation == nil else { return }
+        speechOutputObservation = speechOutput.$status
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateTTSState()
+            }
     }
 
     private func handleAudioRouteChange(_ change: AudioRouteChange) {

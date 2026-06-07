@@ -11,6 +11,19 @@ const gatewayEnvSchema = z.object({
   VOICE_GATEWAY_OUTPUT_STRATEGY: z.enum(["client_tts", "text_only"]).default("client_tts"),
   DEEPGRAM_API_KEY: emptyToUndefined(z.string().min(1).optional()),
   DEEPGRAM_MODEL: z.string().min(1).default("nova-3"),
+  NATURAL_VOICE_ENABLED: z.coerce.boolean().default(false),
+  TTS_PROVIDER: z.enum(["none", "deepgram_aura"]).default("none"),
+  DEEPGRAM_TTS_MODEL: z.string().min(1).default("aura"),
+  DEEPGRAM_TTS_VOICE_CALM: emptyToUndefined(z.string().min(1).optional()),
+  DEEPGRAM_TTS_VOICE_PROFESSIONAL: emptyToUndefined(z.string().min(1).optional()),
+  DEEPGRAM_TTS_VOICE_WARM: emptyToUndefined(z.string().min(1).optional()),
+  DEEPGRAM_TTS_VOICE_WHISPER: emptyToUndefined(z.string().min(1).optional()),
+  DEEPGRAM_TTS_VOICE_BRIEFING: emptyToUndefined(z.string().min(1).optional()),
+  TTS_MAX_TEXT_CHARS: z.coerce.number().int().positive().default(600),
+  TTS_WHISPER_MAX_TEXT_CHARS: z.coerce.number().int().positive().default(120),
+  TTS_CACHE_ENABLED: z.coerce.boolean().default(false),
+  TTS_AUDIO_STORE_ENABLED: z.coerce.boolean().default(false),
+  TTS_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   GATEWAY_MAX_PCM_FRAME_BYTES: z.coerce.number().int().positive().default(64000),
   GATEWAY_PROTOCOL_VERSION: z.coerce.number().int().positive().default(1),
   MIN_SUPPORTED_GATEWAY_PROTOCOL_VERSION: z.coerce.number().int().positive().default(1),
@@ -36,6 +49,7 @@ function emptyToUndefined<T extends z.ZodTypeAny>(schema: T): z.ZodEffects<T, z.
 export type GatewayConfig = z.infer<typeof gatewayEnvSchema>;
 export type GatewayAsrProviderName = GatewayConfig["VOICE_GATEWAY_ASR_PROVIDER"];
 export type GatewayOutputStrategy = GatewayConfig["VOICE_GATEWAY_OUTPUT_STRATEGY"];
+export type GatewayTtsProviderName = GatewayConfig["TTS_PROVIDER"];
 
 const gatewayEnv = {
   ...process.env,
@@ -64,4 +78,11 @@ export function asrUnavailableMessage(): string {
     return "Deepgram (DEEPGRAM_API_KEY) is not configured";
   }
   return "ASR provider is not configured for pcm16 input.";
+}
+
+export function isNaturalVoiceConfigured(): boolean {
+  if (!gatewayConfig.NATURAL_VOICE_ENABLED) return false;
+  if (gatewayConfig.TTS_PROVIDER === "none") return false;
+  if (gatewayConfig.TTS_PROVIDER === "deepgram_aura") return Boolean(gatewayConfig.DEEPGRAM_API_KEY);
+  return false;
 }

@@ -74,6 +74,12 @@ final class ChatViewModel: ObservableObject {
         case .unmuteVoiceReplies:
             appState?.setTTSMutedPreference(false)
             appendAssistant("Spoken responses are back on. Live still requires consent before microphone use.")
+        case .setVoiceOutputMode(let mode):
+            appState?.setVoiceOutputMode(mode)
+            appendAssistant("Voice output changed to \(mode.displayTitle).")
+        case .setVoiceCharacter(let character):
+            appState?.setNaturalVoiceCharacter(character)
+            appendAssistant("Voice character changed to \(character.displayName).")
         case .openProfileMemory:
             appendAssistant("Opening You. Memory deletion still requires review; no memory was deleted.")
             openProfile?()
@@ -101,6 +107,47 @@ final class ChatViewModel: ObservableObject {
         if normalized.contains("voice chat") || normalized.contains("talk to nearmind") || normalized.contains("talk with nearmind") {
             pendingApproval = Self.openVoiceChatApproval()
             appendAssistant("Voice chat requires microphone consent. Open Talk to NearMind?")
+            return
+        }
+
+        if Self.isUnsafeVoiceCloneIntent(normalized) {
+            appendAssistant("NearMind does not clone or imitate real people’s voices. You can choose one of the built-in assistant voices.")
+            return
+        }
+
+        if normalized.contains("make your voice more natural") || normalized.contains("natural voice") {
+            pendingApproval = ChatApproval(
+                kind: .setVoiceOutputMode(.natural),
+                title: "Use Natural Voice Beta?",
+                explanation: "Only assistant response text is sent to the Voice Gateway. Your microphone audio is not sent to the TTS provider.",
+                confirmLabel: "Use Natural",
+                cancelLabel: "Cancel",
+                riskLevel: .low
+            )
+            return
+        }
+
+        if normalized.contains("native voice") {
+            pendingApproval = ChatApproval(
+                kind: .setVoiceOutputMode(.native),
+                title: "Use Native Voice?",
+                explanation: "NearMind will use local iOS speech output.",
+                confirmLabel: "Use Native",
+                cancelLabel: "Cancel",
+                riskLevel: .low
+            )
+            return
+        }
+
+        if let character = Self.voiceCharacterIntent(normalized) {
+            pendingApproval = ChatApproval(
+                kind: .setVoiceCharacter(character),
+                title: "Use \(character.displayName)?",
+                explanation: "This changes the local NearMind voice preset. It is not voice cloning.",
+                confirmLabel: "Change Voice",
+                cancelLabel: "Cancel",
+                riskLevel: .low
+            )
             return
         }
 
@@ -306,5 +353,30 @@ final class ChatViewModel: ObservableObject {
         normalizedText.contains("send a request to") ||
         normalizedText.contains("ask steve") ||
         normalizedText.contains("agent if")
+    }
+
+    static func isUnsafeVoiceCloneIntent(_ normalizedText: String) -> Bool {
+        normalizedText.contains("clone") && normalizedText.contains("voice") ||
+        normalizedText.contains("sound like") ||
+        normalizedText.contains("imitate") && normalizedText.contains("voice")
+    }
+
+    static func voiceCharacterIntent(_ normalizedText: String) -> NaturalVoiceCharacterID? {
+        if normalizedText.contains("professional voice") || normalizedText.contains("business voice") {
+            return .professional
+        }
+        if normalizedText.contains("warm support") || normalizedText.contains("warm voice") {
+            return .warmSupport
+        }
+        if normalizedText.contains("focus whisper") || normalizedText.contains("whisper voice") {
+            return .focusWhisper
+        }
+        if normalizedText.contains("briefing voice") {
+            return .briefingVoice
+        }
+        if normalizedText.contains("calm guide") || normalizedText.contains("calm voice") {
+            return .calmGuide
+        }
+        return nil
     }
 }

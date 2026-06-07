@@ -6,6 +6,9 @@ final class AppState: ObservableObject {
         static let hasCompletedOnboarding = "NearMind.hasCompletedOnboarding"
         static let ttsMutedPreference = "NearMind.ttsMutedPreference"
         static let defaultAssistPolicy = "NearMind.defaultAssistPolicy"
+        static let voiceOutputMode = "NearMind.voiceOutputMode"
+        static let naturalVoiceCharacter = "NearMind.naturalVoiceCharacter"
+        static let naturalVoiceFallbackEnabled = "NearMind.naturalVoiceFallbackEnabled"
     }
 
     enum TokenStatus: String {
@@ -23,6 +26,9 @@ final class AppState: ObservableObject {
     @Published var billingStatus: BillingStatus?
     @Published var defaultAssistPolicy: AssistPolicy = .conversationAgent
     @Published private(set) var pendingLiveLaunchIntent: LiveLaunchIntent?
+    @Published var voiceOutputMode: VoiceOutputMode = .native
+    @Published var naturalVoiceCharacter: NaturalVoiceCharacterID = .calmGuide
+    @Published var naturalVoiceFallbackEnabled = true
 
     let environment: AppEnvironment
 
@@ -33,6 +39,17 @@ final class AppState: ObservableObject {
         if let policy = UserDefaults.standard.string(forKey: DefaultsKey.defaultAssistPolicy),
            let decoded = AssistPolicy(rawValue: policy) {
             defaultAssistPolicy = decoded
+        }
+        if let mode = UserDefaults.standard.string(forKey: DefaultsKey.voiceOutputMode),
+           let decoded = VoiceOutputMode(rawValue: mode) {
+            voiceOutputMode = decoded
+        }
+        if let character = UserDefaults.standard.string(forKey: DefaultsKey.naturalVoiceCharacter),
+           let decoded = NaturalVoiceCharacterID(rawValue: character) {
+            naturalVoiceCharacter = decoded
+        }
+        if UserDefaults.standard.object(forKey: DefaultsKey.naturalVoiceFallbackEnabled) != nil {
+            naturalVoiceFallbackEnabled = UserDefaults.standard.bool(forKey: DefaultsKey.naturalVoiceFallbackEnabled)
         }
     }
 
@@ -135,6 +152,21 @@ final class AppState: ObservableObject {
     func setDefaultAssistPolicy(_ policy: AssistPolicy) {
         defaultAssistPolicy = policy
         UserDefaults.standard.set(policy.rawValue, forKey: DefaultsKey.defaultAssistPolicy)
+    }
+
+    func setVoiceOutputMode(_ mode: VoiceOutputMode) {
+        voiceOutputMode = mode
+        UserDefaults.standard.set(mode.rawValue, forKey: DefaultsKey.voiceOutputMode)
+    }
+
+    func setNaturalVoiceCharacter(_ character: NaturalVoiceCharacterID) {
+        naturalVoiceCharacter = character
+        UserDefaults.standard.set(character.rawValue, forKey: DefaultsKey.naturalVoiceCharacter)
+    }
+
+    func setNaturalVoiceFallbackEnabled(_ enabled: Bool) {
+        naturalVoiceFallbackEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: DefaultsKey.naturalVoiceFallbackEnabled)
     }
 
     func requestLiveLaunch(_ intent: LiveLaunchIntent) {

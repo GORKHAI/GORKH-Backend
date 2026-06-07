@@ -1,27 +1,22 @@
 # Synthetic Voice Safety Policy
 
-## Product v0 Rules
+NearMind Natural Voice is for assistant output only.
 
-- No voice cloning.
-- No celebrity or public-person imitation.
-- No impersonation of private people.
-- No hidden generated speech.
-- No generated speech used to deceive third parties.
-- No relationship, persuasion, or manipulation scenarios using synthetic emotional speech.
-- No server-side TTS provider enabled in production without policy review.
-- No generated audio stored by default.
+Allowed:
 
-## Required Future Controls
+- Built-in assistant voice characters.
+- Short assistant responses.
+- Short Whisper Copilot cues.
+- Daily brief and task summaries.
 
-Before any server-side synthetic voice provider can be enabled:
+Not allowed:
 
-- Explicit user consent.
-- Clear AI-generated speech disclosure.
-- Abuse-case review.
-- Watermark/disclosure plan where practical.
-- Rate limits and audit logging.
-- No custom voice import unless a separate consent and identity verification policy exists.
+- Voice cloning.
+- Uploading a voice sample for imitation.
+- Celebrity or public-person imitation.
+- Imitating friends, bosses, investors, partners, or the user.
+- Synthetic speech for deception.
+- Speaking screen-only reports.
+- Sending microphone audio to a TTS provider.
 
-## VibeVoice Lab Policy
-
-VibeVoice provider stubs are disabled by default and cannot generate audio. The lab rejects cloning and impersonation modes even outside production.
+Generated audio is not stored by default. Native iOS TTS remains the fallback.

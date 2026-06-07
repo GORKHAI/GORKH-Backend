@@ -212,6 +212,7 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - v0.6 assistant-first UX polish with You tab, simplified Live flow, hidden developer surfaces, and human approval cards
 - Relay v0 agent requests under You > Requests, Chat composer handoff, mobile-sync decoding, and sender/receiver approval controls
 - Auth/account/plan shell v0 with Auth Welcome, Apple/email readiness, account profile, sign out, deletion request, and status-only Internal Alpha plan
+- Natural Voice v0.7 with Native Voice default, opt-in gateway TTS, built-in voice characters, and native fallback
 
 ## Intentionally Not Implemented Yet
 
@@ -221,6 +222,22 @@ Local latency is approximate and uses device timestamps for mic start, first ASR
 - Analytics SDKs
 - Ad SDKs
 - StoreKit purchases, fake pricing, or paywalls
+- Voice cloning, celebrity/public-person imitation, or real-person impersonation
+
+## Natural Voice
+
+`SpeechOutputManager` remains the central voice-output router. Native iOS TTS is the default. When the user selects Natural Voice Beta in You > Audio > Voice Settings, iOS sends only assistant response/cue text to the Voice Gateway `POST /tts/synthesize` endpoint using the Keychain JWT.
+
+Natural Voice output:
+
+- Uses `TTSClient` for gateway HTTP requests.
+- Uses `NaturalVoicePlayer` to play returned audio bytes.
+- Falls back to native iOS TTS when enabled and cloud synthesis fails.
+- Stops on cancel speech, barge-in, disconnect, and background cleanup.
+- Does not send `userId`.
+- Does not store provider keys or generated audio.
+
+Voice characters are local preferences: Calm Guide, Professional, Warm Support, Focus Whisper, and Briefing Voice. Focus Whisper is used for short whisper cues. The app has no voice sample upload or cloning UI.
 
 ## App Icon
 

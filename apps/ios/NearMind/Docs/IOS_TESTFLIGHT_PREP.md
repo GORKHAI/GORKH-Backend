@@ -52,7 +52,7 @@ Current v0 limitations:
 - No hidden recording.
 - No background always-listening.
 - No provider keys or API secrets in the app.
-- Native TTS only; no server-side TTS audio expected by the app.
+- Native TTS is the default. Natural Voice Beta is opt-in and goes through the Voice Gateway; no TTS provider keys are stored in the app.
 
 ## Microphone Disclosure
 
@@ -81,3 +81,14 @@ NearMind uses the microphone only when you start a Live Assist session, so it ca
 - Raw audio is off by default.
 - Discarded sessions must not be archived.
 - Product copy should say long-term storage with fair-use limits, not unlimited storage.
+
+## Natural Voice Beta
+
+- Default voice output: Native Voice.
+- Optional mode: Natural Voice Beta.
+- Voice characters: Calm Guide, Professional, Warm Support, Focus Whisper, Briefing Voice.
+- Fallback: native iOS voice if Natural Voice fails.
+- Only assistant/cue text is sent to the TTS provider through the gateway.
+- Microphone audio is not sent to the TTS provider.
+- Generated audio is not stored by default.
+- No voice cloning, celebrity imitation, or impersonation support.

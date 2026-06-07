@@ -83,6 +83,51 @@ final class AudioVoiceSessionTests: XCTestCase {
     }
 
     @MainActor
+    func testNaturalVoiceSuccessUsesCloudAudioPlayer() async throws {
+        let synth = MockSpeechSynthesizer()
+        let player = MockNaturalVoicePlayer()
+        let tts = MockTTSClient(audioData: Data([1, 2, 3]))
+        let manager = SpeechOutputManager(synthesizer: synth, naturalPlayer: player, ttsClient: tts)
+        manager.configureNaturalVoice(mode: .natural, character: .professional, fallbackEnabled: true, ttsClient: tts)
+
+        manager.speak(text: "Ask total repayment.", speechId: "speech-5", deliveryTarget: "local")
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(tts.requests.first?.voiceCharacterId, .professional)
+        XCTAssertEqual(player.playedData, Data([1, 2, 3]))
+        XCTAssertTrue(synth.spokenStrings.isEmpty)
+        XCTAssertEqual(manager.status, "Natural playing")
+    }
+
+    @MainActor
+    func testNaturalVoiceFailureFallsBackToNativeWhenEnabled() async throws {
+        let synth = MockSpeechSynthesizer()
+        let tts = MockTTSClient(error: APIClientError.invalidResponse)
+        let manager = SpeechOutputManager(synthesizer: synth, naturalPlayer: MockNaturalVoicePlayer(), ttsClient: tts)
+        manager.configureNaturalVoice(mode: .natural, character: .calmGuide, fallbackEnabled: true, ttsClient: tts)
+
+        manager.speak(text: "Ask total repayment.", speechId: "speech-6", deliveryTarget: "local")
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(synth.spokenStrings, ["Ask total repayment."])
+        XCTAssertEqual(manager.status, "Fallback native")
+    }
+
+    @MainActor
+    func testCancelSpeechStopsNaturalPlayback() async throws {
+        let player = MockNaturalVoicePlayer()
+        let manager = SpeechOutputManager(synthesizer: MockSpeechSynthesizer(), naturalPlayer: player, ttsClient: MockTTSClient(audioData: Data([1])))
+        manager.configureNaturalVoice(mode: .natural, character: .calmGuide, fallbackEnabled: true, ttsClient: MockTTSClient(audioData: Data([1])))
+
+        manager.speak(text: "Short cue", speechId: "speech-7", deliveryTarget: "local")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        manager.cancel(speechId: "speech-7")
+
+        XCTAssertTrue(player.didStop)
+        XCTAssertEqual(manager.status, "TTS stopped")
+    }
+
+    @MainActor
     func testTTSManagerHandlesCancelSpeech() {
         let synth = MockSpeechSynthesizer()
         let manager = SpeechOutputManager(synthesizer: synth)
@@ -445,6 +490,47 @@ private final class MockAudioSessionManager: AudioSessionManaging {
     }
 
     func removeRouteObserver(_ token: NSObjectProtocol) {}
+}
+
+private final class MockNaturalVoicePlayer: NaturalVoicePlaying {
+    private(set) var playbackStatus: NaturalVoicePlaybackStatus = .idle
+    private(set) var playedData: Data?
+    private(set) var didStop = false
+
+    func play(audioData: Data) throws {
+        playedData = audioData
+        playbackStatus = .playing
+    }
+
+    func stop() {
+        didStop = true
+        playbackStatus = .idle
+    }
+}
+
+private final class MockTTSClient: TTSClientProtocol {
+    private let audioData: Data?
+    private let error: Error?
+    private(set) var requests: [TTSRequest] = []
+
+    init(audioData: Data? = nil, error: Error? = nil) {
+        self.audioData = audioData
+        self.error = error
+    }
+
+    func synthesize(_ ttsRequest: TTSRequest) async throws -> TTSAudioResponse {
+        requests.append(ttsRequest)
+        if let error {
+            throw error
+        }
+        return TTSAudioResponse(
+            audioData: audioData ?? Data([1]),
+            contentType: "audio/mpeg",
+            provider: "mock",
+            voiceCharacter: ttsRequest.voiceCharacterId.rawValue,
+            latencyMs: "1"
+        )
+    }
 }
 
 private final class VoiceTestTokenStore: TokenStoreProtocol {

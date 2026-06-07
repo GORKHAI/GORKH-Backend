@@ -37,6 +37,8 @@ struct ChatApproval: Identifiable, Equatable {
         case openVoiceChat
         case muteVoiceReplies
         case unmuteVoiceReplies
+        case setVoiceOutputMode(VoiceOutputMode)
+        case setVoiceCharacter(NaturalVoiceCharacterID)
         case openProfileMemory
     }
 

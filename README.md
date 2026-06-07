@@ -1218,3 +1218,23 @@ NearMind uses a hybrid storage model for beta readiness:
 - Redis/Upstash: queues, locks, rate limits, cooldowns, and short-lived cache only.
 
 Storage defaults to `STORAGE_PROVIDER=none`. Configure R2 only on backend environments; never expose R2 credentials to iOS or frontend clients. User-facing copy should say long-term storage with fair-use limits, not unlimited storage.
+
+### NearMind Natural Voice
+
+Natural Voice v0.7 adds opt-in cloud TTS through the Voice Gateway while keeping native iOS TTS as the default fallback. The current provider path is Deepgram Aura, configured only on the gateway:
+
+```text
+NATURAL_VOICE_ENABLED=false
+TTS_PROVIDER=none
+```
+
+iOS never receives TTS provider keys. Only assistant response/cue text is sent to the TTS provider; microphone audio is not sent to TTS. Generated audio is not stored by default. NearMind supports five built-in assistant voice characters and explicitly does not support voice cloning, public-person imitation, or impersonation.
+
+Checks:
+
+```bash
+npm run tts:replay:all
+npm run tts:live:verify
+```
+
+See `docs/voice/natural-voice-v0.md`, `docs/voice/voice-character-policy.md`, `docs/voice/deepgram-aura-setup.md`, and `docs/security/synthetic-voice-safety-policy.md`.

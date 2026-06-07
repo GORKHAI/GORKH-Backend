@@ -211,6 +211,37 @@ What should I do today?
 15. Confirm Chat uses mobile sync data or shows a quiet empty state.
 16. Tap the Chat mic button and confirm it does not start recording; use Live for voice sessions.
 
+## Natural Voice v0.7
+
+1. Open You > Audio > Voice settings.
+2. Confirm default Voice Output is Native Voice.
+3. Select Natural Voice Beta.
+4. Select Calm Guide, then Professional, Warm Support, Focus Whisper, and Briefing Voice.
+5. Confirm fallback native voice is enabled by default.
+6. Open Chat and ask:
+
+```text
+Make your voice more natural
+```
+
+7. Confirm an approval card appears before the local preference changes.
+8. Ask:
+
+```text
+Use professional voice
+```
+
+9. Confirm an approval card appears before the character changes.
+10. Ask:
+
+```text
+Clone my friend voice
+```
+
+11. Confirm NearMind refuses voice cloning or imitation.
+12. Start a consented Live voice session and confirm the TTS status shows Native, Natural loading, Natural playing, Fallback native, or Muted.
+13. Confirm no provider key, JWT, raw audio payload, or generated audio file appears in logs.
+
 ## Assistant-First UX v0.6
 
 1. Confirm You top level shows Account, Memory, Privacy, Requests, Preferences, Audio, and Developer.

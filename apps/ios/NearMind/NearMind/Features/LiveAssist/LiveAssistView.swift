@@ -197,6 +197,20 @@ struct LiveAssistView: View {
             }
             .font(.caption)
             .foregroundStyle(NearMindTheme.textSecondary)
+
+            HStack {
+                Label("\(appState.voiceOutputMode.displayTitle) · \(appState.naturalVoiceCharacter.displayName)", systemImage: "waveform.circle")
+                    .font(.caption)
+                    .foregroundStyle(NearMindTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                NavigationLink {
+                    VoiceSettingsView()
+                } label: {
+                    Text("Voice settings")
+                        .font(.caption.weight(.semibold))
+                }
+            }
         }
     }
 
